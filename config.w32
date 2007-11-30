@@ -3,6 +3,6 @@
 
 ARG_ENABLE("phk", "enable the PHK accelerator", "no");
 
-if (PHP_phk != "no") {
+if (PHP_PHK != "no") {
         EXTENSION("phk", "php_phk.c");
 }
