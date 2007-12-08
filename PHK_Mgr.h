@@ -32,6 +32,7 @@ static PHK_Mnt_Info *PHK_Mgr_get_mnt_info(zval *mnt, ulong hash, int exception T
 static void  PHK_Mgr_validate(zval *mnt, ulong hash TSRMLS_DC);
 static void  PHK_Mgr_umount(zval *mnt, ulong hash TSRMLS_DC);
 static void  PHK_Mgr_umount_mnt_info(PHK_Mnt_Info *mp TSRMLS_DC);
+static zval *PHK_Mgr_instance_by_mp(PHK_Mnt_Info *mp TSRMLS_DC);
 static zval *PHK_Mgr_instance(zval *mnt, ulong hash TSRMLS_DC);
 static zval *PHK_Mgr_proxy_by_mp(PHK_Mnt_Info *mp TSRMLS_DC);
 static zval *PHK_Mgr_proxy(zval *mnt, ulong hash TSRMLS_DC);

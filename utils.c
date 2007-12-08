@@ -29,44 +29,6 @@
 #include "utils.h"
 
 /*============================================================================*/
-
-static void ut_persistent_copy_ctor(zval **ztpp);
-static int MINIT_utils(TSRMLS_D);
-static int MSHUTDOWN_utils(TSRMLS_D);
-
-static int RINIT_utils(TSRMLS_D);
-static int RSHUTDOWN_utils(TSRMLS_D);
-
-static int  ut_is_web(void);
-static void ut_persistent_zval_dtor(zval *zvalue);
-static void ut_persistent_zval_ptr_dtor(zval **zval_ptr);
-static void ut_persistent_array_init(zval *zp);
-static void ut_persist_zval(zval *zsp,zval *ztp);
-static void ut_new_instance(zval **ret_pp, zval *class_name, int construct
-	, int num_args, zval **args TSRMLS_DC);
-
-static void ut_call_user_function_void  (zval *obj_zp,zval *func_zp          ,int nb_args,zval **args TSRMLS_DC);
-static int  ut_call_user_function_bool  (zval *obj_zp,zval *func_zp          ,int nb_args,zval **args TSRMLS_DC);
-static long ut_call_user_function_long  (zval *obj_zp,zval *func_zp          ,int nb_args,zval **args TSRMLS_DC);
-static void ut_call_user_function_string(zval *obj_zp,zval *func_zp,zval *ret,int nb_args,zval **args TSRMLS_DC);
-static void ut_call_user_function_array (zval *obj_zp,zval *func_zp,zval *ret,int nb_args,zval **args TSRMLS_DC);
-static void ut_call_user_function       (zval *obj_zp,zval *func_zp,zval *ret,int nb_args,zval **args TSRMLS_DC);
-
-static int  ut_extension_loaded(char *name, int len TSRMLS_DC);
-static void ut_require(char *string, zval *ret TSRMLS_DC);
-static int  ut_strings_are_equal(zval *zp1, zval *zp2 TSRMLS_DC);
-static void ut_header(char *string TSRMLS_DC);
-static void ut_http_403_fail(TSRMLS_D);
-static void ut_http_404_fail(TSRMLS_D);
-static void ut_exit(int status TSRMLS_DC);
-static zval *_ut_SERVER_element(HKEY_STRUCT *hkey TSRMLS_DC);
-static zval *_ut_REQUEST_element(HKEY_STRUCT *hkey TSRMLS_DC);
-static char *ut_http_base_url(TSRMLS_D);
-static void ut_http_301_redirect(zval *path, int must_free TSRMLS_DC);
-static void ut_rtrim_zval(zval *zp TSRMLS_DC);
-static void ut_file_suffix(zval *path, zval *ret TSRMLS_DC);
-
-/*============================================================================*/
 /* Generic arginfo structures */
 
 static ZEND_BEGIN_ARG_INFO_EX(UT_noarg_arginfo,0,0,0)
@@ -91,6 +53,18 @@ ZEND_END_ARG_INFO()
 static ZEND_BEGIN_ARG_INFO_EX(UT_2args_ref_arginfo,0,1,2)
 ZEND_ARG_INFO(0,arg1)
 ZEND_ARG_INFO(0,arg2)
+ZEND_END_ARG_INFO()
+
+static ZEND_BEGIN_ARG_INFO_EX(UT_3args_arginfo,0,0,3)
+ZEND_ARG_INFO(0,arg1)
+ZEND_ARG_INFO(0,arg2)
+ZEND_ARG_INFO(0,arg3)
+ZEND_END_ARG_INFO()
+
+static ZEND_BEGIN_ARG_INFO_EX(UT_3args_ref_arginfo,0,1,3)
+ZEND_ARG_INFO(0,arg1)
+ZEND_ARG_INFO(0,arg2)
+ZEND_ARG_INFO(0,arg3)
 ZEND_END_ARG_INFO()
 
 /*============================================================================*/
@@ -335,10 +309,11 @@ return (!memcmp(Z_STRVAL_P(zp1),Z_STRVAL_P(zp1),Z_STRLEN_P(zp1)));
 
 /*---------------------------------------------------------------*/
 
-static void ut_header(char *string TSRMLS_DC)
+static void ut_header(long response_code, char *string TSRMLS_DC)
 {
 sapi_header_line ctr;
 
+ctr.response_code=response_code;
 ctr.line=string;
 ctr.line_len=strlen(string);
 
@@ -349,7 +324,7 @@ sapi_header_op(SAPI_HEADER_REPLACE,&ctr TSRMLS_CC);
 
 static void ut_http_403_fail(TSRMLS_D)
 {
-ut_header("HTTP/1.0 403 Forbidden" TSRMLS_CC);
+ut_header(403,"HTTP/1.0 403 Forbidden" TSRMLS_CC);
 
 ut_exit(0 TSRMLS_CC);
 }
@@ -358,7 +333,7 @@ ut_exit(0 TSRMLS_CC);
 
 static void ut_http_404_fail(TSRMLS_D)
 {
-ut_header("HTTP/1.0 404 Not Found" TSRMLS_CC);
+ut_header(404,"HTTP/1.0 404 Not Found" TSRMLS_CC);
 
 ut_exit(0 TSRMLS_CC);
 }
@@ -444,10 +419,10 @@ spprintf(&p,UT_PATH_MAX,"Location: http://%s%s%s"
 	,Z_STRVAL_P(SERVER_ELEMENT(HTTP_HOST)),ut_http_base_url(TSRMLS_C)
 	,Z_STRVAL_P(path));
 
-ut_header(p TSRMLS_CC);
+ut_header(301,p TSRMLS_CC);
 efree(p);
 
-ut_header("HTTP/1.1 301 Moved Permanently" TSRMLS_CC);
+ut_header(301,"HTTP/1.1 301 Moved Permanently" TSRMLS_CC);
 
 if (must_free) zval_dtor(path);
 ut_exit(0 TSRMLS_CC);
@@ -512,9 +487,22 @@ else
 
 /*---------------------------------------------------------------*/
 
-static int MINIT_utils(TSRMLS_D)
+static void ut_build_constants(TSRMLS_D)
 {
 INIT_CZVAL(__construct);
+
+INIT_HKEY(_SERVER);
+INIT_HKEY(_REQUEST);
+INIT_HKEY(PATH_INFO);
+INIT_HKEY(PHP_SELF);
+INIT_HKEY(HTTP_HOST);
+}
+
+/*---------------------------------------------------------------*/
+
+static int MINIT_utils(TSRMLS_D)
+{
+ut_build_constants(TSRMLS_C);
 
 return SUCCESS;
 }

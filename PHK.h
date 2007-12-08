@@ -25,6 +25,7 @@ static int RINIT_PHK(TSRMLS_D);
 static int RSHUTDOWN_PHK(TSRMLS_D);
 
 static void  PHK_set_mp_property(zval *obj, PHK_Mnt_Info *mp TSRMLS_DC);
+static void  PHK_need_php_runtime(TSRMLS_D);
 static void  PHK_init(PHK_Mnt_Info *mp TSRMLS_DC);
 static int   PHK_cache_enabled(PHK_Mnt_Info *mp, zval *command, zval *params, zval *path TSRMLS_DC);
 static void  PHK_umount(PHK_Mnt_Info *mp TSRMLS_DC);

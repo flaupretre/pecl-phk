@@ -20,6 +20,7 @@
 
 #ifndef FLP_UTILS_H
 #define FLP_UTILS_H 1
+
 /*============================================================================*/
 
 #include "php.h"
@@ -89,14 +90,14 @@ which is the case in this extension. */
 #if HAVE_BCOPY
 #define memmove(a, b, c) bcopy(b, a, c)
 #else  /* HAVE_BCOPY */
-static void * phk_memmove(unsigned char *dest, const unsigned char *src, size_t n)
+static void * my_memmove(unsigned char *dest, const unsigned char *src, size_t n)
 {
 int i;
 dest += n;
 src += n;
 for (i = 0; i < n; ++i) *(--dest) =  *(--src);
 }
-#define memmove(a, b, c) phk_memmove(a, b, c)
+#define memmove(a, b, c) my_memmove(a, b, c)
 #endif   /* not HAVE_BCOPY */
 #endif   /* not HAVE_MEMMOVE */
 
@@ -107,12 +108,19 @@ for (i = 0; i < n; ++i) *(--dest) =  *(--src);
 #define DBG_MSG1(_format,_var1) php_printf(_format "\n",_var1)
 #define DBG_MSG2(_format,_var1,_var2) php_printf(_format "\n",_var1,_var2)
 #define DBG_MSG3(_format,_var1,_var2,_var3) php_printf(_format "\n",_var1,_var2,_var3)
+#define CHECK_MEM()	full_mem_check(1)
 #else
 #define DBG_MSG(_format)
 #define DBG_MSG1(_format,_var1)
 #define DBG_MSG2(_format,_var1,_var2)
 #define DBG_MSG3(_format,_var1,_var2,_var3)
+#define CHECK_MEM()
 #endif
+
+#define THROW_EXCEPTION(_format)	\
+	{ \
+	(void)zend_throw_exception_ex(NULL,0 TSRMLS_CC ,_format); \
+	}
 
 #define THROW_EXCEPTION_1(_format,_arg1)	\
 	{ \
@@ -122,6 +130,12 @@ for (i = 0; i < n; ++i) *(--dest) =  *(--src);
 #define THROW_EXCEPTION_2(_format,_arg1,_arg2)	\
 	{ \
 	(void)zend_throw_exception_ex(NULL,0 TSRMLS_CC ,_format,_arg1,_arg2); \
+	}
+
+#define EXCEPTION_ABORT(_format)	\
+	{ \
+	THROW_EXCEPTION(_format); \
+	return; \
 	}
 
 #define EXCEPTION_ABORT_1(_format,_arg1)	\
@@ -240,6 +254,50 @@ will make it conditional. */
 /*============================================================================*/
 
 static DECLARE_CZVAL(__construct);
+
+static DECLARE_HKEY(_SERVER);
+static DECLARE_HKEY(_REQUEST);
+static DECLARE_HKEY(PATH_INFO);
+static DECLARE_HKEY(PHP_SELF);
+static DECLARE_HKEY(HTTP_HOST);
+
+/*============================================================================*/
+
+static void ut_persistent_copy_ctor(zval **ztpp);
+static int MINIT_utils(TSRMLS_D);
+static int MSHUTDOWN_utils(TSRMLS_D);
+
+static int RINIT_utils(TSRMLS_D);
+static int RSHUTDOWN_utils(TSRMLS_D);
+
+static int  ut_is_web(void);
+static void ut_persistent_zval_dtor(zval *zvalue);
+static void ut_persistent_zval_ptr_dtor(zval **zval_ptr);
+static void ut_persistent_array_init(zval *zp);
+static void ut_persist_zval(zval *zsp,zval *ztp);
+static void ut_new_instance(zval **ret_pp, zval *class_name, int construct
+	, int num_args, zval **args TSRMLS_DC);
+
+static void ut_call_user_function_void  (zval *obj_zp,zval *func_zp          ,int nb_args,zval **args TSRMLS_DC);
+static int  ut_call_user_function_bool  (zval *obj_zp,zval *func_zp          ,int nb_args,zval **args TSRMLS_DC);
+static long ut_call_user_function_long  (zval *obj_zp,zval *func_zp          ,int nb_args,zval **args TSRMLS_DC);
+static void ut_call_user_function_string(zval *obj_zp,zval *func_zp,zval *ret,int nb_args,zval **args TSRMLS_DC);
+static void ut_call_user_function_array (zval *obj_zp,zval *func_zp,zval *ret,int nb_args,zval **args TSRMLS_DC);
+static void ut_call_user_function       (zval *obj_zp,zval *func_zp,zval *ret,int nb_args,zval **args TSRMLS_DC);
+
+static int  ut_extension_loaded(char *name, int len TSRMLS_DC);
+static void ut_require(char *string, zval *ret TSRMLS_DC);
+static int  ut_strings_are_equal(zval *zp1, zval *zp2 TSRMLS_DC);
+static void ut_header(long response_code, char *string TSRMLS_DC);
+static void ut_http_403_fail(TSRMLS_D);
+static void ut_http_404_fail(TSRMLS_D);
+static void ut_exit(int status TSRMLS_DC);
+static zval *_ut_SERVER_element(HKEY_STRUCT *hkey TSRMLS_DC);
+static zval *_ut_REQUEST_element(HKEY_STRUCT *hkey TSRMLS_DC);
+static char *ut_http_base_url(TSRMLS_D);
+static void ut_http_301_redirect(zval *path, int must_free TSRMLS_DC);
+static void ut_rtrim_zval(zval *zp TSRMLS_DC);
+static void ut_file_suffix(zval *path, zval *ret TSRMLS_DC);
 
 /*============================================================================*/
 #endif	/* FLP_UTILS_H */

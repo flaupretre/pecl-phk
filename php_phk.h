@@ -31,9 +31,6 @@
 
 /*---------------------------------------------------------------*/
 
-/* Don't change the format of this line: used to extract the version
-   when building the source package */
-
 #define PHK_ACCEL_VERSION "1.1.0"
 
 #define PHK_ACCEL_MIN_VERSION "1.4.0"
@@ -94,14 +91,10 @@ static DECLARE_HKEY(web_access);
 static DECLARE_HKEY(min_php_version);
 static DECLARE_HKEY(max_php_version);
 static DECLARE_HKEY(mime_types);
-static DECLARE_HKEY(_SERVER);
-static DECLARE_HKEY(_REQUEST);
-static DECLARE_HKEY(HTTP_HOST);
 static DECLARE_HKEY(web_run_script);
 static DECLARE_HKEY(m);
 static DECLARE_HKEY(web_main_redirect);
 static DECLARE_HKEY(_PHK_path);
-static DECLARE_HKEY(PATH_INFO);
 static DECLARE_HKEY(ORIG_PATH_INFO);
 static DECLARE_HKEY(phk_backend);
 static DECLARE_HKEY(lib_run_script);
@@ -109,11 +102,11 @@ static DECLARE_HKEY(cli_run_script);
 static DECLARE_HKEY(auto_umount);
 static DECLARE_HKEY(argc);
 static DECLARE_HKEY(argv);
-static DECLARE_HKEY(PHP_SELF);
+static DECLARE_HKEY(autoload);
+static DECLARE_HKEY(phk_stream_backend);
 
 /*----- Mount flags --------*/
 
-#define PHK_F_KEEP_OPEN			1
 #define PHK_F_CRC_CHECK			4
 #define PHK_F_NO_MOUNT_SCRIPT	8
 #define PHK_F_CREATOR			16
@@ -175,6 +168,8 @@ ZEND_BEGIN_MODULE_GLOBALS(phk)
 	int init_done;
 	HashTable mnt_infos;		/* PHK_Mgr */
 	zval caching;		/* PHK_Mgr - Can be null/true/false */
+	char root_package[UT_PATH_MAX+1];
+	int php_runtime_is_loaded;
 ZEND_END_MODULE_GLOBALS(phk)
 
 #ifdef ZTS

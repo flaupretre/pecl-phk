@@ -73,7 +73,7 @@ typedef struct	/* Private */
 
 static HashTable persistent_mnt_array;
 
-MutexDeclare(PHK_Mgr_persistent_mutex);
+/* MutexDeclare(PHK_Mgr_persistent_mutex); */
 
 static int tmp_mnt_num;
 
@@ -99,7 +99,7 @@ static void compute_autoload_uri(zval *mnt, zval *ret TSRMLS_DC);
 
 static void PHK_Mgr_init_persistent_data(TSRMLS_D)
 {
-MutexSetup(PHK_Mgr_persistent_mutex);
+/* MutexSetup(PHK_Mgr_persistent_mutex); */
 
 zend_hash_init(&persistent_mnt_array,16,NULL
 	,(dtor_func_t)PHK_Mgr_Persistent_Data_dtor,1);
@@ -111,11 +111,11 @@ tmp_mnt_num=0;
 
 static void PHK_Mgr_shutdown_persistent_data(TSRMLS_D)
 {
-MutexLock(PHK_Mgr_persistent_mutex);
+/* MutexLock(PHK_Mgr_persistent_mutex); */
 
 zend_hash_destroy(&persistent_mnt_array);
 
-MutexShutdown(PHK_Mgr_persistent_mutex);
+/* MutexShutdown(PHK_Mgr_persistent_mutex); */
 }
 
 /*---------------------------------------------------------------*/
@@ -124,7 +124,7 @@ static void PHK_Mgr_mnt_info_dtor(PHK_Mnt_Info *mp)
 {
 if (mp->nb_children) efree(mp->children);
 
-zval_ptr_dtor(&(mp->instance));
+if (mp->instance) zval_ptr_dtor(&(mp->instance));
 if (mp->proxy) zval_ptr_dtor(&(mp->proxy));
 zval_ptr_dtor(&(mp->path));
 zval_ptr_dtor(&(mp->mnt));
@@ -320,6 +320,19 @@ PHK_Mgr_umount(mnt, 0 TSRMLS_CC);
 
 /*---------------------------------------------------------------*/
 
+static zval *PHK_Mgr_instance_by_mp(PHK_Mnt_Info *mp TSRMLS_DC)
+{
+if (!mp->instance)
+	{
+	ut_new_instance(&(mp->instance),&CZVAL(PHK),0,0,NULL TSRMLS_CC);
+	PHK_set_mp_property(mp->instance,mp TSRMLS_CC);
+	}
+
+return mp->instance;
+}
+
+/*---------------------------------------------------------------*/
+
 static zval *PHK_Mgr_instance(zval *mnt, ulong hash TSRMLS_DC)
 {
 PHK_Mnt_Info *mp;
@@ -327,7 +340,7 @@ PHK_Mnt_Info *mp;
 mp=PHK_Mgr_get_mnt_info(mnt,hash,1 TSRMLS_CC);
 if (EG(exception)) return NULL;
 
-return mp->instance;
+return PHK_Mgr_instance_by_mp(mp TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/
@@ -726,6 +739,8 @@ PHK_Mnt_Info *mp;
 
 if (Z_TYPE(PHK_G(caching))!=IS_NULL) return Z_BVAL(PHK_G(caching));
 
+if (ZVAL_IS_NULL(mnt)) return 0; /* Default for global commands, no cache */
+
 mp=PHK_Mgr_get_mnt_info(mnt, hash, 1 TSRMLS_CC);
 if (EG(exception)) return 0;
 
@@ -958,13 +973,12 @@ else
 
 	mp->mtime=mtime;
 
-	ut_new_instance(&(mp->instance),&CZVAL(PHK),0,0,NULL TSRMLS_CC);
-	PHK_set_mp_property(mp->instance,mp TSRMLS_CC);
-
 	PHK_Mgr_populate_persistent_data(mnt,hash,mp TSRMLS_CC);
 	if (EG(exception)) return NULL;
 
 	PHK_init(mp TSRMLS_CC);
+
+	/* Instance object is created when needed by PHK_Mgr_instance() */
 	}
 
 if (EG(exception)) return NULL;
@@ -1007,7 +1021,12 @@ if (zend_hash_quick_find(&persistent_mnt_array,Z_STRVAL_P(mnt),Z_STRLEN_P(mnt)+1
 	,hash,(void **)(&entry))==SUCCESS)
 		return entry;
 
-/* Create entry */
+/* Create entry - slow path */
+
+PHK_need_php_runtime(TSRMLS_C);
+
+/* We won't cache this information as they are read only once per
+* thread/process, when the package is opened for the 1st time. */
 
 INIT_ZVAL(min_version);
 args[0]=mnt;
@@ -1160,7 +1179,7 @@ PHK_Mnt_Persistent_Data *entry;
 
 DBG_MSG1("Entering PHK_Mgr_populate_persistent_data(%s)",Z_STRVAL_P(mnt));
 
-MutexLock(PHK_Mgr_persistent_mutex);
+/* MutexLock(PHK_Mgr_persistent_mutex); */
 
 entry=PHK_Mgr_get_persistent_data(mnt,hash TSRMLS_CC);
 if (EG(exception)) return;
@@ -1168,7 +1187,7 @@ if (EG(exception)) return;
 entry->refcount++;
 mp->persistent_refcount_p=&(entry->refcount);
 
-MutexUnlock(PHK_Mgr_persistent_mutex);
+/* MutexUnlock(PHK_Mgr_persistent_mutex); */
 
 /* Populate mp structure */
 
@@ -1247,6 +1266,24 @@ else
 }
 
 /*---------------------------------------------------------------*/
+
+static PHP_METHOD(PHK_Mgr,mime_header)
+{
+zval *mnt,*path;
+ulong hash;
+PHK_Mnt_Info *mp;
+
+if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "zlz", &mnt, &hash, &path
+	) == FAILURE) EXCEPTION_ABORT_1("Cannot parse parameters",0);
+
+mp=PHK_Mgr_get_mnt_info(mnt,hash,1 TSRMLS_CC);
+if (EG(exception)) return;
+
+PHK_mime_header(mp,path TSRMLS_CC);
+}
+
+
+/*---------------------------------------------------------------*/
 /* zval_dtor works for persistent arrays, but not for persistent strings */
 /* TODO: Generic persistent zval API */
 
@@ -1283,6 +1320,7 @@ static zend_function_entry PHK_Mgr_functions[]= {
 	PHP_ME(PHK_Mgr,normalize_uri,UT_1arg_arginfo,ZEND_ACC_STATIC|ZEND_ACC_PUBLIC)
 	PHP_ME(PHK_Mgr,uri_to_mnt,UT_1arg_arginfo,ZEND_ACC_STATIC|ZEND_ACC_PUBLIC)
 	PHP_ME(PHK_Mgr,php_version_check,UT_noarg_arginfo,ZEND_ACC_STATIC|ZEND_ACC_PUBLIC)
+	PHP_ME(PHK_Mgr,mime_header,UT_3args_arginfo,ZEND_ACC_STATIC|ZEND_ACC_PUBLIC)
     {NULL, NULL, NULL, 0, 0 }
 	};
 

@@ -29,11 +29,18 @@
 
 #define ALLOCATE
 
-ZEND_DECLARE_MODULE_GLOBALS(phk)
+#include "php_phk.h"
+#include "utils.h"
+#include "phk_global.h"
+#include "PHK_Cache.h"
+#include "PHK_Stream.h"
+#include "PHK_Mgr.h"
+#include "PHK.h"
+#include "phk_stream_parse_uri2.h"
 
 /*------------------------*/
 
-#include "php_phk.h"
+ZEND_DECLARE_MODULE_GLOBALS(phk)
 
 /*------------------------*/
 
@@ -67,8 +74,6 @@ php_info_print_table_start();
 php_info_print_table_row(2,"PHK Accelerator", "enabled");
 php_info_print_table_row(2, "Version", PHK_ACCEL_VERSION);
 php_info_print_table_row(2, "Cache used",PHK_Cache_cache_name(TSRMLS_C));
-php_info_print_table_row(2, "Caching opcodes"
-	,PHK_Cache_caching_opcodes(TSRMLS_C) ? "yes" : "no");
 
 php_info_print_table_end();
 }
@@ -97,7 +102,6 @@ else
 static void phk_globals_ctor(zend_phk_globals *globals TSRMLS_DC)
 {
 globals->init_done=0;
-ZVAL_NULL(&(globals->caching));
 }
 
 /*------------------------*/
@@ -173,14 +177,10 @@ INIT_HKEY(web_access);
 INIT_HKEY(min_php_version);
 INIT_HKEY(max_php_version);
 INIT_HKEY(mime_types);
-INIT_HKEY(_SERVER);
-INIT_HKEY(_REQUEST);
-INIT_HKEY(HTTP_HOST);
 INIT_HKEY(web_run_script);
 INIT_HKEY(m);
 INIT_HKEY(web_main_redirect);
 INIT_HKEY(_PHK_path);
-INIT_HKEY(PATH_INFO);
 INIT_HKEY(ORIG_PATH_INFO);
 INIT_HKEY(phk_backend);
 INIT_HKEY(lib_run_script);
@@ -188,7 +188,8 @@ INIT_HKEY(cli_run_script);
 INIT_HKEY(auto_umount);
 INIT_HKEY(argc);
 INIT_HKEY(argv);
-INIT_HKEY(PHP_SELF);
+INIT_HKEY(autoload);
+INIT_HKEY(phk_stream_backend);
 }
 
 /*---------------------------------------------------------------*/

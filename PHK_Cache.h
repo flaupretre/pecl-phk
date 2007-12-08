@@ -36,7 +36,6 @@ static int RSHUTDOWN_PHK_Cache(TSRMLS_D);
 
 static int PHK_Cache_cache_present(TSRMLS_D);
 static char *PHK_Cache_cache_name(TSRMLS_D);
-static int PHK_Cache_caching_opcodes(TSRMLS_D);
 static void PHK_Cache_cache_id(char *prefix, int prefix_len, char *key, int key_len
 	,zval *z_ret_p TSRMLS_DC);
 static void PHK_Cache_get(zval *z_key_p, zval *z_ret_p TSRMLS_DC);

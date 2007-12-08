@@ -34,17 +34,16 @@ typedef struct
 	int  (*init)(void);
 	void (*get)(zval *z_key_p, zval *z_ret_p TSRMLS_DC);
 	void (*set)(zval *z_key_p, zval *z_data_p TSRMLS_DC);
-	int  (*cache_opcodes)(void);
 	} PHK_CACHE;
 
 static PHK_CACHE cache_table[]=
 	{
-	{ "apc", PHK_Cache_apc_init, NULL, NULL, NULL },
-	{ "xcache", PHK_Cache_xcache_init, NULL, NULL, NULL },
-	{ "eaccelerator", PHK_Cache_eaccelerator_init, NULL, NULL, NULL },
+	{ "apc", PHK_Cache_apc_init, NULL, NULL },
+	{ "xcache", PHK_Cache_xcache_init, NULL, NULL },
+	{ "eaccelerator", PHK_Cache_eaccelerator_init, NULL, NULL },
 	{ "memcache", PHK_Cache_memcache_init
-		, PHK_Cache_memcache_get, PHK_Cache_memcache_set, NULL },
-	{ NULL,NULL,NULL,NULL,NULL }
+		, PHK_Cache_memcache_get, PHK_Cache_memcache_set },
+	{ NULL,NULL,NULL,NULL }
 	};
 
 static PHK_CACHE *cache=NULL;
@@ -58,8 +57,6 @@ static zval set_funcname;
 
 #define PHK_TTL 3600
 static zval ttl_zval;
-
-static int caching_opcodes;
 
 /*============================================================================*/
 /* APC */
@@ -165,23 +162,6 @@ return (cache ? cache->name : "none");
 static PHP_METHOD(PHK_Cache,cache_name)
 {
 RETVAL_STRING(PHK_Cache_cache_name(TSRMLS_C),1);
-}
-
-/*---------------*/
-/* caching_opcodes() */
-
-/*-- C API ----*/
-
-static int PHK_Cache_caching_opcodes(TSRMLS_D)
-{
-return (caching_opcodes);
-}
-
-/*-- PHP API --*/
-
-static PHP_METHOD(PHK_Cache,caching_opcodes)
-{
-RETURN_BOOL(PHK_Cache_caching_opcodes(TSRMLS_C));
 }
 
 /*---------------*/
@@ -317,7 +297,6 @@ PHK_Cache_set(z_key_p,z_data_p TSRMLS_CC);
 static zend_function_entry PHK_Cache_functions[]= {
 	PHP_ME(PHK_Cache,cache_present,UT_noarg_arginfo,ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	PHP_ME(PHK_Cache,cache_name,UT_noarg_arginfo,ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	PHP_ME(PHK_Cache,caching_opcodes,UT_noarg_arginfo,ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	PHP_ME(PHK_Cache,cache_id,UT_2args_arginfo,ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	PHP_ME(PHK_Cache,set_maxsize,UT_1arg_arginfo,ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	PHP_ME(PHK_Cache,get,UT_1arg_arginfo,ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
@@ -362,11 +341,6 @@ if (cache)
 
 	INIT_ZVAL(ttl_zval);
 	ZVAL_LONG((&ttl_zval),PHK_TTL);
-
-	/* Is the cache able to cache opcodes ? */
-
-	caching_opcodes=0;
-	if (cache->cache_opcodes) caching_opcodes=cache->cache_opcodes();
 	}
 
 return SUCCESS;

@@ -28,6 +28,7 @@
 #include "streams/php_streams_int.h"
 #include "zend_hash.h"
 #include "zend_extensions.h"
+#include "zend_alloc.h"
 
 #include "PHK_Stream.h"
 #include "PHK_Mgr.h"
@@ -47,7 +48,16 @@ typedef struct
 	zval z_mnt,z_command,z_params,z_path;
 	} PHK_STREAM_DATA;
 
-/*--------------------*/
+static char last_cached_opcode_string[UT_PATH_MAX+1];
+static unsigned int last_cached_opcode_len;
+
+/*============================================================================*/
+
+static void clear_last_cached_opcode(TSRMLS_D);
+static void set_last_cached_opcode(const char *path, int len TSRMLS_DC);
+static int is_last_cached_opcode(const char *path, int len TSRMLS_DC);
+
+/*============================================================================*/
 
 static PHK_STREAM_DATA *new_dp(int show_errors)
 {
@@ -71,6 +81,12 @@ return dp;
 
 /*--------------------*/
 
+static void phk_stop_me()
+{
+}
+
+/*--------------------*/
+
 static void free_dp(PHK_STREAM_DATA **dpp)
 {
 if ((!dpp) || (!(*dpp))) return;
@@ -82,6 +98,40 @@ zval_dtor(&((*dpp)->z_path));
 zval_dtor(&((*dpp)->z_data));
 
 efree(*dpp);
+}
+
+/*--------------------*/
+/* The 'xxx_last_cached_opcode() functions allow to avoid caching data
+* in the user cache when it is requested through the opcode cache. This is just
+* for performance reason as the data we would cache in the user cache would
+* never be accessed.
+*/
+
+static void clear_last_cached_opcode(TSRMLS_D)
+{
+last_cached_opcode_len=0;
+}
+
+/*--------------------*/
+
+static void set_last_cached_opcode(const char *path, int len TSRMLS_DC)
+{
+if (len > UT_PATH_MAX) /* Ignore path if too long */
+	{
+	clear_last_cached_opcode(TSRMLS_C);
+	return;
+	}
+
+memmove(last_cached_opcode_string,path,(last_cached_opcode_len=len)+1);
+}
+
+/*--------------------*/
+
+static int is_last_cached_opcode(const char *path, int len TSRMLS_DC)
+{
+return (last_cached_opcode_len
+	&& (last_cached_opcode_len==len)
+	&& (!memcmp(last_cached_opcode_string,path,len)));
 }
 
 /*--------------------*/
@@ -125,15 +175,16 @@ PHK_Cache_cache_id("node",4,Z_STRVAL_P(uri_p),Z_STRLEN_P(uri_p),&key
 /*-- Search in cache */
 
 PHK_Cache_get(&key,ret_p TSRMLS_CC);
-if (Z_TYPE_P(ret_p)==IS_NULL) /* Cache miss */
+if (Z_TYPE_P(ret_p)==IS_NULL) /* Cache miss - slow path */
 	{
+	PHK_need_php_runtime(TSRMLS_C);
+
 	args[0]=mnt_p;
 	args[1]=command_p;
 	args[2]=params_p;
 	args[3]=path_p;
 	ZVAL_TRUE(&can_cache);
 	args[4]=&can_cache;
-
 	ut_call_user_function(&CZVAL(PHK_Stream_Backend)
 		,(dir ? (&CZVAL(get_dir_data)) : (&CZVAL(get_file_data)))
 		,ret_p,5,args TSRMLS_CC);
@@ -142,10 +193,18 @@ if (Z_TYPE_P(ret_p)==IS_NULL) /* Cache miss */
 
 	if (zend_is_true(&can_cache))
 		{
-		do_cache=(cache_p && (Z_TYPE_P(cache_p)==IS_BOOL)) ?
-			zend_is_true(cache_p)
-			: PHK_Mgr_cache_enabled(mnt_p,0,command_p,params_p,path_p TSRMLS_CC);
-		if (do_cache) PHK_Cache_set(&key,ret_p TSRMLS_CC);
+		if (is_last_cached_opcode(Z_STRVAL_P(uri_p), Z_STRLEN_P(uri_p)
+			TSRMLS_CC))
+			{
+			/* clear_last_cached_opcode(TSRMLS_C); */
+			}
+		else
+			{
+			do_cache=(cache_p && (Z_TYPE_P(cache_p)==IS_BOOL)) ?
+				zend_is_true(cache_p)
+				: PHK_Mgr_cache_enabled(mnt_p,0,command_p,params_p,path_p TSRMLS_CC);
+			if (do_cache) PHK_Cache_set(&key,ret_p TSRMLS_CC);
+			}
 		}
 	}
 
@@ -344,9 +403,12 @@ PHK_Cache_cache_id("stat",4,uri,uri_len,&z_key TSRMLS_CC);
 
 found=1;
 PHK_Cache_get(&z_key,&z_ssb TSRMLS_CC);
-if (Z_TYPE(z_ssb)!=IS_STRING) /* Cache miss */
+if (Z_TYPE(z_ssb)!=IS_STRING) /* Cache miss - slow path */
 	{
 	DBG_MSG1("do_stat(%s): cache miss",uri);
+
+	PHK_need_php_runtime(TSRMLS_C);
+
 	ZVAL_TRUE(&z_cache);
 	args[0]=&(dp->z_mnt);
 	args[1]=&(dp->z_command);
@@ -374,16 +436,16 @@ if (Z_TYPE(z_ssb)!=IS_STRING) /* Cache miss */
 		tssb=(php_stream_statbuf *)emalloc((ssb_len=sizeof(*tssb))+1);
 		memset(tssb,0,ssb_len+1);
 		
-		tssb->sb.st_size=Z_LVAL(z_size);
-		tssb->sb.st_mode=Z_LVAL(z_mode);
+		tssb->sb.st_size=(off_t)Z_LVAL(z_size);
+		tssb->sb.st_mode=(mode_t)Z_LVAL(z_mode);
 #ifdef NETWARE
 		tssb->sb.st_mtime.tv_sec = Z_LVAL(z_mtime);
 		tssb->sb.st_atime.tv_sec = Z_LVAL(z_mtime);
 		tssb->sb.st_ctime.tv_sec = Z_LVAL(z_mtime);
 #else
-		tssb->sb.st_mtime = Z_LVAL(z_mtime);
-		tssb->sb.st_atime = Z_LVAL(z_mtime);
-		tssb->sb.st_ctime = Z_LVAL(z_mtime);
+		tssb->sb.st_mtime = (time_t)Z_LVAL(z_mtime);
+		tssb->sb.st_atime = (time_t)Z_LVAL(z_mtime);
+		tssb->sb.st_ctime = (time_t)Z_LVAL(z_mtime);
 #endif
 		tssb->sb.st_nlink = 1;
 #ifdef HAVE_ST_RDEV
@@ -404,12 +466,11 @@ if (Z_TYPE(z_ssb)!=IS_STRING) /* Cache miss */
 		}
 	ZVAL_STRINGL(&z_ssb,((char *)tssb),ssb_len,0);
 
-	if (zend_is_true(&z_cache))
-		{
-		if (PHK_Mgr_cache_enabled(&(dp->z_mnt),0,&(dp->z_command)
+	if (zend_is_true(&z_cache)
+		&& (!is_last_cached_opcode(Z_STRVAL(z_uri), Z_STRLEN(z_uri) TSRMLS_CC))
+		&& PHK_Mgr_cache_enabled(&(dp->z_mnt),0,&(dp->z_command)
 			,&(dp->z_params),&(dp->z_path) TSRMLS_CC))
-			PHK_Cache_set(&z_key,&z_ssb TSRMLS_CC);
-		}
+				PHK_Cache_set(&z_key,&z_ssb TSRMLS_CC);
 	}
 else
 	{
@@ -701,6 +762,8 @@ mp=(PHK_Mgr_get_mnt_info(&mnt,0,0 TSRMLS_CC));
 (*mnt_end)='/';
 if ((!mp) || mp->no_opcode_cache) return NULL;
 
+set_last_cached_opcode(uri, uri_len TSRMLS_CC);
+
 *key_len=uri_len;
 return (char *)uri;
 }
@@ -779,6 +842,8 @@ return SUCCESS;
 
 static int RINIT_PHK_Stream(TSRMLS_D)
 {
+clear_last_cached_opcode(TSRMLS_C);
+
 return SUCCESS;
 }
 

@@ -38,6 +38,7 @@ while (zend_hash_get_current_data_ex(ht,(void **)(&zpp),&pos)==SUCCESS)
 	if (ZVAL_IS_STRING(*zpp) && (!ut_extension_loaded(Z_STRVAL_PP(zpp)
 		,Z_STRLEN_PP(zpp) TSRMLS_CC)))
 		{
+		PHK_need_php_runtime(TSRMLS_C);
 		ut_call_user_function_void(&CZVAL(PHK_Util)
 			,&CZVAL(require_extensions),1,&extensions TSRMLS_CC);
 		return;
