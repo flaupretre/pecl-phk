@@ -104,6 +104,7 @@ static DECLARE_HKEY(argc);
 static DECLARE_HKEY(argv);
 static DECLARE_HKEY(autoload);
 static DECLARE_HKEY(phk_stream_backend);
+static DECLARE_HKEY(eaccelerator_get);
 
 /*----- Mount flags --------*/
 
@@ -113,37 +114,36 @@ static DECLARE_HKEY(phk_stream_backend);
 
 /*============================================================================*/
 
-typedef struct _PHK_Mnt_Info
-	{
+typedef struct _PHK_Mnt_Info {
 	struct _PHK_Mnt_Info *parent;
 	int nb_children;
 	struct _PHK_Mnt_Info **children;
-	unsigned int *persistent_refcount_p; /* Persistent reference counter */
+	unsigned int *persistent_refcount_p;	/* Persistent reference counter */
 
-	zval *mnt;			/* String */
-	ulong hash;			/* Mnt hash */
-	zval *instance;		/* PHK object */
-	zval *proxy;		/* PHK_Proxy object (null until created) */
-	zval *path;			/* String */
-	zval *plugin;		/* Object zval|null */
-	zval *flags;		/* Long */
-	zval *caching;		/* Bool|null */
-	zval *mtime;		/* Long */
-	zval *backend;		/* PHK_Backend object | null */
+	zval *mnt;					/* String */
+	ulong hash;					/* Mnt hash */
+	zval *instance;				/* PHK object */
+	zval *proxy;				/* PHK_Proxy object (null until created) */
+	zval *path;					/* String */
+	zval *plugin;				/* Object zval|null */
+	zval *flags;				/* Long */
+	zval *caching;				/* Bool|null */
+	zval *mtime;				/* Long */
+	zval *backend;				/* PHK_Backend object | null */
 
 	/* Persistent data */
 
-	zval *min_version;	/* String */
-	zval *options;		/* Array */
-	zval *build_info;	/* Array */
+	zval *min_version;			/* String */
+	zval *options;				/* Array */
+	zval *build_info;			/* Array */
 
 	/* Shortcuts (persistent) */
 
-	int crc_check;			/* Bool */
-	int no_cache;			/* Bool */
-	int no_opcode_cache;	/* Bool */
-	int web_main_redirect;	/* Bool */
-	int auto_umount;	/* Bool */
+	int crc_check;				/* Bool */
+	int no_cache;				/* Bool */
+	int no_opcode_cache;		/* Bool */
+	int web_main_redirect;		/* Bool */
+	int auto_umount;			/* Bool */
 	zval *required_extensions;	/* Array zval or null */
 	zval *mime_types;			/* Array zval or null */
 	zval *web_run_script;		/* String zval or null */
@@ -159,24 +159,23 @@ typedef struct _PHK_Mnt_Info
 	zval *mount_script_uri;		/* String zval or null */
 	zval *umount_script_uri;	/* String zval or null */
 	zval *lib_run_script_uri;	/* String zval or null */
-	zval *cli_run_command;	/* String zval or null */
-	} PHK_Mnt_Info;
+	zval *cli_run_command;		/* String zval or null */
+} PHK_Mnt_Info;
 
 /*============================================================================*/
 
 ZEND_BEGIN_MODULE_GLOBALS(phk)
-	int init_done;
-	HashTable mnt_infos;		/* PHK_Mgr */
-	zval caching;		/* PHK_Mgr - Can be null/true/false */
-	char root_package[UT_PATH_MAX+1];
-	int php_runtime_is_loaded;
+int init_done;
+HashTable mnt_infos;			/* PHK_Mgr */
+zval caching;					/* PHK_Mgr - Can be null/true/false */
+char root_package[UT_PATH_MAX + 1];
+int php_runtime_is_loaded;
+
 ZEND_END_MODULE_GLOBALS(phk)
-
 #ifdef ZTS
-#define PHK_G(v) TSRMG(phk_globals_id, zend_phk_globals *, v)
+#	define PHK_G(v) TSRMG(phk_globals_id, zend_phk_globals *, v)
 #else
-#define PHK_G(v) (phk_globals.v)
+#	define PHK_G(v) (phk_globals.v)
 #endif
-
 /*---------------------------------------------------------------*/
-#endif	/* PHP_PHK_H */
+#endif							/* PHP_PHK_H */

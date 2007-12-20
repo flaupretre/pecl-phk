@@ -28,21 +28,20 @@
 #include "zend_hash.h"
 
 #ifdef ALLOCATE
-#define GLOBAL
+#	define GLOBAL
 #else
-#define GLOBAL extern
+#	define GLOBAL extern
 #endif
 
 #ifndef NULL
-#define NULL (char *)0
+#	define NULL (char *)0
 #endif
 
-typedef struct
-	{
+typedef struct {
 	char *string;
 	unsigned int len;
 	ulong hash;
-	} HKEY_STRUCT;
+} HKEY_STRUCT;
 
 #define CZVAL(name) ( czval_ ## name )
 
@@ -86,20 +85,23 @@ assumes that all calls to memmove are moving strings upwards in store,
 which is the case in this extension. */
 
 #if ! HAVE_MEMMOVE
-#undef  memmove        /* some systems may have a macro */
-#if HAVE_BCOPY
-#define memmove(a, b, c) bcopy(b, a, c)
-#else  /* HAVE_BCOPY */
-static void * my_memmove(unsigned char *dest, const unsigned char *src, size_t n)
-{
-int i;
-dest += n;
-src += n;
-for (i = 0; i < n; ++i) *(--dest) =  *(--src);
-}
-#define memmove(a, b, c) my_memmove(a, b, c)
-#endif   /* not HAVE_BCOPY */
-#endif   /* not HAVE_MEMMOVE */
+#	undef  memmove					/* some systems may have a macro */
+#	if HAVE_BCOPY
+#		define memmove(a, b, c) bcopy(b, a, c)
+#	else							/* HAVE_BCOPY */
+		static void *my_memmove(unsigned char *dest, const unsigned char *src,
+								size_t n)
+		{
+			int i;
+
+			dest += n;
+			src += n;
+			for (i = 0; i < n; ++i)
+				*(--dest) = *(--src);
+		}
+#		define memmove(a, b, c) my_memmove(a, b, c)
+#	endif	/* not HAVE_BCOPY */
+#endif		/* not HAVE_MEMMOVE */
 
 /*---------------------------------------------------------------*/
 
@@ -188,7 +190,7 @@ for (i = 0; i < n; ++i) *(--dest) =  *(--src);
 	Z_TYPE(zv)=IS_ARRAY; \
 	Z_ARRVAL(zv)=ht;
 
-#endif /* ZVAL_ARRAY --------------*/
+#endif							/* ZVAL_ARRAY -------------- */
 
 #ifndef ZVAL_IS_ARRAY
 #define ZVAL_IS_ARRAY(zp)	(Z_TYPE_P((zp))==IS_ARRAY)
@@ -263,41 +265,53 @@ static DECLARE_HKEY(HTTP_HOST);
 
 /*============================================================================*/
 
-static void ut_persistent_copy_ctor(zval **ztpp);
+static void ut_persistent_copy_ctor(zval ** ztpp);
 static int MINIT_utils(TSRMLS_D);
 static int MSHUTDOWN_utils(TSRMLS_D);
 
 static int RINIT_utils(TSRMLS_D);
 static int RSHUTDOWN_utils(TSRMLS_D);
 
-static int  ut_is_web(void);
-static void ut_persistent_zval_dtor(zval *zvalue);
-static void ut_persistent_zval_ptr_dtor(zval **zval_ptr);
-static void ut_persistent_array_init(zval *zp);
-static void ut_persist_zval(zval *zsp,zval *ztp);
-static void ut_new_instance(zval **ret_pp, zval *class_name, int construct
-	, int num_args, zval **args TSRMLS_DC);
+static int ut_is_web(void);
+static void ut_persistent_zval_dtor(zval * zvalue);
+static void ut_persistent_zval_ptr_dtor(zval ** zval_ptr);
+static void ut_persistent_array_init(zval * zp);
+static void ut_persist_zval(zval * zsp, zval * ztp);
+static void ut_new_instance(zval ** ret_pp, zval * class_name,
+							int construct, int num_args,
+							zval ** args TSRMLS_DC);
 
-static void ut_call_user_function_void  (zval *obj_zp,zval *func_zp          ,int nb_args,zval **args TSRMLS_DC);
-static int  ut_call_user_function_bool  (zval *obj_zp,zval *func_zp          ,int nb_args,zval **args TSRMLS_DC);
-static long ut_call_user_function_long  (zval *obj_zp,zval *func_zp          ,int nb_args,zval **args TSRMLS_DC);
-static void ut_call_user_function_string(zval *obj_zp,zval *func_zp,zval *ret,int nb_args,zval **args TSRMLS_DC);
-static void ut_call_user_function_array (zval *obj_zp,zval *func_zp,zval *ret,int nb_args,zval **args TSRMLS_DC);
-static void ut_call_user_function       (zval *obj_zp,zval *func_zp,zval *ret,int nb_args,zval **args TSRMLS_DC);
+static void ut_call_user_function_void(zval * obj_zp, zval * func_zp,
+									   int nb_args,
+									   zval ** args TSRMLS_DC);
+static int ut_call_user_function_bool(zval * obj_zp, zval * func_zp,
+									  int nb_args, zval ** args TSRMLS_DC);
+static long ut_call_user_function_long(zval * obj_zp, zval * func_zp,
+									   int nb_args,
+									   zval ** args TSRMLS_DC);
+static void ut_call_user_function_string(zval * obj_zp, zval * func_zp,
+										 zval * ret, int nb_args,
+										 zval ** args TSRMLS_DC);
+static void ut_call_user_function_array(zval * obj_zp, zval * func_zp,
+										zval * ret, int nb_args,
+										zval ** args TSRMLS_DC);
+static void ut_call_user_function(zval * obj_zp, zval * func_zp,
+								  zval * ret, int nb_args,
+								  zval ** args TSRMLS_DC);
 
-static int  ut_extension_loaded(char *name, int len TSRMLS_DC);
-static void ut_require(char *string, zval *ret TSRMLS_DC);
-static int  ut_strings_are_equal(zval *zp1, zval *zp2 TSRMLS_DC);
+static int ut_extension_loaded(char *name, int len TSRMLS_DC);
+static void ut_require(char *string, zval * ret TSRMLS_DC);
+static int ut_strings_are_equal(zval * zp1, zval * zp2 TSRMLS_DC);
 static void ut_header(long response_code, char *string TSRMLS_DC);
 static void ut_http_403_fail(TSRMLS_D);
 static void ut_http_404_fail(TSRMLS_D);
 static void ut_exit(int status TSRMLS_DC);
-static zval *_ut_SERVER_element(HKEY_STRUCT *hkey TSRMLS_DC);
-static zval *_ut_REQUEST_element(HKEY_STRUCT *hkey TSRMLS_DC);
+static zval *_ut_SERVER_element(HKEY_STRUCT * hkey TSRMLS_DC);
+static zval *_ut_REQUEST_element(HKEY_STRUCT * hkey TSRMLS_DC);
 static char *ut_http_base_url(TSRMLS_D);
-static void ut_http_301_redirect(zval *path, int must_free TSRMLS_DC);
-static void ut_rtrim_zval(zval *zp TSRMLS_DC);
-static void ut_file_suffix(zval *path, zval *ret TSRMLS_DC);
+static void ut_http_301_redirect(zval * path, int must_free TSRMLS_DC);
+static void ut_rtrim_zval(zval * zp TSRMLS_DC);
+static void ut_file_suffix(zval * path, zval * ret TSRMLS_DC);
 
 /*============================================================================*/
 #endif	/* FLP_UTILS_H */

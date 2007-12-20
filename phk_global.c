@@ -24,26 +24,28 @@
 
 /*---------------------------------------------------------------*/
 
-static void phk_require_extensions(zval *extensions TSRMLS_DC)
+static void phk_require_extensions(zval * extensions TSRMLS_DC)
 {
-HashTable *ht;
-HashPosition pos;
-zval **zpp;
+	HashTable *ht;
+	HashPosition pos;
+	zval **zpp;
 
-ht=Z_ARRVAL_P(extensions);
+	ht = Z_ARRVAL_P(extensions);
 
-zend_hash_internal_pointer_reset_ex(ht,&pos);
-while (zend_hash_get_current_data_ex(ht,(void **)(&zpp),&pos)==SUCCESS)
-	{
-	if (ZVAL_IS_STRING(*zpp) && (!ut_extension_loaded(Z_STRVAL_PP(zpp)
-		,Z_STRLEN_PP(zpp) TSRMLS_CC)))
-		{
-		PHK_need_php_runtime(TSRMLS_C);
-		ut_call_user_function_void(&CZVAL(PHK_Util)
-			,&CZVAL(require_extensions),1,&extensions TSRMLS_CC);
-		return;
+	zend_hash_internal_pointer_reset_ex(ht, &pos);
+	while (zend_hash_get_current_data_ex(ht, (void **) (&zpp), &pos) ==
+		   SUCCESS) {
+		if (ZVAL_IS_STRING(*zpp) && (!ut_extension_loaded(Z_STRVAL_PP(zpp)
+														  ,
+														  Z_STRLEN_PP(zpp)
+														  TSRMLS_CC))) {
+			PHK_need_php_runtime(TSRMLS_C);
+			ut_call_user_function_void(&CZVAL(PHK_Util)
+									   , &CZVAL(require_extensions), 1,
+									   &extensions TSRMLS_CC);
+			return;
 		}
-	zend_hash_move_forward_ex(ht,&pos);
+		zend_hash_move_forward_ex(ht, &pos);
 	}
 }
 

@@ -20,5 +20,6 @@
 
 static PHP_FUNCTION(_phk_stream_parse_uri2);
 
-static void _phk_stream_parse_uri2(zval *uri,zval *z_command,zval *z_params
-	,zval *z_mnt,zval *z_path TSRMLS_DC);
+static void _phk_stream_parse_uri2(zval * uri, zval * z_command,
+								   zval * z_params, zval * z_mnt,
+								   zval * z_path TSRMLS_DC);

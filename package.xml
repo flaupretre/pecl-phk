@@ -22,14 +22,14 @@
  <time>12:00:00</time>
  <version>
   <release>1.1.1</release>
-  <api>1.1.0</api>
+  <api>1.1.1</api>
  </version>
  <stability>
   <release>alpha</release>
   <api>alpha</api>
  </stability>
  <license uri="http://www.php.net/license">PHP License</license>
- <notes>Bugfix release</notes>
+ <notes>Bugfix and performance release</notes>
  <contents>
   <dir baseinstalldir="/" name="/">
    <dir name="tests">
@@ -91,7 +91,7 @@
    </stability>
    <date>2007-12-01</date>
    <license uri="http://www.php.net/license">PHP License</license>
-   <notes>Bugfix release</notes>
+   <notes>Bugfix and performance release</notes>
   </release>
  </changelog>
 </package>

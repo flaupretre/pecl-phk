@@ -18,4 +18,4 @@
 
 /* $Id$ */
 
-static void phk_require_extensions(zval *extensions TSRMLS_DC);
+static void phk_require_extensions(zval * extensions TSRMLS_DC);

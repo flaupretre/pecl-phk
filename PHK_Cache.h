@@ -18,15 +18,11 @@
 
 /* $Id$ */
 
-static int   PHK_Cache_apc_init(void);
+static int PHK_Cache_apc_init(TSRMLS_D);
 
-static int   PHK_Cache_xcache_init(void);
+static int PHK_Cache_xcache_init(TSRMLS_D);
 
-static int   PHK_Cache_eaccelerator_init(void);
-
-static int   PHK_Cache_memcache_init(void);
-static void  PHK_Cache_memcache_get(zval *z_key_p, zval *z_ret_p TSRMLS_DC);
-static void  PHK_Cache_memcache_set(zval *z_key_p, zval *z_data_p TSRMLS_DC);
+static int PHK_Cache_eaccelerator_init(TSRMLS_D);
 
 static int MINIT_PHK_Cache(TSRMLS_D);
 static int MSHUTDOWN_PHK_Cache(TSRMLS_D);
@@ -36,9 +32,9 @@ static int RSHUTDOWN_PHK_Cache(TSRMLS_D);
 
 static int PHK_Cache_cache_present(TSRMLS_D);
 static char *PHK_Cache_cache_name(TSRMLS_D);
-static void PHK_Cache_cache_id(char *prefix, int prefix_len, char *key, int key_len
-	,zval *z_ret_p TSRMLS_DC);
-static void PHK_Cache_get(zval *z_key_p, zval *z_ret_p TSRMLS_DC);
-static void PHK_Cache_set(zval *z_key_p, zval *z_data_p TSRMLS_DC);
+static void PHK_Cache_cache_id(char *prefix, int prefix_len, char *key,
+							   int key_len, zval * z_ret_p TSRMLS_DC);
+static void PHK_Cache_get(zval * z_key_p, zval * z_ret_p TSRMLS_DC);
+static void PHK_Cache_set(zval * z_key_p, zval * z_data_p TSRMLS_DC);
 
 /*============================================================================*/

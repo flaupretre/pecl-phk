@@ -24,8 +24,9 @@ static int MSHUTDOWN_PHK_Stream(TSRMLS_D);
 static int RINIT_PHK_Stream(TSRMLS_D);
 static int RSHUTDOWN_PHK_Stream(TSRMLS_D);
 
-static void PHK_Stream_get_file(int dir,zval *z_ret_p,zval *z_uri_p
-	,zval *z_mnt_p,zval *z_command_p,zval *z_params_p,zval *z_path_p
-	,zval *z_cache_p TSRMLS_DC);
+static void PHK_Stream_get_file(int dir, zval * z_ret_p, zval * z_uri_p,
+								zval * z_mnt_p, zval * z_command_p,
+								zval * z_params_p, zval * z_path_p,
+								zval * z_cache_p TSRMLS_DC);
 
 /*============================================================================*/
