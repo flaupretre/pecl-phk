@@ -120,12 +120,14 @@ static int PHK_Cache_cache_present(TSRMLS_D)
 }
 
 /*-- PHP API --*/
+/* {{{ proto bool PHK_Cache::cache_present() */
 
 static PHP_METHOD(PHK_Cache, cache_present)
 {
 	RETURN_BOOL(PHK_Cache_cache_present(TSRMLS_C));
 }
 
+/* }}} */
 /*---------------*/
 /* cache_name() */
 
@@ -137,12 +139,14 @@ static char *PHK_Cache_cache_name(TSRMLS_D)
 }
 
 /*-- PHP API --*/
+/* {{{ proto string PHK_Cache::cache_name() */
 
 static PHP_METHOD(PHK_Cache, cache_name)
 {
 	RETVAL_STRING(PHK_Cache_cache_name(TSRMLS_C), 1);
 }
 
+/* }}} */
 /*---------------*/
 /* cache_id() */
 /* Note: We use a different key for accelerated and non-accelerated versions
@@ -158,7 +162,7 @@ static void PHK_Cache_cache_id(char *prefix, int prefix_len, char *key,
 	char *p;
 	int len;
 
-	p = emalloc((len = prefix_len + key_len + 9) + 1);
+	p = eallocate(NULL,(len = prefix_len + key_len + 9) + 1);
 	memmove(p, "phk.acc.", 8);
 	memmove(p + 8, prefix, prefix_len);
 	p[prefix_len + 8] = '.';
@@ -169,6 +173,7 @@ static void PHK_Cache_cache_id(char *prefix, int prefix_len, char *key,
 }
 
 /*-- PHP API --*/
+/* {{{ proto string PHK_Cache::cache_id(string prefix, string key) */
 
 static PHP_METHOD(PHK_Cache, cache_id)
 {
@@ -184,8 +189,9 @@ static PHP_METHOD(PHK_Cache, cache_id)
 					   return_value TSRMLS_CC);
 }
 
+/* }}} */
 /*---------------*/
-/* set_maxsize() */
+/* {{{ proto void PHK_Cache::set_maxsize(int size) */
 
 static PHP_METHOD(PHK_Cache, set_maxsize)
 {
@@ -194,6 +200,7 @@ static PHP_METHOD(PHK_Cache, set_maxsize)
 		EXCEPTION_ABORT_1("Cannot parse parameters", 0);
 }
 
+/* }}} */
 /*---------------*/
 /* get() */
 
@@ -219,6 +226,7 @@ static void PHK_Cache_get(zval * z_key_p, zval * z_ret_p TSRMLS_DC)
 }
 
 /*-- PHP API ----*/
+/* {{{ proto string|null PHK_Cache::get(string key) */
 
 static PHP_METHOD(PHK_Cache, get)
 {
@@ -231,6 +239,7 @@ static PHP_METHOD(PHK_Cache, get)
 	PHK_Cache_get(z_key_p, return_value TSRMLS_CC);
 }
 
+/* }}} */
 /*---------------*/
 /* set() */
 
@@ -264,6 +273,7 @@ static void PHK_Cache_set(zval * z_key_p, zval * z_data_p TSRMLS_DC)
 }
 
 /*-- PHP API ----*/
+/* {{{ proto void PHK_Cache::set(string key, string data) */
 
 static PHP_METHOD(PHK_Cache, set)
 {
@@ -277,6 +287,7 @@ static PHP_METHOD(PHK_Cache, set)
 	PHK_Cache_set(z_key_p, z_data_p TSRMLS_CC);
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
 
 static zend_function_entry PHK_Cache_functions[] = {

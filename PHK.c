@@ -74,8 +74,8 @@ ZEND_EXTERN_MODULE_GLOBALS(phk)
 	zval **_tmp; \
 	PHK_Mnt_Info *mp; \
 	\
-	CHECK_MEM(); \
 	DBG_MSG("Entering PHK::" #_func); \
+	CHECK_MEM(); \
 	FIND_HKEY(Z_OBJPROP_P(getThis()),m,&_tmp); \
 	mp= *((PHK_Mnt_Info **)(Z_STRVAL_PP(_tmp)));
 
@@ -153,10 +153,9 @@ static void PHK_need_php_runtime(TSRMLS_D)
 {
 	FILE *fp;
 	int size, offset;
-	char buf1[241], *buf;
+	char buf1[241], *buf=NULL;
 
-	if (PHK_G(php_runtime_is_loaded))
-		return;
+	if (PHK_G(php_runtime_is_loaded)) return;
 
 	if (HKEY_EXISTS(EG(class_table), phk_stream_backend)) {
 		PHK_G(php_runtime_is_loaded) = 1;
@@ -178,27 +177,36 @@ static void PHK_need_php_runtime(TSRMLS_D)
 	sscanf(buf1 + 212, "%d", &offset);
 	sscanf(buf1 + 227, "%d", &size);
 
-	buf = emalloc(size + 1);
+	EALLOCATE(buf, size + 1);
+
 	fseek(fp, offset, SEEK_SET);
 	fread(buf, size, 1, fp);
 	fclose(fp);
 	buf[size] = '\0';
+	zend_eval_string(buf, NULL, "PHK runtime code (PHP)" TSRMLS_CC);
 
-	zend_eval_string(buf, NULL, "PHK php runtime" TSRMLS_CC);
-
-	efree(buf);
+	EALLOCATE(buf,0);
 
 	PHK_G(php_runtime_is_loaded) = 1;
 }
 
 /*---------------------------------------------------------------*/
+/* {{{ proto void PHK::need_php_runtime() */
+
+/* Undocumented - Used by PHK related software like PHK_Signer. Allows */
+/* to use PHK_Proxy, PHK_Util... even if the extension did not need them */
 
 static PHP_METHOD(PHK, need_php_runtime)
 {
 	PHK_need_php_runtime(TSRMLS_C);
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
+/* {{{ proto void PHK::__construct(string mpp) */
+
+/* Undocumented - to be called from PHK_Mgr::instance() only */
+/* The mpp argument is the address of the mnt_info struct for this object */
 
 static PHP_METHOD(PHK, __construct)
 {
@@ -212,73 +220,58 @@ static PHP_METHOD(PHK, __construct)
 	PHK_set_mp_property(getThis(), *mpp TSRMLS_CC);
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
+/* Here, we don't check for required extensions, as it is checked only once
+   when the mnt_info is read in persistent storage */
 
 static void PHK_init(PHK_Mnt_Info * mp TSRMLS_DC)
 {
-	zval *args[2];
+	zval *args[3];
 
 	PHK_supports_php_version(mp TSRMLS_CC);
-	if (EG(exception))
-		return;
+	if (EG(exception)) return;
 
 	if ((mp->crc_check) || (Z_LVAL_P(mp->flags) & PHK_F_CRC_CHECK)) {
 		PHK_crc_check(mp TSRMLS_CC);
-		if (EG(exception))
-			return;
+		if (EG(exception)) return;
 	}
 
-	if (mp->required_extensions) {
-		phk_require_extensions(mp->required_extensions TSRMLS_CC);
-		if (EG(exception))
-			return;
-	}
-
-	if (mp->autoload_uri) {
-		args[0] = mp->autoload_uri;
+	if (mp->automap_uri) {
+		args[0] = mp->automap_uri;
 		args[1] = mp->base_uri;
-		if (!HKEY_EXISTS(EG(class_table), autoload))
+		args[2] = mp->mnt;
+		if (!HKEY_EXISTS(EG(class_table), automap))
 			PHK_need_php_runtime(TSRMLS_C);
-		ut_call_user_function_void(&CZVAL(Autoload), &CZVAL(load), 2,
-								   args TSRMLS_CC);
-		if (EG(exception))
-			return;
+		ut_call_user_function_void(&CZVAL(Automap),&CZVAL(mount),3,args TSRMLS_CC);
+		if (EG(exception)) return;
 	}
 
 	if (mp->mount_script_uri
 		&& (!(Z_LVAL_P(mp->flags) & PHK_F_NO_MOUNT_SCRIPT))) {
 		ut_require(Z_STRVAL_P(mp->mount_script_uri), NULL TSRMLS_CC);
-		if (EG(exception))
-			return;
+		if (EG(exception)) return;
 	}
 
 	if (mp->plugin_class) {
-		ut_new_instance(&(mp->plugin), mp->plugin_class, 1, 1,
-						&(mp->mnt) TSRMLS_CC);
-		if (EG(exception))
-			return;
+		ut_new_instance(&(mp->plugin),mp->plugin_class,1,1,&(mp->mnt) TSRMLS_CC);
+		if (EG(exception)) return;
 	}
 }
 
 /*---------------------------------------------------------------*/
+/* {{{ proto bool PHK::map_defined() */
 
 static PHP_METHOD(PHK, map_defined)
 {
 	PHK_GET_INSTANCE_DATA(map_defined)
 
-	RETVAL_BOOL((mp->autoload_uri != NULL));
+	RETVAL_BOOL(mp->automap_uri);
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
-
-static PHP_METHOD(PHK, mtime)
-{
-	PHK_GET_INSTANCE_DATA(mtime)
-
-	RETVAL_BY_REF(mp->mtime);
-}
-
-/*---------------------------------------------------------------*/
+/* {{{ proto void PHK::set_cache(bool|null toggle) */
 
 static PHP_METHOD(PHK, set_cache)
 {
@@ -287,14 +280,15 @@ static PHP_METHOD(PHK, set_cache)
 	PHK_GET_INSTANCE_DATA(set_cache)
 
 		if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &zp) ==
-			FAILURE)
-		EXCEPTION_ABORT_1("Cannot parse parameters", 0);
+			FAILURE) EXCEPTION_ABORT_1("Cannot parse parameters", 0);
 
 	SEPARATE_ARG_IF_REF(zp);
 	mp->caching = zp;
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
+/* {{{ proto bool PHK::file_is_package(string path) */
 
 static PHP_METHOD(PHK, file_is_package)
 {
@@ -306,11 +300,12 @@ static PHP_METHOD(PHK, file_is_package)
 
 	PHK_need_php_runtime(TSRMLS_C);
 	RETVAL_BOOL(ut_call_user_function_bool(&CZVAL(PHK_Proxy)
-										   , &CZVAL(file_is_package), 1,
-										   &zp TSRMLS_CC));
+		, &CZVAL(file_is_package), 1, &zp TSRMLS_CC));
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
+/* {{{ proto bool PHK::data_is_package(string data) */
 
 static PHP_METHOD(PHK, data_is_package)
 {
@@ -322,21 +317,19 @@ static PHP_METHOD(PHK, data_is_package)
 
 	PHK_need_php_runtime(TSRMLS_C);
 	RETVAL_BOOL(ut_call_user_function_bool(&CZVAL(PHK_Proxy)
-										   , &CZVAL(data_is_package), 1,
-										   &zp TSRMLS_CC));
+	   , &CZVAL(data_is_package), 1, &zp TSRMLS_CC));
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
 
 static int PHK_cache_enabled(PHK_Mnt_Info * mp, zval * command,
 							 zval * params, zval * path TSRMLS_DC)
 {
 	if (mp->no_cache || (Z_LVAL_P(mp->flags) & PHK_F_CREATOR)
-		|| (!PHK_Cache_cache_present(TSRMLS_C)))
-		return 0;
+		|| (!PHK_Cache_cache_present(TSRMLS_C))) return 0;
 
-	if (Z_TYPE_P(mp->caching) != IS_NULL)
-		return Z_BVAL_P(mp->caching);
+	if (!ZVAL_IS_NULL(mp->caching)) return Z_BVAL_P(mp->caching);
 
 	return 1;
 }
@@ -353,44 +346,59 @@ static void PHK_umount(PHK_Mnt_Info * mp TSRMLS_DC)
 	if (mp->umount_script_uri
 		&& (!(Z_LVAL_P(mp->flags) & PHK_F_NO_MOUNT_SCRIPT))) {
 		ut_require(Z_STRVAL_P(mp->umount_script_uri), NULL TSRMLS_CC);
-		/* Don't catch exception here. Unload map first */
+		/* Don't catch exception here. Umount automap first */
 	}
 
-	if (mp->autoload_uri) {
-		/* No need to load the PHP runtime, the Autoload class is defined */
-		ut_call_user_function_void(&CZVAL(Autoload), &CZVAL(unload), 1,
-								   &(mp->autoload_uri) TSRMLS_CC);
+	if (mp->automap_uri) {
+		/* No need to load the PHP runtime, the Automap class is defined */
+		ut_call_user_function_void(&CZVAL(Automap), &CZVAL(umount), 1,
+								   &(mp->mnt) TSRMLS_CC);
 	}
 }
 
 /*---------------------------------------------------------------*/
 
-static PHP_METHOD(PHK, mnt)
-{
-	PHK_GET_INSTANCE_DATA(mnt)
+#define PHK_GET_PROPERTY_METHOD_OR_NULL(_field) \
+	static PHP_METHOD(PHK, _field) \
+	{ \
+		PHK_GET_INSTANCE_DATA(_field) \
+		if (mp->_field) RETVAL_BY_REF(mp->_field); \
+	}
 
-	RETVAL_BY_REF(mp->mnt);
-}
+/* {{{ proto string PHK::mnt() */
+PHK_GET_PROPERTY_METHOD_OR_NULL(mnt)
+/* }}} */
+
+/* {{{ proto string PHK::path() */
+PHK_GET_PROPERTY_METHOD_OR_NULL(path)
+/* }}} */
+
+/* {{{ proto int PHK::flags() */
+PHK_GET_PROPERTY_METHOD_OR_NULL(flags)
+/* }}} */
+
+/* {{{ proto int PHK::mtime() */
+PHK_GET_PROPERTY_METHOD_OR_NULL(mtime)
+/* }}} */
+
+/* {{{ proto array PHK::options() */
+PHK_GET_PROPERTY_METHOD_OR_NULL(options)
+/* }}} */
+
+/* {{{ proto string PHK::base_uri() */
+PHK_GET_PROPERTY_METHOD_OR_NULL(base_uri)
+/* }}} */
+
+/* {{{ proto string|null PHK::automap_uri() */
+PHK_GET_PROPERTY_METHOD_OR_NULL(automap_uri)
+/* }}} */
+
+/* {{{ proto object|null PHK::plugin() */
+PHK_GET_PROPERTY_METHOD_OR_NULL(plugin)
+/* }}} */
 
 /*---------------------------------------------------------------*/
-
-static PHP_METHOD(PHK, flags)
-{
-	PHK_GET_INSTANCE_DATA(flags)
-
-	RETVAL_BY_REF(mp->flags);
-}
-
-/*---------------------------------------------------------------*/
-
-static PHP_METHOD(PHK, path)
-{
-	PHK_GET_INSTANCE_DATA(path)
-
-	RETVAL_BY_REF(mp->path);
-}
-
-/*---------------------------------------------------------------*/
+/* {{{ proto string PHK::uri(string path) */
 
 static PHP_METHOD(PHK, uri)
 {
@@ -398,14 +406,15 @@ static PHP_METHOD(PHK, uri)
 
 	PHK_GET_INSTANCE_DATA(uri)
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &zp) ==
-			FAILURE)
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &zp) == FAILURE)
 		EXCEPTION_ABORT_1("Cannot parse parameters", 0);
 
 	PHK_Mgr_uri(mp->mnt, zp, return_value TSRMLS_CC);
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
+/* {{{ proto string PHK::section_uri(string section) */
 
 static PHP_METHOD(PHK, section_uri)
 {
@@ -413,14 +422,15 @@ static PHP_METHOD(PHK, section_uri)
 
 	PHK_GET_INSTANCE_DATA(section_uri)
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &zp) ==
-			FAILURE)
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &zp) == FAILURE)
 		EXCEPTION_ABORT_1("Cannot parse parameters", 0);
 
 	PHK_Mgr_section_uri(mp->mnt, zp, return_value TSRMLS_CC);
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
+/* {{{ proto string PHK::command_uri(string command) */
 
 static PHP_METHOD(PHK, command_uri)
 {
@@ -428,62 +438,38 @@ static PHP_METHOD(PHK, command_uri)
 
 	PHK_GET_INSTANCE_DATA(command_uri)
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &zp) ==
-			FAILURE)
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &zp) == FAILURE)
 		EXCEPTION_ABORT_1("Cannot parse parameters", 0);
 
 	PHK_Mgr_command_uri(mp->mnt, zp, return_value TSRMLS_CC);
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
-
-static PHP_METHOD(PHK, base_uri)
-{
-	PHK_GET_INSTANCE_DATA(base_uri)
-
-	RETVAL_BY_REF(mp->base_uri);
-}
-
-/*---------------------------------------------------------------*/
-
-static PHP_METHOD(PHK, autoload_uri)
-{
-	PHK_GET_INSTANCE_DATA(autoload_uri)
-
-	RETVAL_BY_REF(mp->autoload_uri);
-}
-
-/*---------------------------------------------------------------*/
+/* {{{ proto mixed PHK::option(string opt) */
 
 static PHP_METHOD(PHK, option)
 {
-	zval *zp, **zpp;
+	char *opt;
+	int optlen;
+	zval **zpp;
 
 	PHK_GET_INSTANCE_DATA(option)
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &zp) ==
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "s", &opt, &optlen) ==
 		FAILURE) EXCEPTION_ABORT_1("Cannot parse parameters", 0);
 
-	DBG_MSG1("Entering PHK::option(%s)", Z_STRVAL_P(zp));
+	DBG_MSG1("Entering PHK::option(%s)", opt);
 
-	if ((Z_TYPE_P(zp) == IS_STRING)
-		&& zend_hash_find(Z_ARRVAL_P(mp->options)
-						  , Z_STRVAL_P(zp), Z_STRLEN_P(zp) + 1,
-						  (void **) &zpp) == SUCCESS) {
+	if (zend_hash_find(Z_ARRVAL_P(mp->options), opt, optlen + 1,
+		(void **)(&zpp)) == SUCCESS) {
 		RETVAL_BY_REF(*zpp);
 	}
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
-
-static PHP_METHOD(PHK, options)
-{
-	PHK_GET_INSTANCE_DATA(options)
-
-	RETVAL_BY_REF(mp->options);
-}
-
-/*---------------------------------------------------------------*/
+/* {{{ proto string|null PHK::parent_mnt() */
 
 static PHP_METHOD(PHK, parent_mnt)
 {
@@ -492,6 +478,7 @@ static PHP_METHOD(PHK, parent_mnt)
 	if (mp->parent) RETVAL_BY_REF(mp->parent->mnt);
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
 
 static int web_access_matches(zval * apath, zval * path TSRMLS_DC)
@@ -626,7 +613,7 @@ static char *web_tunnel(PHK_Mnt_Info * mp, zval * path,
 					PHK_Mgr_uri(mp->mnt, &tpath, &uri TSRMLS_CC);
 					break;
 				}
-				efree(p);
+				EALLOCATE(p,0);
 			}
 			if (!found) {
 				CLEANUP_WEB_TUNNEL();
@@ -657,6 +644,9 @@ static char *web_tunnel(PHK_Mnt_Info * mp, zval * path,
 }
 
 /*---------------------------------------------------------------*/
+/* {{{ proto string PHK::web_tunnel([ string path [, bool webinfo ]]) */
+
+/* Undocumented - called by the PHK runtime code only */
 
 static PHP_METHOD(PHK, web_tunnel)
 {
@@ -668,13 +658,13 @@ static PHP_METHOD(PHK, web_tunnel)
 		path = NULL;
 	webinfo = 0;
 
-	if (zend_parse_parameters
-		(ZEND_NUM_ARGS()TSRMLS_CC, "|zb", &path, &webinfo) == FAILURE)
-		EXCEPTION_ABORT_1("Cannot parse parameters", 0);
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "|zb", &path, &webinfo)
+		== FAILURE) EXCEPTION_ABORT_1("Cannot parse parameters", 0);
 
 	RETVAL_STRING(web_tunnel(mp, path, webinfo TSRMLS_CC), 0);
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
 
 static void PHK_mime_header(PHK_Mnt_Info * mp, zval * path TSRMLS_DC)
@@ -682,15 +672,17 @@ static void PHK_mime_header(PHK_Mnt_Info * mp, zval * path TSRMLS_DC)
 	zval *type;
 	char *p;
 
-	if (!(type = PHK_mime_type(mp, path TSRMLS_CC)))
-		return;
+	if (!(type = PHK_mime_type(mp, path TSRMLS_CC))) return;
 
 	spprintf(&p, UT_PATH_MAX, "Content-type: %s", Z_STRVAL_P(type));
 	ut_header(200, p TSRMLS_CC);
-	efree(p);
+	EALLOCATE(p,0);
 }
 
 /*---------------------------------------------------------------*/
+/* {{{ proto void PHK::mime_header(string path) */
+
+/* Undocumented - called by the PHK runtime code only */
 
 static PHP_METHOD(PHK, mime_header)
 {
@@ -698,13 +690,14 @@ static PHP_METHOD(PHK, mime_header)
 
 	PHK_GET_INSTANCE_DATA(mime_header)
 
-		if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &path) ==
-			FAILURE)
-		EXCEPTION_ABORT_1("Cannot parse parameters", 0);
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &path) ==
+		FAILURE)
+	EXCEPTION_ABORT_1("Cannot parse parameters", 0);
 
 	PHK_mime_header(mp, path TSRMLS_CC);
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
 
 static zval *PHK_mime_type(PHK_Mnt_Info * mp, zval * path TSRMLS_DC)
@@ -735,6 +728,7 @@ static zval *PHK_mime_type(PHK_Mnt_Info * mp, zval * path TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
+/* {{{ proto string PHK::mime_type(string path) */
 
 static PHP_METHOD(PHK, mime_type)
 {
@@ -742,24 +736,23 @@ static PHP_METHOD(PHK, mime_type)
 
 	PHK_GET_INSTANCE_DATA(mime_type)
 
-		if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &path) ==
-			FAILURE)
-		EXCEPTION_ABORT_1("Cannot parse parameters", 0);
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &path) ==
+		FAILURE) EXCEPTION_ABORT_1("Cannot parse parameters", 0);
 
 	zp = PHK_mime_type(mp, path TSRMLS_CC);
-	if (zp)
-		RETVAL_BY_REF(zp);
+	if (zp) RETVAL_BY_REF(zp);
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
 
 static int PHK_is_php_source_path(PHK_Mnt_Info * mp, zval * path TSRMLS_DC)
 {
-	return (PHK_mime_type(mp, path TSRMLS_CC) ==
-			(&CZVAL(application_x_httpd_php)));
+	return (PHK_mime_type(mp,path TSRMLS_CC)==(&CZVAL(application_x_httpd_php)));
 }
 
 /*---------------------------------------------------------------*/
+/* {{{ proto bool PHK::is_php_source_path(string path) */
 
 static PHP_METHOD(PHK, is_php_source_path)
 {
@@ -767,14 +760,18 @@ static PHP_METHOD(PHK, is_php_source_path)
 
 	PHK_GET_INSTANCE_DATA(is_php_source_path)
 
-		if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &path) ==
-			FAILURE)
-		EXCEPTION_ABORT_1("Cannot parse parameters", 0);
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &path) ==
+		FAILURE)
+	EXCEPTION_ABORT_1("Cannot parse parameters", 0);
 
 	RETVAL_BOOL(PHK_is_php_source_path(mp, path TSRMLS_CC));
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
+/* {{{ proto void PHK::proxy() */
+
+/* Undocumented - called by the PHK runtime code only */
 
 static PHP_METHOD(PHK, proxy)
 {
@@ -782,11 +779,12 @@ static PHP_METHOD(PHK, proxy)
 
 	PHK_GET_INSTANCE_DATA(proxy)
 
-		zp = PHK_Mgr_proxy_by_mp(mp TSRMLS_CC);
+	zp = PHK_Mgr_proxy_by_mp(mp TSRMLS_CC);
 
 	RETVAL_BY_REF(zp);
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
 
 static void PHK_crc_check(PHK_Mnt_Info * mp TSRMLS_DC)
@@ -816,24 +814,18 @@ static void PHK_supports_php_version(PHK_Mnt_Info * mp TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
-
-static PHP_METHOD(PHK, plugin)
-{
-	PHK_GET_INSTANCE_DATA(plugin)
-
-		if (mp->plugin) {
-		RETVAL_BY_REF(mp->plugin);
-	}
-}
-
-/*---------------------------------------------------------------*/
+/* {{{ proto bool PHK::accelerator_is_present() */
 
 static PHP_METHOD(PHK, accelerator_is_present)
 {
 	RETVAL_TRUE;
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
+/* {{{ proto mixed PHK::build_info([ string name ]) */
+
+/* Undocumented - called by the PHK runtime code only */
 
 static PHP_METHOD(PHK, build_info)
 {
@@ -843,8 +835,7 @@ static PHP_METHOD(PHK, build_info)
 
 		zp = NULL;
 	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "|z!", &zp) ==
-		FAILURE)
-		EXCEPTION_ABORT_1("Cannot parse parameters", 0);
+		FAILURE) EXCEPTION_ABORT_1("Cannot parse parameters", 0);
 
 	if (!zp) {
 		RETVAL_BY_REF(mp->build_info);
@@ -861,51 +852,51 @@ static PHP_METHOD(PHK, build_info)
 	}
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
+/* {{{ proto string PHK::subpath_url(string path) */
+
+/* Undocumented - called by the PHK runtime code only */
 
 static PHP_METHOD(PHK, subpath_url)
 {
 	zval *zp;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &zp) ==
-		FAILURE)
-		EXCEPTION_ABORT_1("Cannot parse parameters", 0);
+		FAILURE) EXCEPTION_ABORT_1("Cannot parse parameters", 0);
 
 	PHK_need_php_runtime(TSRMLS_C);
 	ut_call_user_function_string(&CZVAL(PHK_Backend), &CZVAL(subpath_url)
 								 , return_value, 1, &zp TSRMLS_CC);
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
 
 static void PHK_get_subpath(zval * ret TSRMLS_DC)
 {
 	zval *zp;
-	char *p;
+	char *p=NULL;
 	int len, decode, s1;
 
 	zp = REQUEST_ELEMENT(_PHK_path);
-	if (zp)
-		decode = 1;
+	if (zp) decode = 1;
 	else {
 		decode = 0;
 		zp = SERVER_ELEMENT(PATH_INFO);
-		if (!zp)
-			zp = SERVER_ELEMENT(ORIG_PATH_INFO);
+		if (!zp) zp = SERVER_ELEMENT(ORIG_PATH_INFO);
 		if (!zp) {
 			ZVAL_STRINGL(ret, "", 0, 1);
 			return;
 		}
 	}
 
-	if (Z_TYPE_P(zp) != IS_STRING)
-		convert_to_string(zp);
+	if (Z_TYPE_P(zp) != IS_STRING) convert_to_string(zp);
 
 	s1 = Z_STRVAL_P(zp)[0] == '/' ? 0 : 1;
-	p = emalloc(Z_STRLEN_P(zp) + s1 + 1);
+	EALLOCATE(p, Z_STRLEN_P(zp) + s1 + 1);
 
-	if (s1)
-		(*p) = '/';
+	if (s1) (*p) = '/';
 	memmove(p + s1, Z_STRVAL_P(zp), Z_STRLEN_P(zp) + 1);
 
 	len = php_url_decode(p, Z_STRLEN_P(zp) + s1);
@@ -913,12 +904,16 @@ static void PHK_get_subpath(zval * ret TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
+/* {{{ proto string PHK::subpath_url() */
+
+/* Undocumented - called by the PHK runtime code only */
 
 static PHP_METHOD(PHK, get_subpath)
 {
 	PHK_get_subpath(return_value TSRMLS_CC);
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
 
 static zval *PHK_backend(PHK_Mnt_Info * mp, zval * phk TSRMLS_DC)
@@ -932,6 +927,7 @@ static zval *PHK_backend(PHK_Mnt_Info * mp, zval * phk TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
+/* {{{ proto mixed PHK::__call(mixed args...) */
 
 static PHP_METHOD(PHK, __call)
 {
@@ -955,7 +951,11 @@ static PHP_METHOD(PHK, __call)
 						  , return_value, 3, args TSRMLS_CC);
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
+/* {{{ proto string PHK::prolog(string file, mixed &cmd, mixed &ret) */
+
+/* Undocumented - called by the PHK runtime code only */
 
 static PHP_METHOD(PHK, prolog)
 {
@@ -971,12 +971,13 @@ static PHP_METHOD(PHK, prolog)
 		(ZEND_NUM_ARGS()TSRMLS_CC, "zzz", &file, &cmd, &ret) == FAILURE)
 		EXCEPTION_ABORT_1("Cannot parse parameters", 0);
 
+	if (!ZVAL_IS_STRING(file)) convert_to_string(file);
+
 	if (!PHK_G(root_package)[0]) {	/* Store path to load PHP code later, if needed */
 		if (Z_STRLEN_P(file) > UT_PATH_MAX)
 			EXCEPTION_ABORT_1("Path too long - max size=%d", UT_PATH_MAX);
 
-		memmove(PHK_G(root_package), Z_STRVAL_P(file),
-				Z_STRLEN_P(file) + 1);
+		memmove(PHK_G(root_package), Z_STRVAL_P(file), Z_STRLEN_P(file) + 1);
 	}
 
 	cli = (!ut_is_web());
@@ -995,11 +996,9 @@ static PHP_METHOD(PHK, prolog)
 	PHK_Mgr_php_version_check(TSRMLS_C);
 
 	mp = PHK_Mgr_mount(file, 0 TSRMLS_CC);
+	if (EG(exception)) return;					/* TODO: message */
 
 	DBG_MSG1("Mounted on %s", Z_STRVAL_P(mp->mnt));
-
-	if (EG(exception))
-		return;					/* TODO: message */
 
 	is_main = (EG(current_execute_data)->prev_execute_data == NULL);
 
@@ -1046,7 +1045,7 @@ static PHP_METHOD(PHK, prolog)
 
 	spprintf(&p, UT_PATH_MAX, "%s.webinfo", Z_STRVAL_P(file));
 	status = stat(p, &dummy_sb);
-	efree(p);
+	EALLOCATE(p,0);
 	if (!status) {
 		PHK_need_php_runtime(TSRMLS_C);
 		instance = PHK_Mgr_instance_by_mp(mp TSRMLS_CC);
@@ -1058,6 +1057,7 @@ static PHP_METHOD(PHK, prolog)
 	ZVAL_STRING(cmd, web_tunnel(mp, NULL, 0 TSRMLS_CC), 0);
 }
 
+/* }}} */
 /*---------------------------------------------------------------*/
 
 static ZEND_BEGIN_ARG_INFO_EX(PHK_prolog_arginfo, 0, 0, 3)
@@ -1072,7 +1072,6 @@ ZEND_END_ARG_INFO()
 		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	PHP_ME(PHK, __construct, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, map_defined, UT_noarg_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(PHK, mtime, UT_1arg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, set_cache, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, file_is_package, UT_1arg_arginfo,
 		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -1081,13 +1080,14 @@ ZEND_END_ARG_INFO()
 	PHP_ME(PHK, mnt, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, flags, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, path, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(PHK, mtime, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(PHK, options, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(PHK, base_uri, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, uri, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, section_uri, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, command_uri, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(PHK, base_uri, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(PHK, autoload_uri, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(PHK, automap_uri, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, option, UT_1arg_ref_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(PHK, options, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, parent_mnt, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, web_tunnel, UT_noarg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, mime_header, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
@@ -1137,34 +1137,11 @@ static void shutdown_mime_table(TSRMLS_D)
 
 static void set_constants(zend_class_entry * ce)
 {
-	zval *zp;
-	char *p;
-	int len;
+	UT_DECLARE_STRING_CONSTANT(PHK_VERSION,"VERSION");
 
-#define PHK_NEW_ZP() zp=pemalloc(sizeof(zval),1); INIT_PZVAL(zp);
-
-#define PHK_ADD_ZP_CONST(name) \
-	zend_hash_add(&ce->constants_table,name,sizeof(name) \
-		,(void *)(&zp),sizeof(zp),NULL)
-
-	PHK_NEW_ZP();
-	len = sizeof(PHK_VERSION);
-	p = pemalloc(len, 1);
-	memmove(p, PHK_VERSION, len);
-	ZVAL_STRINGL(zp, p, len, 0);
-	PHK_ADD_ZP_CONST("VERSION");
-
-	PHK_NEW_ZP();
-	ZVAL_LONG(zp, PHK_F_CRC_CHECK);
-	PHK_ADD_ZP_CONST("F_CRC_CHECK");
-
-	PHK_NEW_ZP();
-	ZVAL_LONG(zp, PHK_F_NO_MOUNT_SCRIPT);
-	PHK_ADD_ZP_CONST("F_NO_MOUNT_SCRIPT");
-
-	PHK_NEW_ZP();
-	ZVAL_LONG(zp, PHK_F_CREATOR);
-	PHK_ADD_ZP_CONST("F_CREATOR");
+	UT_DECLARE_LONG_CONSTANT(PHK_F_CRC_CHECK,"F_CRC_CHECK");
+	UT_DECLARE_LONG_CONSTANT(PHK_F_NO_MOUNT_SCRIPT,"F_NO_MOUNT_SCRIPT");
+	UT_DECLARE_LONG_CONSTANT(PHK_F_CREATOR,"F_CREATOR");
 }
 
 /*---------------------------------------------------------------*/

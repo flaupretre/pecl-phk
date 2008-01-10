@@ -44,8 +44,6 @@
    <file name="PHK.h" role="src"/>
    <file name="PHK_Cache.c" role="src"/>
    <file name="PHK_Cache.h" role="src"/>
-   <file name="phk_global.c" role="src"/>
-   <file name="phk_global.h" role="src"/>
    <file name="PHK_Stream.c" role="src"/>
    <file name="PHK_Stream.h" role="src"/>
    <file name="PHK_Mgr.c" role="src"/>

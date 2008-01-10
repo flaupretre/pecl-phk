@@ -75,6 +75,14 @@ typedef struct {
 
 #define REQUEST_ELEMENT(name) _ut_REQUEST_element(&HKEY(name) TSRMLS_CC)
 
+#ifndef MIN
+#	define MIN(a,b) (((a) < (b)) ? (a) : (b))
+#endif
+
+#ifndef MAX
+#	define MAX(a,b) (((a) > (b)) ? (a) : (b))
+#endif
+
 /*---------------------------------------------------------------*/
 /* (Taken from pcre/pcrelib/internal.h) */
 /* To cope with SunOS4 and other systems that lack memmove() but have bcopy(),
@@ -103,15 +111,22 @@ which is the case in this extension. */
 #	endif	/* not HAVE_BCOPY */
 #endif		/* not HAVE_MEMMOVE */
 
+#ifdef _AIX
+#	undef PHP_SHLIB_SUFFIX
+#	define PHP_SHLIB_SUFFIX "a"
+#endif
+
 /*---------------------------------------------------------------*/
 
 #ifdef UT_DEBUG
-#define DBG_MSG(_format) php_printf(_format "\n")
-#define DBG_MSG1(_format,_var1) php_printf(_format "\n",_var1)
-#define DBG_MSG2(_format,_var1,_var2) php_printf(_format "\n",_var1,_var2)
-#define DBG_MSG3(_format,_var1,_var2,_var3) php_printf(_format "\n",_var1,_var2,_var3)
+#define DBG_INIT() dbg_init_time()
+#define DBG_MSG(_format) { dbg_print_time(); php_printf(_format "\n"); }
+#define DBG_MSG1(_format,_var1) { dbg_print_time(); php_printf(_format "\n",_var1); }
+#define DBG_MSG2(_format,_var1,_var2) { dbg_print_time(); php_printf(_format "\n",_var1,_var2); }
+#define DBG_MSG3(_format,_var1,_var2,_var3) { dbg_print_time(); php_printf(_format "\n",_var1,_var2,_var3); }
 #define CHECK_MEM()	full_mem_check(1)
 #else
+#define DBG_INIT()
 #define DBG_MSG(_format)
 #define DBG_MSG1(_format,_var1)
 #define DBG_MSG2(_format,_var1,_var2)
@@ -175,7 +190,7 @@ which is the case in this extension. */
 
 /*----- These could go to zend.h --------*/
 
-#define ALLOC_PERSISTENT_ZVAL(zv) (zv)=pemalloc(sizeof(zval),1)
+#define ALLOC_PERSISTENT_ZVAL(zp) (zp)=pallocate(NULL,sizeof(zval))
 
 #define MAKE_STD_PERSISTENT_ZVAL(zv) \
 	ALLOC_PERSISTENT_ZVAL(zv); \
@@ -190,7 +205,7 @@ which is the case in this extension. */
 	Z_TYPE(zv)=IS_ARRAY; \
 	Z_ARRVAL(zv)=ht;
 
-#endif							/* ZVAL_ARRAY -------------- */
+#endif /* ZVAL_ARRAY -------------- */
 
 #ifndef ZVAL_IS_ARRAY
 #define ZVAL_IS_ARRAY(zp)	(Z_TYPE_P((zp))==IS_ARRAY)
@@ -237,6 +252,46 @@ will make it conditional. */
 	}
 #endif
 
+#define UT_NEW_PZP() { ALLOC_PERSISTENT_ZVAL(zp); INIT_PZVAL(zp); }
+
+#define UT_ADD_PZP_CONST(ce,name) \
+	zend_hash_add(&((ce)->constants_table),name,sizeof(name) \
+		,(void *)(&zp),sizeof(zp),NULL)
+
+#define UT_DECLARE_CHAR_CONSTANT(_def,_name) \
+	{ \
+	char *p=NULL; \
+	zval *zp; \
+	\
+	UT_NEW_PZP(); \
+	PALLOCATE(p,2); \
+	p[0]=_def; \
+	p[1]='\0'; \
+	ZVAL_STRINGL(zp,p,1,0); \
+	UT_ADD_PZP_CONST(ce,_name); \
+	}
+
+#define UT_DECLARE_STRING_CONSTANT(_def,_name) \
+	{  \
+	char *p=NULL;  \
+	zval *zp;  \
+	 \
+	UT_NEW_PZP();  \
+	PALLOCATE(p,sizeof(_def));  \
+	memmove(p,_def,sizeof(_def)); \
+	ZVAL_STRINGL(zp,p,sizeof(_def)-1,0);  \
+	UT_ADD_PZP_CONST(ce,_name); \
+	}
+
+#define UT_DECLARE_LONG_CONSTANT(_def,_name) \
+	{  \
+	zval *zp; \
+	\
+	UT_NEW_PZP(); \
+	ZVAL_LONG(zp, _def); \
+	UT_ADD_PZP_CONST(ce,_name); \
+	}
+
 /*-- Thread-safe stuff ------*/
 
 #ifdef ZTS
@@ -256,6 +311,7 @@ will make it conditional. */
 /*============================================================================*/
 
 static DECLARE_CZVAL(__construct);
+static DECLARE_CZVAL(dl);
 
 static DECLARE_HKEY(_SERVER);
 static DECLARE_HKEY(_REQUEST);
@@ -265,6 +321,12 @@ static DECLARE_HKEY(HTTP_HOST);
 
 /*============================================================================*/
 
+#ifdef UT_DEBUG
+static void dbg_init_time();
+static inline void dbg_print_time();
+#endif
+
+static inline void *_allocate(void *ptr, size_t size, int persistent);
 static void ut_persistent_copy_ctor(zval ** ztpp);
 static int MINIT_utils(TSRMLS_D);
 static int MSHUTDOWN_utils(TSRMLS_D);
@@ -272,7 +334,7 @@ static int MSHUTDOWN_utils(TSRMLS_D);
 static int RINIT_utils(TSRMLS_D);
 static int RSHUTDOWN_utils(TSRMLS_D);
 
-static int ut_is_web(void);
+static inline int ut_is_web(void);
 static void ut_persistent_zval_dtor(zval * zvalue);
 static void ut_persistent_zval_ptr_dtor(zval ** zval_ptr);
 static void ut_persistent_array_init(zval * zp);
@@ -281,37 +343,52 @@ static void ut_new_instance(zval ** ret_pp, zval * class_name,
 							int construct, int num_args,
 							zval ** args TSRMLS_DC);
 
-static void ut_call_user_function_void(zval * obj_zp, zval * func_zp,
+static inline void ut_call_user_function_void(zval * obj_zp, zval * func_zp,
 									   int nb_args,
 									   zval ** args TSRMLS_DC);
-static int ut_call_user_function_bool(zval * obj_zp, zval * func_zp,
+static inline int ut_call_user_function_bool(zval * obj_zp, zval * func_zp,
 									  int nb_args, zval ** args TSRMLS_DC);
-static long ut_call_user_function_long(zval * obj_zp, zval * func_zp,
+static inline long ut_call_user_function_long(zval * obj_zp, zval * func_zp,
 									   int nb_args,
 									   zval ** args TSRMLS_DC);
-static void ut_call_user_function_string(zval * obj_zp, zval * func_zp,
+static inline void ut_call_user_function_string(zval * obj_zp, zval * func_zp,
 										 zval * ret, int nb_args,
 										 zval ** args TSRMLS_DC);
-static void ut_call_user_function_array(zval * obj_zp, zval * func_zp,
+static inline void ut_call_user_function_array(zval * obj_zp, zval * func_zp,
 										zval * ret, int nb_args,
 										zval ** args TSRMLS_DC);
-static void ut_call_user_function(zval * obj_zp, zval * func_zp,
+static inline void ut_call_user_function(zval * obj_zp, zval * func_zp,
 								  zval * ret, int nb_args,
 								  zval ** args TSRMLS_DC);
 
 static int ut_extension_loaded(char *name, int len TSRMLS_DC);
+static void ut_load_extension(char *name, int len TSRMLS_DC);
 static void ut_require(char *string, zval * ret TSRMLS_DC);
-static int ut_strings_are_equal(zval * zp1, zval * zp2 TSRMLS_DC);
+static inline int ut_strings_are_equal(zval * zp1, zval * zp2 TSRMLS_DC);
 static void ut_header(long response_code, char *string TSRMLS_DC);
 static void ut_http_403_fail(TSRMLS_D);
 static void ut_http_404_fail(TSRMLS_D);
 static void ut_exit(int status TSRMLS_DC);
-static zval *_ut_SERVER_element(HKEY_STRUCT * hkey TSRMLS_DC);
-static zval *_ut_REQUEST_element(HKEY_STRUCT * hkey TSRMLS_DC);
+static inline zval *_ut_SERVER_element(HKEY_STRUCT * hkey TSRMLS_DC);
+static inline zval *_ut_REQUEST_element(HKEY_STRUCT * hkey TSRMLS_DC);
 static char *ut_http_base_url(TSRMLS_D);
 static void ut_http_301_redirect(zval * path, int must_free TSRMLS_DC);
-static void ut_rtrim_zval(zval * zp TSRMLS_DC);
-static void ut_file_suffix(zval * path, zval * ret TSRMLS_DC);
+static inline void ut_rtrim_zval(zval * zp TSRMLS_DC);
+static inline void ut_tolower(char *p, int len TSRMLS_DC);
+static inline void ut_file_suffix(zval * path, zval * ret TSRMLS_DC);
+static void ut_unserialize_zval(const unsigned char *buffer
+	, unsigned long len, zval *ret TSRMLS_DC);
+static void ut_file_get_contents(char *path, zval *ret TSRMLS_DC);
+static char *ut_htmlspecialchars(char *src, int srclen, int *retlen TSRMLS_DC);
+static char *ut_ucfirst(char *ptr, int len TSRMLS_DC);
+static void ut_repeat_printf(char c, int count TSRMLS_DC);
+static void ut_printf_pad_right(char *str, int len, int size TSRMLS_DC);
+static void ut_printf_pad_both(char *str, int len, int size TSRMLS_DC);
+static char *ut_absolute_dirname(char *path, int len, int *reslen, int separ TSRMLS_DC);
+static char *ut_dirname(char *path, int len, int *reslen TSRMLS_DC);
+static inline int ut_is_uri(char *path, int len TSRMLS_DC);
+static char *ut_mk_absolute_path(char *path, int len, int *reslen, int separ TSRMLS_DC);
+static int ut_rtrim(char *p TSRMLS_DC);
 
 /*============================================================================*/
 #endif	/* FLP_UTILS_H */

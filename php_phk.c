@@ -31,7 +31,6 @@
 
 #include "php_phk.h"
 #include "utils.h"
-#include "phk_global.h"
 #include "PHK_Cache.h"
 #include "PHK_Stream.h"
 #include "PHK_Mgr.h"
@@ -49,7 +48,6 @@ ZEND_DECLARE_MODULE_GLOBALS(phk)
 /*------------------------*/
 
 #include "utils.c"
-#include "phk_global.c"
 #include "PHK_Cache.c"
 #include "PHK_Stream.c"
 #include "PHK_Mgr.c"
@@ -94,7 +92,7 @@ static PHP_FUNCTION(_phk_techinfo)
 
 static void phk_globals_ctor(zend_phk_globals * globals TSRMLS_DC)
 {
-	globals->init_done = 0;
+	memset(globals, 0, sizeof(*globals)); /* Init everything to 0/NULL */
 }
 
 /*------------------------*/
@@ -133,7 +131,7 @@ static void build_constant_values()
 	INIT_CZVAL(PHK_Proxy);
 	INIT_CZVAL(PHK_Creator);
 	INIT_CZVAL(PHK);
-	INIT_CZVAL(Autoload);
+	INIT_CZVAL(Automap);
 
 	INIT_CZVAL(cache_enabled);
 	INIT_CZVAL(umount);
@@ -145,15 +143,14 @@ static void build_constant_values()
 	INIT_CZVAL(get_options);
 	INIT_CZVAL(get_build_info);
 	INIT_CZVAL(init);
-	INIT_CZVAL(load);
+	INIT_CZVAL(mount);
 	INIT_CZVAL(crc_check);
 	INIT_CZVAL(file_is_package);
 	INIT_CZVAL(data_is_package);
-	INIT_CZVAL(unload);
+	INIT_CZVAL(umount);
 	INIT_CZVAL(subpath_url);
 	INIT_CZVAL(call_method);
 	INIT_CZVAL(run_webinfo);
-	INIT_CZVAL(require_extensions);
 	INIT_CZVAL(builtin_prolog);
 
 	/* Hash keys */
@@ -181,7 +178,7 @@ static void build_constant_values()
 	INIT_HKEY(auto_umount);
 	INIT_HKEY(argc);
 	INIT_HKEY(argv);
-	INIT_HKEY(autoload);
+	INIT_HKEY(automap);
 	INIT_HKEY(phk_stream_backend);
 	INIT_HKEY(eaccelerator_get);
 }
@@ -190,6 +187,8 @@ static void build_constant_values()
 
 static PHP_RINIT_FUNCTION(phk)
 {
+	DBG_INIT();
+
 	if (RINIT_utils(TSRMLS_C) == FAILURE) return FAILURE;
 
 	if (RINIT_PHK_Cache(TSRMLS_C) == FAILURE) return FAILURE;
@@ -267,9 +266,6 @@ static PHP_MSHUTDOWN_FUNCTION(phk)
 
 /*-- Function entries --*/
 
-static ZEND_BEGIN_ARG_INFO_EX(phk_empty_arginfo, 0, 0, 0)
-ZEND_END_ARG_INFO()
-
 static ZEND_BEGIN_ARG_INFO_EX(phk_stream_parse_uri2_arginfo, 0, 0, 5)
 ZEND_ARG_INFO(0, uri)
 ZEND_ARG_INFO(1, command)
@@ -279,7 +275,7 @@ ZEND_ARG_INFO(1, path)
 ZEND_END_ARG_INFO()
 
 static function_entry phk_functions[] = {
-	PHP_FE(_phk_techinfo, phk_empty_arginfo)
+	PHP_FE(_phk_techinfo, UT_noarg_arginfo)
 	PHP_FE(_phk_stream_parse_uri2, phk_stream_parse_uri2_arginfo)
 	{NULL, NULL, NULL, 0, 0}
 };

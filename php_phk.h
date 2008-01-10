@@ -27,6 +27,8 @@
 #define UT_DEBUG
 #endif
 
+#include "zend_extensions.h"
+
 #include "utils.h"
 
 /*---------------------------------------------------------------*/
@@ -40,6 +42,12 @@
 GLOBAL zend_module_entry phk_module_entry;
 
 #define phpext_phk_ptr &phk_module_entry
+
+/* Condition is experimental and will change */
+
+#if ZEND_EXTENSION_API_NO >= 220071023
+#	define ZEND_ENGINE_SUPPORTS_CACHE_KEY_WRAPPER_OPS
+#endif
 
 /*---------------------------------------------------------------*/
 
@@ -55,7 +63,7 @@ static DECLARE_CZVAL(PHK_Util);
 static DECLARE_CZVAL(PHK_Proxy);
 static DECLARE_CZVAL(PHK_Creator);
 static DECLARE_CZVAL(PHK);
-static DECLARE_CZVAL(Autoload);
+static DECLARE_CZVAL(Automap);
 static DECLARE_CZVAL(cache_enabled);
 static DECLARE_CZVAL(umount);
 static DECLARE_CZVAL(is_mounted);
@@ -66,15 +74,14 @@ static DECLARE_CZVAL(get_min_version);
 static DECLARE_CZVAL(get_options);
 static DECLARE_CZVAL(get_build_info);
 static DECLARE_CZVAL(init);
-static DECLARE_CZVAL(load);
+static DECLARE_CZVAL(mount);
 static DECLARE_CZVAL(crc_check);
 static DECLARE_CZVAL(file_is_package);
 static DECLARE_CZVAL(data_is_package);
-static DECLARE_CZVAL(unload);
+static DECLARE_CZVAL(umount);
 static DECLARE_CZVAL(subpath_url);
 static DECLARE_CZVAL(call_method);
 static DECLARE_CZVAL(run_webinfo);
-static DECLARE_CZVAL(require_extensions);
 static DECLARE_CZVAL(builtin_prolog);
 
 /* Hash keys */
@@ -102,7 +109,7 @@ static DECLARE_HKEY(cli_run_script);
 static DECLARE_HKEY(auto_umount);
 static DECLARE_HKEY(argc);
 static DECLARE_HKEY(argv);
-static DECLARE_HKEY(autoload);
+static DECLARE_HKEY(automap);
 static DECLARE_HKEY(phk_stream_backend);
 static DECLARE_HKEY(eaccelerator_get);
 
@@ -118,24 +125,23 @@ typedef struct _PHK_Mnt_Info {
 	struct _PHK_Mnt_Info *parent;
 	int nb_children;
 	struct _PHK_Mnt_Info **children;
-	unsigned int *persistent_refcount_p;	/* Persistent reference counter */
 
-	zval *mnt;					/* String */
+	zval *mnt;					/* (String zval *) */
 	ulong hash;					/* Mnt hash */
-	zval *instance;				/* PHK object */
-	zval *proxy;				/* PHK_Proxy object (null until created) */
-	zval *path;					/* String */
-	zval *plugin;				/* Object zval|null */
-	zval *flags;				/* Long */
-	zval *caching;				/* Bool|null */
+	zval *instance;				/* PHK object (NULL until created) */
+	zval *proxy;				/* PHK_Proxy object (NULL until created) */
+	zval *path;					/* (String zval *) */
+	zval *plugin;				/* (Object zval *)|NULL */
+	zval *flags;				/* (Long zval *) */
+	zval *caching;				/* (Bool|null zval)* */
 	zval *mtime;				/* Long */
-	zval *backend;				/* PHK_Backend object | null */
+	zval *backend;				/* PHK_Backend object (NULL until created) */
 
 	/* Persistent data */
 
-	zval *min_version;			/* String */
-	zval *options;				/* Array */
-	zval *build_info;			/* Array */
+	zval *min_version;			/* (String zval *) */
+	zval *options;				/* (Array zval *) */
+	zval *build_info;			/* (Array zval *) */
 
 	/* Shortcuts (persistent) */
 
@@ -144,38 +150,42 @@ typedef struct _PHK_Mnt_Info {
 	int no_opcode_cache;		/* Bool */
 	int web_main_redirect;		/* Bool */
 	int auto_umount;			/* Bool */
-	zval *required_extensions;	/* Array zval or null */
-	zval *mime_types;			/* Array zval or null */
-	zval *web_run_script;		/* String zval or null */
-	zval *plugin_class;			/* String zval or null */
-	zval *web_access;			/* String zval or null */
-	zval *min_php_version;		/* String zval or null */
-	zval *max_php_version;		/* String zval or null */
+	zval *mime_types;			/* (Array zval *)|NULL */
+	zval *web_run_script;		/* (String zval *)|NULL */
+	zval *plugin_class;			/* (String zval *)|NULL */
+	zval *web_access;			/* (Array zval *)|(String zval *)|NULL */
+	zval *min_php_version;		/* (String zval *)|NULL */
+	zval *max_php_version;		/* (String zval *)|NULL */
 
 	/* Pre-computed constant values (persistent) */
 
-	zval *base_uri;				/* String zval */
-	zval *autoload_uri;			/* String zval or null */
-	zval *mount_script_uri;		/* String zval or null */
-	zval *umount_script_uri;	/* String zval or null */
-	zval *lib_run_script_uri;	/* String zval or null */
-	zval *cli_run_command;		/* String zval or null */
+	zval *base_uri;				/* (String zval *) */
+	zval *automap_uri;			/* (String zval *)|NULL */
+	zval *mount_script_uri;		/* (String zval *)|NULL */
+	zval *umount_script_uri;	/* (String zval *)|NULL */
+	zval *lib_run_script_uri;	/* (String zval *)|NULL */
+	zval *cli_run_command;		/* (String zval *)|NULL */
 } PHK_Mnt_Info;
 
 /*============================================================================*/
 
 ZEND_BEGIN_MODULE_GLOBALS(phk)
-int init_done;
-HashTable mnt_infos;			/* PHK_Mgr */
-zval caching;					/* PHK_Mgr - Can be null/true/false */
+
+HashTable *mtab;		/* PHK_Mgr - Null until initialized */
+
+zval caching;			/* PHK_Mgr - Can be null/true/false */
+
 char root_package[UT_PATH_MAX + 1];
+
 int php_runtime_is_loaded;
 
 ZEND_END_MODULE_GLOBALS(phk)
+
 #ifdef ZTS
 #	define PHK_G(v) TSRMG(phk_globals_id, zend_phk_globals *, v)
 #else
 #	define PHK_G(v) (phk_globals.v)
 #endif
+
 /*---------------------------------------------------------------*/
 #endif							/* PHP_PHK_H */

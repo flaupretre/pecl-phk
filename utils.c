@@ -22,9 +22,32 @@
 #include "config.h"
 #endif
 
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+#ifdef PHP_WIN32
+#include "win32/time.h"
+#elif defined(NETWARE)
+#include <sys/timeval.h>
+#include <sys/time.h>
+#else
+#include <sys/time.h>
+#endif
+#ifdef HAVE_SYS_RESOURCE_H
+#include <sys/resource.h>
+#endif
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include "php.h"
 #include "zend_execute.h"
+#include "ext/standard/php_var.h"
+#include "ext/standard/html.h"
 #include "SAPI.h"
+#include "php_streams.h"
+#include "TSRM/tsrm_virtual_cwd.h"
+#include "ext/standard/php_string.h"
 
 #include "utils.h"
 
@@ -69,9 +92,92 @@ ZEND_END_ARG_INFO()
 
 /*============================================================================*/
 
-static int ut_is_web()
+static inline void *_allocate(void *ptr, size_t size, int persistent)
 {
-	return strcmp(sapi_module.name, "cli");
+	if (ptr) {
+		if (size) ptr=perealloc(ptr, size, persistent);
+		else {
+			pefree(ptr, persistent);
+			ptr=NULL;
+		}
+	} else {
+		if (size) ptr=pemalloc(size, persistent);
+	}
+return ptr;
+}
+	
+#define eallocate(ptr, size) _allocate(ptr, size, 0)
+#define pallocate(ptr, size) _allocate(ptr, size, 1)
+
+#define EALLOCATE(ptr, size)	ptr=eallocate(ptr, size)
+#define PALLOCATE(ptr, size)	ptr=pallocate(ptr, size)
+
+/*---------------------------------------------------------------*/
+
+static inline void *_duplicate(void *ptr, size_t size, int persistent)
+{
+	char *p;
+
+	if (!ptr) return NULL;
+	if (size==0) return _allocate(NULL,1,persistent);
+
+	p=_allocate(NULL,size,persistent);
+	memmove(p,ptr,size);
+	return p;
+}
+
+#define eduplicate(ptr, size) _duplicate(ptr, size, 0)
+#define pduplicate(ptr, size) _duplicate(ptr, size, 1)
+
+/*---------------------------------------------------------------*/
+
+#ifdef UT_DEBUG
+
+#ifdef HAVE_GETTIMEOFDAY
+static struct timeval base_tp;
+#endif
+
+/*------------*/
+
+static void dbg_init_time()
+{
+#ifdef HAVE_GETTIMEOFDAY
+	struct timezone tz;
+
+	(void)gettimeofday(&base_tp,&tz);
+#endif
+}
+
+/*------------*/
+
+static inline void dbg_print_time()
+{
+#ifdef HAVE_GETTIMEOFDAY
+	struct timeval tp;
+	struct timezone tz;
+	time_t sec;
+
+	(void)gettimeofday(&tp,&tz);
+	sec=tp.tv_sec-base_tp.tv_sec;
+	if (ut_is_web()) php_printf("<br>");
+	php_printf("<");
+	if (sec) php_printf("%ld/",sec);
+	php_printf("%ld> : ",tp.tv_usec-base_tp.tv_usec);
+	(void)gettimeofday(&base_tp,&tz);
+#endif
+}
+
+#endif	/* UT_DEBUG */
+
+/*---------------------------------------------------------------*/
+
+static inline int ut_is_web()
+{
+	static int init_done=0;
+	static int web;
+
+	if (!init_done)	web=strcmp(sapi_module.name, "cli");
+	return web;
 }
 
 /*---------*/
@@ -110,13 +216,12 @@ static void ut_persistent_zval_ptr_dtor(zval ** zval_ptr)
 
 static void ut_persistent_array_init(zval * zp)
 {
-	HashTable *htp;
+	HashTable *htp=NULL;
 
 	INIT_PZVAL(zp);
 
-	htp = pemalloc(sizeof(HashTable), 1);
-	(void) zend_hash_init(htp, 0, NULL,
-						  (dtor_func_t) ut_persistent_zval_ptr_dtor, 1);
+	PALLOCATE(htp,sizeof(HashTable));
+	(void)zend_hash_init(htp,0, NULL,(dtor_func_t)ut_persistent_zval_ptr_dtor,1);
 	ZVAL_ARRAY_P(zp, htp);
 }
 
@@ -128,7 +233,7 @@ static void ut_persistent_copy_ctor(zval ** ztpp)
 
 	zsp = *ztpp;
 
-	(*ztpp) = pemalloc(sizeof(zval), 1);
+	(*ztpp) = pallocate(NULL,sizeof(zval));
 
 	ut_persist_zval(zsp, *ztpp);
 }
@@ -149,7 +254,7 @@ static void ut_persist_zval(zval * zsp, zval * ztp)
 	  case IS_STRING:
 	  case IS_CONSTANT:
 		  len = Z_STRLEN_P(zsp);
-		  p = pemalloc(len + 1, 1);
+		  p = pallocate(NULL,len + 1);
 		  memmove(p, Z_STRVAL_P(zsp), len + 1);
 		  ZVAL_STRINGL(ztp, p, len, 0);
 		  break;
@@ -198,7 +303,7 @@ static void ut_new_instance(zval ** ret_pp, zval * class_name,
 
 /*---------------------------------------------------------------*/
 
-static void ut_call_user_function_void(zval * obj_zp, zval * func_zp,
+static inline void ut_call_user_function_void(zval * obj_zp, zval * func_zp,
 									   int nb_args, zval ** args TSRMLS_DC)
 {
 	zval dummy_ret;
@@ -210,7 +315,7 @@ static void ut_call_user_function_void(zval * obj_zp, zval * func_zp,
 
 /*---------------------------------------------------------------*/
 
-static int ut_call_user_function_bool(zval * obj_zp, zval * func_zp,
+static inline int ut_call_user_function_bool(zval * obj_zp, zval * func_zp,
 									  int nb_args, zval ** args TSRMLS_DC)
 {
 	zval dummy_ret;
@@ -226,7 +331,7 @@ static int ut_call_user_function_bool(zval * obj_zp, zval * func_zp,
 
 /*---------------------------------------------------------------*/
 
-static long ut_call_user_function_long(zval * obj_zp, zval * func_zp,
+static inline long ut_call_user_function_long(zval * obj_zp, zval * func_zp,
 									   int nb_args, zval ** args TSRMLS_DC)
 {
 	zval ret;
@@ -242,7 +347,7 @@ static long ut_call_user_function_long(zval * obj_zp, zval * func_zp,
 
 /*---------------------------------------------------------------*/
 
-static void ut_call_user_function_string(zval * obj_zp, zval * func_zp,
+static inline void ut_call_user_function_string(zval * obj_zp, zval * func_zp,
 										 zval * ret, int nb_args,
 										 zval ** args TSRMLS_DC)
 {
@@ -257,7 +362,7 @@ static void ut_call_user_function_string(zval * obj_zp, zval * func_zp,
 
 /*---------------------------------------------------------------*/
 
-static void ut_call_user_function_array(zval * obj_zp, zval * func_zp,
+static inline void ut_call_user_function_array(zval * obj_zp, zval * func_zp,
 										zval * ret, int nb_args,
 										zval ** args TSRMLS_DC)
 {
@@ -274,7 +379,7 @@ static void ut_call_user_function_array(zval * obj_zp, zval * func_zp,
 
 /*---------------------------------------------------------------*/
 
-static void ut_call_user_function(zval * obj_zp, zval * func_zp,
+static inline void ut_call_user_function(zval * obj_zp, zval * func_zp,
 								  zval * ret, int nb_args,
 								  zval ** args TSRMLS_DC)
 {
@@ -291,6 +396,60 @@ static int ut_extension_loaded(char *name, int len TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
+#ifdef PHP_WIN32
+#define _UT_LE_PREFIX "php_"
+#else
+#define _UT_LE_PREFIX
+#endif
+
+static void ut_load_extension(char *name, int len TSRMLS_DC)
+{
+	zval zv,*zp;
+	char *p;
+	int status;
+
+	if (ut_extension_loaded(name, len TSRMLS_CC)) return;
+
+	spprintf(&p,1024,_UT_LE_PREFIX "%s." PHP_SHLIB_SUFFIX,name);
+	INIT_ZVAL(zv);
+	zp=&zv;
+	ZVAL_STRING(zp,p,0);
+
+	status=ut_call_user_function_bool(NULL,&CZVAL(dl),1,&zp TSRMLS_CC);
+
+	zval_dtor(zp);
+
+	if (!status) THROW_EXCEPTION_1("%s: Cannot load extension",name);
+}
+
+/*---------------------------------------------------------------*/
+
+static void ut_load_extensions(zval * extensions TSRMLS_DC)
+{
+	HashTable *ht;
+	HashPosition pos;
+	zval **zpp;
+
+	if (!ZVAL_IS_ARRAY(extensions)) {
+		THROW_EXCEPTION("ut_load_extensions: argument should be an array");
+		return;
+	}
+
+	ht = Z_ARRVAL_P(extensions);
+
+	zend_hash_internal_pointer_reset_ex(ht, &pos);
+	while (zend_hash_get_current_data_ex(ht, (void **) (&zpp), &pos) ==
+		   SUCCESS) {
+		if (ZVAL_IS_STRING(*zpp)) {
+			ut_load_extension(Z_STRVAL_PP(zpp),Z_STRLEN_PP(zpp) TSRMLS_CC);
+			if (EG(exception)) return;
+		}
+		zend_hash_move_forward_ex(ht, &pos);
+	}
+}
+
+/*---------------------------------------------------------------*/
+
 static void ut_require(char *string, zval * ret TSRMLS_DC)
 {
 	char *p;
@@ -298,12 +457,13 @@ static void ut_require(char *string, zval * ret TSRMLS_DC)
 	spprintf(&p, 1024, "require '%s';", string);
 
 	zend_eval_string(p, ret, "eval" TSRMLS_CC);
-	efree(p);
+
+	EALLOCATE(p,0);
 }
 
 /*---------------------------------------------------------------*/
 
-static int ut_strings_are_equal(zval * zp1, zval * zp2 TSRMLS_DC)
+static inline int ut_strings_are_equal(zval * zp1, zval * zp2 TSRMLS_DC)
 {
 	if ((!zp1) || (!zp2))
 		return 0;
@@ -360,7 +520,7 @@ static void ut_exit(int status TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static zval *_ut_SERVER_element(HKEY_STRUCT * hkey TSRMLS_DC)
+static inline zval *_ut_SERVER_element(HKEY_STRUCT * hkey TSRMLS_DC)
 {
 	zval **array, **token;
 
@@ -377,7 +537,7 @@ static zval *_ut_SERVER_element(HKEY_STRUCT * hkey TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static zval *_ut_REQUEST_element(HKEY_STRUCT * hkey TSRMLS_DC)
+static inline zval *_ut_REQUEST_element(HKEY_STRUCT * hkey TSRMLS_DC)
 {
 	zval **array, **token;
 
@@ -449,7 +609,7 @@ static void ut_http_301_redirect(zval * path, int must_free TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static void ut_rtrim_zval(zval * zp TSRMLS_DC)
+static inline void ut_rtrim_zval(zval * zp TSRMLS_DC)
 {
 	char *p;
 
@@ -465,7 +625,19 @@ static void ut_rtrim_zval(zval * zp TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static void ut_file_suffix(zval * path, zval * ret TSRMLS_DC)
+static inline void ut_tolower(char *p, int len TSRMLS_DC)
+{
+	int i;
+
+	if (!len) return;
+	for (i=0;i<len;i++,p++) {
+		if (((*p) >= 'A') && ((*p) <= 'Z')) (*p) += ('a' - 'A');
+	}
+}
+
+/*---------------------------------------------------------------*/
+
+static inline void ut_file_suffix(zval * path, zval * ret TSRMLS_DC)
 {
 	int found, suffix_len;
 	char *p;
@@ -490,22 +662,253 @@ static void ut_file_suffix(zval * path, zval * ret TSRMLS_DC)
 		ZVAL_STRINGL(ret, "", 0, 1);
 	} else {
 		ZVAL_STRINGL(ret, p + 1, suffix_len, 1);
-
-		p = Z_STRVAL_P(ret);
-		while (*p)				// strtolower
-		{
-			if (((*p) >= 'A') && ((*p) <= 'Z'))
-				(*p) += ('a' - 'A');
-			p++;
-		}
+		ut_tolower(Z_STRVAL_P(ret),suffix_len TSRMLS_CC);
 	}
 }
 
 /*---------------------------------------------------------------*/
 
+static void ut_unserialize_zval(const unsigned char *buffer
+	, unsigned long len, zval *ret TSRMLS_DC)
+{
+	php_unserialize_data_t var_hash;
+
+	if (len==0) {
+		THROW_EXCEPTION("Empty buffer");
+		return;
+		}
+
+	PHP_VAR_UNSERIALIZE_INIT(var_hash);
+
+	if (!php_var_unserialize(&ret,&buffer,buffer+len,&var_hash TSRMLS_CC)) {
+		zval_dtor(ret);
+		THROW_EXCEPTION("Unserialize error");
+		}
+	PHP_VAR_UNSERIALIZE_DESTROY(var_hash);
+}
+
+/*---------------------------------------------------------------*/
+/* Basic (and fast) file_get_contents(). Ignores safe mode and magic quotes */
+
+static void ut_file_get_contents(char *path, zval *ret TSRMLS_DC)
+{
+	php_stream *stream;
+	char *contents;
+	int len;
+
+	stream=php_stream_open_wrapper(path,"rb",REPORT_ERRORS,NULL);
+	if (!stream) EXCEPTION_ABORT_1("%s : Cannot open file",path);
+
+	len=php_stream_copy_to_mem(stream,&contents,PHP_STREAM_COPY_ALL,0);
+	php_stream_close(stream);
+
+	if (len < 0) EXCEPTION_ABORT_1("%s : Cannot read file",path);
+
+	ZVAL_STRINGL(ret,contents,len,0);
+}
+
+/*---------------------------------------------------------------*/
+
+static char *ut_htmlspecialchars(char *src, int srclen, int *retlen TSRMLS_DC)
+{
+	int dummy;
+
+	if (!retlen) retlen = &dummy;
+
+	return php_escape_html_entities(src,srclen,retlen,0,ENT_COMPAT,NULL TSRMLS_CC);
+}
+
+/*---------------------------------------------------------------*/
+
+static char *ut_ucfirst(char *ptr, int len TSRMLS_DC)
+{
+	char *p2;
+
+	if (!ptr) return NULL;
+
+	p2=eduplicate(ptr,len+1);
+
+	if (((*p2) >= 'a') && ((*p2) <= 'z')) (*p2) -= 'a' - 'A';
+
+	return p2;
+}
+
+/*---------------------------------------------------------------*/
+
+static void ut_repeat_printf(char c, int count TSRMLS_DC)
+{
+	char *p;
+
+	if (!count) return;
+
+	p=eallocate(NULL,count);
+	memset(p,c,count);
+	PHPWRITE(p,count);
+	EALLOCATE(p,0);
+}
+
+/*---------------------------------------------------------------*/
+
+static void ut_printf_pad_right(char *str, int len, int size TSRMLS_DC)
+{
+	char *p;
+
+	if (len >= size) {
+		php_printf("%s",str);
+		return;
+	}
+
+	p=eallocate(NULL,size);
+	memset(p,' ',size);
+	memmove(p,str,len);
+	PHPWRITE(p,size);
+	EALLOCATE(p,0);
+}
+
+/*---------------------------------------------------------------*/
+
+static void ut_printf_pad_both(char *str, int len, int size TSRMLS_DC)
+{
+	int pad;
+	char *p;
+
+	if (len >= size) {
+		php_printf("%s",str);
+		return;
+	}
+
+	p=eallocate(NULL,size);
+	memset(p,' ',size);
+	pad=(size-len)/2;
+	memmove(p+pad,str,len);
+	PHPWRITE(p,size);
+	EALLOCATE(p,0);
+}
+
+/*---------------------------------------------------------------*/
+
+static char *ut_absolute_dirname(char *path, int len, int *reslen, int separ TSRMLS_DC)
+{
+	char *dir,*res;
+	int dlen;
+
+	dir=ut_dirname(path,len,&dlen TSRMLS_CC);
+	res=ut_mk_absolute_path(dir,dlen,reslen,separ TSRMLS_CC);
+	EALLOCATE(dir,0);
+	return res;
+}
+
+/*---------------------------------------------------------------*/
+
+static char *ut_dirname(char *path, int len, int *reslen TSRMLS_DC)
+{
+	char *p;
+
+	p=eduplicate(path,len+1);
+	(*reslen)=php_dirname(p,len);
+	return p;
+}
+
+/*---------------------------------------------------------------*/
+
+static inline int ut_is_uri(char *path, int len TSRMLS_DC)
+{
+	const char *p;
+	int n;
+
+	p=path;
+	n=0;
+	while(isalnum((int)(*p)) || (*p)=='+' || (*p)=='-' || *p=='.') {
+		p++;
+		n++;
+	}
+
+	return ((n>1) && ((*p)==':') && ((((*(p+1))=='/') && ((*(p+2))=='/'))
+		|| ((n==4) && (path[0]=='d') && (path[1]=='a') && (path[2]=='t')
+		&& (path[3]=='a'))));
+}
+
+/*---------------------------------------------------------------*/
+/* Return an absolute path with a trailing separator or not*/
+
+static char *ut_mk_absolute_path(char *path, int len, int *reslen
+	, int separ TSRMLS_DC)
+{
+	char buf[1024];
+	char *resp,*p;
+	size_t clen;
+	int dummy_reslen;
+
+	if (!reslen) reslen=&dummy_reslen;
+
+	if (ut_is_uri(path,len TSRMLS_CC)) {
+		resp=eallocate(NULL,len+2);
+		memmove(resp,path,len+1);
+		(*reslen)=len;
+		if (separ && (resp[len-1]!='/')) {
+			resp[len]='/';
+			resp[len+1]='\0';
+			(*reslen)++;
+		}
+		return resp;
+	}
+
+	if (IS_ABSOLUTE_PATH(path, len)) {
+		resp=eallocate(NULL,len+2);
+		memmove(resp,path,len+1);
+		(*reslen)=len;
+		if (separ && (!IS_SLASH(resp[len-1]))) {
+			resp[len]=DEFAULT_SLASH;
+			resp[len+1]='\0';
+			(*reslen)++;
+		}
+		return resp;
+	}
+
+	/* Relative path */
+
+	virtual_getcwd(buf,sizeof(buf) TSRMLS_CC);
+	clen=strlen(buf);
+	resp=eallocate(NULL,clen+len+3);
+	memmove(resp,buf,clen+1);
+	p=&(resp[clen]);
+
+	if ((path[0]!='.')||(path[1])) {
+		if (!IS_SLASH(*(p-1))) (*(p++))=DEFAULT_SLASH;
+		memmove(p,path,len+1);
+		p += len;
+	}
+
+	if (separ && (!IS_SLASH(*(p-1)))) {
+		(*(p++))=DEFAULT_SLASH;
+		(*p)='\0';
+	}
+	(*reslen)=p-resp;
+
+	return resp;
+}
+
+/*---------------------------------------------------------------*/
+
+static int ut_rtrim(char *p TSRMLS_DC)
+{
+	int i;
+
+	for (i=0;;i++,p++) {
+		if ((!(*p))||((*p)==' ')||((*p)=='\t')) {
+			(*p)='\0';
+			break;
+		}
+	}
+	return i;
+}
+
+/*========================================================================*/
+
 static void ut_build_constants(TSRMLS_D)
 {
 	INIT_CZVAL(__construct);
+	INIT_CZVAL(dl);
 
 	INIT_HKEY(_SERVER);
 	INIT_HKEY(_REQUEST);
@@ -532,14 +935,14 @@ static int MSHUTDOWN_utils(TSRMLS_D)
 
 /*-------------*/
 
-static int RINIT_utils(TSRMLS_D)
+static inline int RINIT_utils(TSRMLS_D)
 {
 	return SUCCESS;
 }
 
 /*-------------*/
 
-static int RSHUTDOWN_utils(TSRMLS_D)
+static inline int RSHUTDOWN_utils(TSRMLS_D)
 {
 	return SUCCESS;
 }

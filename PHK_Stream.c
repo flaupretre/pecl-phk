@@ -62,7 +62,7 @@ static PHK_STREAM_DATA *new_dp(int show_errors)
 {
 	PHK_STREAM_DATA *dp;
 
-	dp = emalloc(sizeof(PHK_STREAM_DATA));
+	dp = eallocate(NULL,sizeof(PHK_STREAM_DATA));
 
 	dp->show_errors = show_errors;
 
@@ -82,8 +82,7 @@ static PHK_STREAM_DATA *new_dp(int show_errors)
 
 static void free_dp(PHK_STREAM_DATA ** dpp)
 {
-	if ((!dpp) || (!(*dpp)))
-		return;
+	if ((!dpp) || (!(*dpp))) return;
 
 	zval_dtor(&((*dpp)->z_command));
 	zval_dtor(&((*dpp)->z_params));
@@ -91,7 +90,7 @@ static void free_dp(PHK_STREAM_DATA ** dpp)
 	zval_dtor(&((*dpp)->z_path));
 	zval_dtor(&((*dpp)->z_data));
 
-	efree(*dpp);
+	EALLOCATE(*dpp,0);
 }
 
 /*--------------------*/
@@ -208,6 +207,7 @@ static void PHK_Stream_get_file(int dir, zval * ret_p, zval * uri_p,
 }
 
 /*--------------------*/
+/* {{{ proto string PHK_Stream::get_file(bool dir, string uri, string mnt, string command, mixed params, string path [, bool cache ]) */
 
 static PHP_METHOD(PHK_Stream, get_file)
 {
@@ -226,6 +226,7 @@ static PHP_METHOD(PHK_Stream, get_file)
 						z_params_p, z_path_p, z_cache_p TSRMLS_CC);
 }
 
+/* }}} */
 /*--------------------*/
 /* Dummy write() */
 
@@ -423,7 +424,8 @@ static int do_stat(php_stream_wrapper * wrapper, char *uri,
 			ENSURE_LONG(&z_size);
 			ENSURE_LONG(&z_mtime);
 
-			tssb = (php_stream_statbuf *) emalloc((ssb_len=sizeof(*tssb))+1);
+			tssb = (php_stream_statbuf *)eallocate(NULL
+				,(ssb_len=sizeof(*tssb))+1);
 			memset(tssb, 0, ssb_len+1);
 
 			tssb->sb.st_size = (off_t) Z_LVAL(z_size);
@@ -448,7 +450,7 @@ static int do_stat(php_stream_wrapper * wrapper, char *uri,
 			tssb->sb.st_blocks = -1;
 #endif
 		} else {
-			tssb = emalloc(1);
+			tssb = eallocate(NULL,1);
 			*((char *) tssb) = '\0';
 			ssb_len = 0;
 		}
@@ -775,8 +777,8 @@ static php_stream_wrapper_ops phk_stream_wops = {
 	NULL,						/* rename */
 	NULL,						/* mkdir */
 	NULL						/* rmdir */
-#if ZEND_EXTENSION_API_NO >= 220071023
-	, PHK_Stream_cache_key	/* cache_key */
+#ifdef ZEND_ENGINE_SUPPORTS_CACHE_KEY_WRAPPER_OPS
+	, PHK_Stream_cache_key		/* cache_key */
 #endif
 };
 
