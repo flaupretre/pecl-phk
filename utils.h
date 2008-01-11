@@ -26,6 +26,7 @@
 #include "php.h"
 #include "zend_exceptions.h"
 #include "zend_hash.h"
+#include "TSRM/TSRM.h"
 
 #ifdef ALLOCATE
 #	define GLOBAL
@@ -192,9 +193,9 @@ which is the case in this extension. */
 
 #define ALLOC_PERSISTENT_ZVAL(zp) (zp)=pallocate(NULL,sizeof(zval))
 
-#define MAKE_STD_PERSISTENT_ZVAL(zv) \
-	ALLOC_PERSISTENT_ZVAL(zv); \
-	INIT_PZVAL(zv);
+#define MAKE_STD_PERSISTENT_ZVAL(zp) \
+	ALLOC_PERSISTENT_ZVAL(zp); \
+	INIT_PZVAL(zp);
 
 #ifndef ZVAL_ARRAY /*--------------*/
 
@@ -295,11 +296,11 @@ will make it conditional. */
 /*-- Thread-safe stuff ------*/
 
 #ifdef ZTS
-#define MutexDeclare(x) MUTEX_T x
-#define MutexSetup(x) x = tsrm_mutex_alloc()
-#define MutexShutdown(x) tsrm_mutex_free(x)
-#define MutexLock(x) tsrm_mutex_lock(x)
-#define MutexUnlock(x) tsrm_mutex_unlock(x)
+#define MutexDeclare(x)		MUTEX_T x ## _mutex
+#define MutexSetup(x)		x ## _mutex = tsrm_mutex_alloc()
+#define MutexShutdown(x)	tsrm_mutex_free(x ## _mutex)
+#define MutexLock(x)		tsrm_mutex_lock(x ## _mutex)
+#define MutexUnlock(x)		tsrm_mutex_unlock(x ## _mutex)
 #else
 #define MutexDeclare(x)
 #define MutexSetup(x)

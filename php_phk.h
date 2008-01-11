@@ -128,6 +128,7 @@ typedef struct _PHK_Mnt_Info {
 
 	zval *mnt;					/* (String zval *) */
 	ulong hash;					/* Mnt hash */
+	unsigned long *refcountp;
 	zval *instance;				/* PHK object (NULL until created) */
 	zval *proxy;				/* PHK_Proxy object (NULL until created) */
 	zval *path;					/* (String zval *) */
