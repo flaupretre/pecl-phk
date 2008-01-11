@@ -41,7 +41,9 @@ ZEND_EXTERN_MODULE_GLOBALS(automap)
 /*---------------------------------------------------------------*/
 
 typedef struct {				/* Private */
-	unsigned int nb_hits;
+	unsigned long nb_hits;
+	unsigned long refcount;
+	time_t ctime;
 
 	zval min_version;			/* String */
 	zval version;				/* String */
@@ -50,6 +52,8 @@ typedef struct {				/* Private */
 } Automap_Mnt_Persistent_Data;
 
 static HashTable persistent_mtab;
+
+MutexDeclare(persistent_mtab);
 
 /*---------------------------------------------------------------*/
 
@@ -78,7 +82,8 @@ static void Automap_mnt_list(zval * ret TSRMLS_DC);
 static void Automap_path_to_mnt(zval * path, zval * mnt TSRMLS_DC);
 static void Automap_compute_mnt(zval * path, zval ** mnt TSRMLS_DC);
 static Automap_Mnt_Info *Automap_mount(zval * path, zval * base_dir, zval * mnt, int flags TSRMLS_DC);
-static Automap_Mnt_Persistent_Data *Automap_get_persistent_data(Automap_Mnt_Info * mp TSRMLS_DC);
+static Automap_Mnt_Persistent_Data *Automap_get_persistent_data(zval * mnt, ulong hash TSRMLS_DC);
+static Automap_Mnt_Persistent_Data *Automap_get_or_create_persistent_data(Automap_Mnt_Info * mp TSRMLS_DC);
 static void Automap_populate_persistent_data(Automap_Mnt_Info *mp TSRMLS_DC);
 static void Automap_Persistent_Data_dtor(Automap_Mnt_Persistent_Data *entry);
 static char *Automap_get_type_string(char type TSRMLS_DC);
@@ -102,6 +107,8 @@ static void Automap_register_autoload_hook(TSRMLS_D);
 
 static void Automap_init_persistent_data(TSRMLS_D)
 {
+	MutexSetup(persistent_mtab);
+
 	zend_hash_init(&persistent_mtab, 16, NULL,
 				   (dtor_func_t) Automap_Persistent_Data_dtor, 1);
 }
@@ -111,6 +118,8 @@ static void Automap_init_persistent_data(TSRMLS_D)
 static void Automap_shutdown_persistent_data(TSRMLS_D)
 {
 	zend_hash_destroy(&persistent_mtab);
+
+	MutexShutdown(persistent_mtab);
 }
 
 /*---------------------------------------------------------------*/
@@ -119,6 +128,8 @@ static void Automap_shutdown_persistent_data(TSRMLS_D)
  
 static void Automap_mnt_info_dtor(Automap_Mnt_Info * mp)
 {
+	if (mp->refcountp) (*(mp->refcountp))--;
+
 	if (mp->mnt) zval_ptr_dtor(&(mp->mnt));
 	if (mp->instance) zval_ptr_dtor(&(mp->instance));
 	if (mp->path) zval_ptr_dtor(&(mp->path));
@@ -152,8 +163,7 @@ static void Automap_remove_mnt_info(zval * mnt TSRMLS_DC)
 /*---------------------------------------------------------------*/
 /* If the mnt_info cannot be created, clear it in mtab and return NULL */
 
-static Automap_Mnt_Info *Automap_new_mnt_info(zval * mnt,
-											  ulong hash TSRMLS_DC)
+static Automap_Mnt_Info *Automap_new_mnt_info(zval * mnt, ulong hash TSRMLS_DC)
 {
 	Automap_Mnt_Info tmp, *mp;
 
@@ -192,8 +202,7 @@ static Automap_Mnt_Info *Automap_get_mnt_info(zval * mnt, ulong hash,
 	int found;
 
 	if (!ZVAL_IS_STRING(mnt)) {
-		EXCEPTION_ABORT_RET_1(NULL,
-							  "Automap_get_mnt_info: Mount point should be a string (type=%s)",
+		EXCEPTION_ABORT_RET_1(NULL,"Automap_get_mnt_info: Mount point should be a string (type=%s)",
 							  zend_zval_type_name(mnt));
 	}
 
@@ -521,25 +530,52 @@ static PHP_METHOD(Automap, mount)
 /* }}} */
 /*---------------------------------------------------------------*/
 
-#define INIT_AUTOMAP_GET_PERSISTENT_DATA() \
+static Automap_Mnt_Persistent_Data *Automap_get_persistent_data(
+	zval * mnt, ulong hash TSRMLS_DC)
+{
+	Automap_Mnt_Persistent_Data *pmp;
+
+	if (!ZVAL_IS_STRING(mnt)) {
+		EXCEPTION_ABORT_RET_1(NULL,"Automap_get_persistent_data: Mount point should be a string (type=%s)",
+							  zend_zval_type_name(mnt));
+	}
+
+	if (!hash) hash = ZSTRING_HASH(mnt);
+
+	if (zend_hash_quick_find(&persistent_mtab, Z_STRVAL_P(mnt),
+			Z_STRLEN_P(mnt) + 1, hash, (void **) &pmp) != SUCCESS) return NULL;
+
+	return pmp;
+}
+
+/*---------------------------------------------------------------*/
+
+#define INIT_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA() \
 	{ \
+	MutexLock(persistent_mtab); \
 	INIT_ZVAL(zbuf); \
 	INIT_ZVAL(zdata); \
 	}
 
-#define CLEANUP_AUTOMAP_GET_PERSISTENT_DATA() \
+#define CLEANUP_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA() \
 	{ \
 	zval_dtor(&zbuf); \
 	zval_dtor(&zdata); \
 	}
 
-#define ABORT_AUTOMAP_GET_PERSISTENT_DATA() \
+#define RETURN_FROM_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA(_ret) \
 	{ \
-	CLEANUP_AUTOMAP_GET_PERSISTENT_DATA(); \
-	return NULL; \
+	MutexUnlock(persistent_mtab); \
+	return _ret; \
 	}
 
-static Automap_Mnt_Persistent_Data *Automap_get_persistent_data(
+#define ABORT_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA() \
+	{ \
+	CLEANUP_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA(); \
+	RETURN_FROM_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA(NULL); \
+	}
+
+static Automap_Mnt_Persistent_Data *Automap_get_or_create_persistent_data(
 	Automap_Mnt_Info * mp TSRMLS_DC)
 {
 	Automap_Mnt_Persistent_Data tmp_entry, *entry;
@@ -547,24 +583,22 @@ static Automap_Mnt_Persistent_Data *Automap_get_persistent_data(
 	char *buf, tmpc;
 	unsigned long fsize, blen;
 
-	DBG_MSG1("Entering Automap_get_persistent_data(%s)",
-			 Z_STRVAL_P(mp->mnt));
+	DBG_MSG1("Entering Automap_new_persistent_data(%s)",Z_STRVAL_P(mp->mnt));
 
-	INIT_AUTOMAP_GET_PERSISTENT_DATA();
+	INIT_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA();
 
-	if (zend_hash_quick_find
-		(&persistent_mtab, Z_STRVAL_P(mp->mnt), Z_STRLEN_P(mp->mnt) + 1,
-		mp->hash, (void **) (&entry)) == SUCCESS) {
-		DBG_MSG("Data found in persistent cache");
+	entry=Automap_get_persistent_data(mp->mnt, mp->hash TSRMLS_CC);
+	if (entry) {
+		entry->nb_hits++;
+		entry->refcount++;
+		MutexUnlock(persistent_mtab);
 		return entry;
 	}
-
-	DBG_MSG("Data not found in persistent cache - creating entry");
 
 	/* Create entry - slow path */
 
 	ut_file_get_contents(Z_STRVAL_P(mp->path), &zbuf TSRMLS_CC);
-	if (EG(exception)) ABORT_AUTOMAP_GET_PERSISTENT_DATA();
+	if (EG(exception)) ABORT_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA();
 	buf = Z_STRVAL(zbuf);
 	blen = Z_STRLEN(zbuf);
 
@@ -572,14 +606,14 @@ static Automap_Mnt_Persistent_Data *Automap_get_persistent_data(
 
 	if (blen < 54) {
 		THROW_EXCEPTION_1("%s : file is too small", Z_STRVAL_P(mp->path));
-		ABORT_AUTOMAP_GET_PERSISTENT_DATA();
+		ABORT_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA();
 	}
 
 	/* Check magic string */
 
 	if (memcmp(buf, AUTOMAP_MAGIC, sizeof(AUTOMAP_MAGIC) - 1)) {
 		THROW_EXCEPTION_1("%s : Bad magic", Z_STRVAL_P(mp->path));
-		ABORT_AUTOMAP_GET_PERSISTENT_DATA();
+		ABORT_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA();
 	}
 
 	/* Check minimum required runtime version */
@@ -590,7 +624,7 @@ static Automap_Mnt_Persistent_Data *Automap_get_persistent_data(
 		THROW_EXCEPTION_2
 			("%s : Cannot understand this map. Requires at least Automap version %s",
 			 Z_STRVAL_P(mp->path), &(buf[16]));
-		ABORT_AUTOMAP_GET_PERSISTENT_DATA();
+		ABORT_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA();
 	}
 	buf[28] = tmpc;
 
@@ -603,7 +637,7 @@ static Automap_Mnt_Persistent_Data *Automap_get_persistent_data(
 	if (fsize != blen) {
 		THROW_EXCEPTION_2("%s : Invalid file size. Should be %lu",
 						  Z_STRVAL_P(mp->path), fsize);
-		ABORT_AUTOMAP_GET_PERSISTENT_DATA();
+		ABORT_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA();
 	}
 	buf[53] = tmpc;
 
@@ -613,7 +647,9 @@ static Automap_Mnt_Persistent_Data *Automap_get_persistent_data(
 						   , Z_STRLEN_P(mp->mnt) + 1, mp->hash, &tmp_entry,
 						   sizeof(tmp_entry), (void **) &entry);
 
-	entry->nb_hits = 0;
+	entry->ctime = time(NULL);
+
+	entry->nb_hits=entry->refcount=1;
 
 	/* Record minimum version (to be able to display it) */
 
@@ -634,24 +670,24 @@ static Automap_Mnt_Persistent_Data *Automap_get_persistent_data(
 	/* Get the rest as an unserialized array */
 
 	ut_unserialize_zval(buf + 53, blen - 53, &zdata TSRMLS_CC);
-	if (EG(exception)) ABORT_AUTOMAP_GET_PERSISTENT_DATA();
+	if (EG(exception)) ABORT_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA();
 
 	if (!ZVAL_IS_ARRAY(&zdata)) {
 		THROW_EXCEPTION_1("%s : Map file should contain an array",
 						  Z_STRVAL_P(mp->path));
-		ABORT_AUTOMAP_GET_PERSISTENT_DATA();
+		ABORT_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA();
 	}
 
 	/* Get the symbol table */
 
 	if (FIND_HKEY(Z_ARRVAL(zdata), map, &zpp) != SUCCESS) {
 		THROW_EXCEPTION_1("%s : No symbol table", Z_STRVAL_P(mp->path));
-		ABORT_AUTOMAP_GET_PERSISTENT_DATA();
+		ABORT_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA();
 	}
 	if (!ZVAL_IS_ARRAY(*zpp)) {
 		THROW_EXCEPTION_1("%s : Symbol table should contain an array",
 						  Z_STRVAL_P(mp->path));
-		ABORT_AUTOMAP_GET_PERSISTENT_DATA();
+		ABORT_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA();
 	}
 	ut_persist_zval(*zpp, &(entry->symbols));
 
@@ -659,19 +695,20 @@ static Automap_Mnt_Persistent_Data *Automap_get_persistent_data(
 
 	if (FIND_HKEY(Z_ARRVAL(zdata), options, &zpp) != SUCCESS) {
 		THROW_EXCEPTION_1("%s : No options array", Z_STRVAL_P(mp->path));
-		ABORT_AUTOMAP_GET_PERSISTENT_DATA();
+		ABORT_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA();
 	}
 	if (!ZVAL_IS_ARRAY(*zpp)) {
 		THROW_EXCEPTION_1("%s : Options should be an array",
 						  Z_STRVAL_P(mp->path));
-		ABORT_AUTOMAP_GET_PERSISTENT_DATA();
+		ABORT_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA();
 	}
 	ut_persist_zval(*zpp, &(entry->options));
 
 	/* Cleanup and return */
 
-	CLEANUP_AUTOMAP_GET_PERSISTENT_DATA();
-	return entry;
+	CLEANUP_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA();
+
+	RETURN_FROM_AUTOMAP_GET_OR_CREATE_PERSISTENT_DATA(entry);
 }
 
 /*---------------------------------------------------------------*/
@@ -683,12 +720,12 @@ static void Automap_populate_persistent_data(Automap_Mnt_Info *mp TSRMLS_DC)
 	DBG_MSG1("Entering Automap_populate_persistent_data(%s)",
 			 Z_STRVAL_P(mp->mnt));
 
-	entry = Automap_get_persistent_data(mp TSRMLS_CC);
+	entry = Automap_get_or_create_persistent_data(mp TSRMLS_CC);
 	if (EG(exception)) return;
 
-	entry->nb_hits++;
-
 	/* Populate mp structure */
+
+	mp->refcountp = &(entry->refcount);
 
 	mp->min_version = &(entry->min_version);
 	ZVAL_ADDREF(&(entry->min_version));
@@ -1684,6 +1721,10 @@ static int MINIT_Automap(TSRMLS_D)
 {
 	zend_class_entry ce, *entry;
 
+	/*--- Init persistent data */
+
+	Automap_init_persistent_data(TSRMLS_C);
+
 	/*--- Check that SPL is present */
 
 	if (!ut_extension_loaded("spl",3 TSRMLS_CC)) {
@@ -1696,10 +1737,6 @@ static int MINIT_Automap(TSRMLS_D)
 	INIT_CLASS_ENTRY(ce, "Automap", Automap_functions);
 	entry = zend_register_internal_class(&ce TSRMLS_CC);
 	set_constants(entry);
-
-	/*--- Init persistent data */
-
-	Automap_init_persistent_data(TSRMLS_C);
 
 	return SUCCESS;
 }

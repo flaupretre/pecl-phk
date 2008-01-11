@@ -61,6 +61,7 @@ static DECLARE_HKEY(m);
 typedef struct _Automap_Mnt_Info {
 	zval *mnt;					/* (String zval *) */
 	ulong hash;					/* Mnt hash */
+	unsigned long *refcountp;
 	int mnt_count;				/* Allows to mount/umount the same map */
 	zval *instance;				/* Automap object (NULL until created) */
 	zval *path;					/* (String zval *) */
