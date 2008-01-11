@@ -3,6 +3,6 @@
 
 ARG_ENABLE("automap", "enable the Automap extension", "no");
 
-if (PHP_automap != "no") {
+if (PHP_AUTOMAP != "no") {
         EXTENSION("automap", "php_automap.c");
 }
