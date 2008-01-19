@@ -46,7 +46,7 @@ static automap_type_string automap_type_strings[]={
 	{ AUTOMAP_T_CLASS, 		"class" },
 	{ AUTOMAP_T_EXTENSION,	"extension" },
 	{ AUTOMAP_F_SCRIPT,		"script" },
-	{ AUTOMAP_F_EXTENSION,	"extension" },
+	{ AUTOMAP_F_EXTENSION,	"extension file" },
 	{ AUTOMAP_F_PACKAGE,	"package" },
 	{ '\0', NULL }
 };

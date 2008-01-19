@@ -39,6 +39,9 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
 
 #include "php.h"
 #include "zend_execute.h"
@@ -50,6 +53,14 @@
 #include "ext/standard/php_string.h"
 
 #include "utils.h"
+
+/*============================================================================*/
+
+static HashTable simul_inodes;
+
+static unsigned long simul_inode_index;
+
+static MutexDeclare(simul_inodes);
 
 /*============================================================================*/
 /* Generic arginfo structures */
@@ -91,6 +102,27 @@ ZEND_ARG_INFO(0, arg3)
 ZEND_END_ARG_INFO()
 
 /*============================================================================*/
+/*--- Init persistent data */
+
+static void ut_init_persistent_data(TSRMLS_D)
+{
+	MutexSetup(simul_inodes);
+
+	zend_hash_init(&simul_inodes, 16, NULL,NULL, 1);
+
+	simul_inode_index = 1;
+}
+
+/*---------------------------------------------------------------*/
+
+static void ut_shutdown_persistent_data(TSRMLS_D)
+{
+	zend_hash_destroy(&simul_inodes);
+
+	MutexShutdown(simul_inodes);
+}
+
+/*---------------------------------------------------------------*/
 
 static inline void *_allocate(void *ptr, size_t size, int persistent)
 {
@@ -396,6 +428,15 @@ static int ut_extension_loaded(char *name, int len TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
+static void ut_load_extension_file(zval *file TSRMLS_DC)
+{
+	if (!ut_call_user_function_bool(NULL,&CZVAL(dl),1,&file TSRMLS_CC)) {
+		THROW_EXCEPTION_1("%s: Cannot load extension",Z_STRVAL_P(file));
+	}
+}
+
+/*---------------------------------------------------------------*/
+
 #ifdef PHP_WIN32
 #define _UT_LE_PREFIX "php_"
 #else
@@ -404,22 +445,18 @@ static int ut_extension_loaded(char *name, int len TSRMLS_DC)
 
 static void ut_load_extension(char *name, int len TSRMLS_DC)
 {
-	zval zv,*zp;
+	zval zv;
 	char *p;
-	int status;
 
 	if (ut_extension_loaded(name, len TSRMLS_CC)) return;
 
 	spprintf(&p,1024,_UT_LE_PREFIX "%s." PHP_SHLIB_SUFFIX,name);
 	INIT_ZVAL(zv);
-	zp=&zv;
-	ZVAL_STRING(zp,p,0);
+	ZVAL_STRING(&zv,p,0);
 
-	status=ut_call_user_function_bool(NULL,&CZVAL(dl),1,&zp TSRMLS_CC);
+	ut_load_extension_file(&zv TSRMLS_CC);
 
-	zval_dtor(zp);
-
-	if (!status) THROW_EXCEPTION_1("%s: Cannot load extension",name);
+	zval_dtor(&zv);
 }
 
 /*---------------------------------------------------------------*/
@@ -903,6 +940,58 @@ static int ut_rtrim(char *p TSRMLS_DC)
 	return i;
 }
 
+/*---------------------------------------------------------------*/
+
+static void ut_path_unique_id(char prefix, zval * path, zval ** mnt
+	, time_t *mtp  TSRMLS_DC)
+{
+	char *p;
+	php_stream_statbuf ssb;
+	time_t mtime;
+	unsigned long inode,dev,*lp,hash;
+	int rlen;
+	char resolved_path_buff[MAXPATHLEN];
+
+	if (php_stream_stat_path(Z_STRVAL_P(path), &ssb) != 0) {
+		EXCEPTION_ABORT_1("%s: Cannot stat",Z_STRVAL_P(path));
+	}
+
+	dev=(unsigned long) ssb.sb.st_dev;
+	inode=(unsigned long) ssb.sb.st_ino;
+
+#ifdef NETWARE
+	mtime= ssb.sb.st_mtime.tv_sec;
+#else
+	mtime = ssb.sb.st_mtime;
+#endif
+
+	if (mnt) {
+		if (!inode) {
+			if (!VCWD_REALPATH(Z_STRVAL_P(path), resolved_path_buff))
+				EXCEPTION_ABORT_1("%s: Cannot compute realpath",Z_STRVAL_P(path));
+
+			rlen=strlen(resolved_path_buff)+1;
+			hash=zend_get_hash_value(resolved_path_buff,rlen);
+
+			MutexLock(simul_inodes);
+			if (zend_hash_quick_find(&simul_inodes,resolved_path_buff
+				,rlen,hash,(void **)(&lp))==SUCCESS) inode=(*lp);
+			else {
+				inode=simul_inode_index++;
+				zend_hash_quick_add(&simul_inodes,resolved_path_buff
+					,rlen,hash,(void *)(&inode),sizeof(inode),NULL);
+			}
+			MutexUnlock(simul_inodes);
+		}
+
+		spprintf(&p, 256, "%c_%lX_%lX_%lX", prefix, dev, inode, mtime);
+		MAKE_STD_ZVAL(*mnt);
+		ZVAL_STRING((*mnt), p, 0);
+	}
+
+	if (mtp) (*mtp)=mtime;
+}	
+
 /*========================================================================*/
 
 static void ut_build_constants(TSRMLS_D)
@@ -923,6 +1012,8 @@ static int MINIT_utils(TSRMLS_D)
 {
 	ut_build_constants(TSRMLS_C);
 
+	ut_init_persistent_data(TSRMLS_C);
+
 	return SUCCESS;
 }
 
@@ -930,6 +1021,8 @@ static int MINIT_utils(TSRMLS_D)
 
 static int MSHUTDOWN_utils(TSRMLS_D)
 {
+	ut_shutdown_persistent_data(TSRMLS_C);
+
 	return SUCCESS;
 }
 

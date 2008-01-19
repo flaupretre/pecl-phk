@@ -48,20 +48,24 @@ typedef struct {
 
 #define DECLARE_CZVAL(name)	zval CZVAL(name)
 
-#define INIT_CZVAL(name)	\
+#define INIT_CZVAL(name)	INIT_CZVAL_VALUE(name, #name)
+
+#define INIT_CZVAL_VALUE(name,value)	\
 	{ \
 	INIT_ZVAL(CZVAL(name)); \
-	ZVAL_STRING(&(CZVAL(name)), #name,0); \
+	ZVAL_STRING(&(CZVAL(name)), value,0); \
 	}
 
 #define HKEY(name) ( hkey_ ## name )
 
 #define DECLARE_HKEY(name)	HKEY_STRUCT HKEY(name)
 
-#define INIT_HKEY(name) \
+#define INIT_HKEY(name) INIT_HKEY_VALUE(name, #name)
+
+#define INIT_HKEY_VALUE(name,value) \
 	{ \
-	HKEY(name).string= #name ; \
-	HKEY(name).len=sizeof( #name ); \
+	HKEY(name).string= value ; \
+	HKEY(name).len=sizeof( value ); \
 	HKEY(name).hash=zend_get_hash_value(HKEY(name).string,HKEY(name).len); \
 	}
 
@@ -193,9 +197,9 @@ which is the case in this extension. */
 
 #define ALLOC_PERSISTENT_ZVAL(zp) (zp)=pallocate(NULL,sizeof(zval))
 
-#define MAKE_STD_PERSISTENT_ZVAL(zv) \
-	ALLOC_PERSISTENT_ZVAL(zv); \
-	INIT_PZVAL(zv);
+#define MAKE_STD_PERSISTENT_ZVAL(zp) \
+	ALLOC_PERSISTENT_ZVAL(zp); \
+	INIT_PZVAL(zp);
 
 #ifndef ZVAL_ARRAY /*--------------*/
 
@@ -363,6 +367,7 @@ static inline void ut_call_user_function(zval * obj_zp, zval * func_zp,
 								  zval ** args TSRMLS_DC);
 
 static int ut_extension_loaded(char *name, int len TSRMLS_DC);
+static void ut_load_extension_file(zval *file TSRMLS_DC);
 static void ut_load_extension(char *name, int len TSRMLS_DC);
 static void ut_require(char *string, zval * ret TSRMLS_DC);
 static inline int ut_strings_are_equal(zval * zp1, zval * zp2 TSRMLS_DC);
@@ -390,6 +395,7 @@ static char *ut_dirname(char *path, int len, int *reslen TSRMLS_DC);
 static inline int ut_is_uri(char *path, int len TSRMLS_DC);
 static char *ut_mk_absolute_path(char *path, int len, int *reslen, int separ TSRMLS_DC);
 static int ut_rtrim(char *p TSRMLS_DC);
+static void ut_path_unique_id(char prefix, zval * path, zval ** mnt, time_t *mtp  TSRMLS_DC);
 
 /*============================================================================*/
 #endif	/* FLP_UTILS_H */

@@ -40,6 +40,8 @@ ZEND_DECLARE_MODULE_GLOBALS(automap)
 	ZEND_GET_MODULE(automap)
 #endif
 
+static int init_done=0;
+
 /*------------------------*/
 
 #include "utils.c"
@@ -48,6 +50,7 @@ ZEND_DECLARE_MODULE_GLOBALS(automap)
 
 /*---------------------------------------------------------------*/
 /* phpinfo() output                                              */
+
 static PHP_MINFO_FUNCTION(automap)
 {
 	php_info_print_table_start();
@@ -97,13 +100,17 @@ static void build_constant_values()
 
 	INIT_HKEY(map);
 	INIT_HKEY(options);
-	INIT_HKEY(m);
+	INIT_HKEY(automap);
+
+	INIT_HKEY_VALUE(mp_property_name,MP_PROPERTY_NAME);
 }
 
 /*---------------------------------------------------------------*/
 
 static PHP_RINIT_FUNCTION(automap)
 {
+	if (!init_done) return SUCCESS;
+
 	DBG_INIT();
 
 	if (RINIT_utils(TSRMLS_C) == FAILURE) return FAILURE;
@@ -117,6 +124,8 @@ static PHP_RINIT_FUNCTION(automap)
 
 static PHP_RSHUTDOWN_FUNCTION(automap)
 {
+	if (!init_done) return SUCCESS;
+
 	if (RSHUTDOWN_Automap(TSRMLS_C) == FAILURE) return FAILURE;
 
 	if (RSHUTDOWN_utils(TSRMLS_C) == FAILURE) return FAILURE;
@@ -128,12 +137,19 @@ static PHP_RSHUTDOWN_FUNCTION(automap)
 
 static PHP_MINIT_FUNCTION(automap)
 {
+	build_constant_values();
+
+	/* Handle case where the Automap extension is dynamically loaded after
+	   the Automap PHP runtime has been initialized. In this case,
+	   we must not define anything/ */
+
+	if (EG(class_table) && HKEY_EXISTS(EG(class_table),automap)) return SUCCESS;
+	else init_done=1;
+
 	ZEND_INIT_MODULE_GLOBALS(automap, automap_globals_ctor, NULL);
 
 	REGISTER_STRING_CONSTANT("AUTOMAP_EXT_VERSION", AUTOMAP_EXT_VERSION,
 							 CONST_CS | CONST_PERSISTENT);
-
-	build_constant_values();
 
 	if (MINIT_utils(TSRMLS_C) == FAILURE) return FAILURE;
 
@@ -146,6 +162,8 @@ static PHP_MINIT_FUNCTION(automap)
 
 static PHP_MSHUTDOWN_FUNCTION(automap)
 {
+	if (!init_done) return SUCCESS;
+
 #ifndef ZTS
 	automap_globals_dtor(&automap_globals TSRMLS_CC);
 #endif

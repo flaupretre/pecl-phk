@@ -53,7 +53,7 @@ typedef struct {				/* Private */
 
 static HashTable persistent_mtab;
 
-MutexDeclare(persistent_mtab);
+static MutexDeclare(persistent_mtab);
 
 /*---------------------------------------------------------------*/
 
@@ -63,7 +63,9 @@ MutexDeclare(persistent_mtab);
 	\
 	DBG_MSG("Entering Automap::" #_func); \
 	CHECK_MEM(); \
-	FIND_HKEY(Z_OBJPROP_P(getThis()),m,&_tmp); \
+	if (FIND_HKEY(Z_OBJPROP_P(getThis()),mp_property_name,&_tmp)!=SUCCESS) { ; \
+		EXCEPTION_ABORT("Accessing invalid or unmounted object"); \
+	} \
 	mp=*((Automap_Mnt_Info **)(Z_STRVAL_PP(_tmp)));
 
 /*---------------------------------------------------------------*/
@@ -80,7 +82,6 @@ static zval *Automap_instance_by_mp(Automap_Mnt_Info * mp TSRMLS_DC);
 static zval *Automap_instance(zval * mnt, ulong hash TSRMLS_DC);
 static void Automap_mnt_list(zval * ret TSRMLS_DC);
 static void Automap_path_to_mnt(zval * path, zval * mnt TSRMLS_DC);
-static void Automap_compute_mnt(zval * path, zval ** mnt TSRMLS_DC);
 static Automap_Mnt_Info *Automap_mount(zval * path, zval * base_dir, zval * mnt, int flags TSRMLS_DC);
 static Automap_Mnt_Persistent_Data *Automap_get_persistent_data(zval * mnt, ulong hash TSRMLS_DC);
 static Automap_Mnt_Persistent_Data *Automap_get_or_create_persistent_data(Automap_Mnt_Info * mp TSRMLS_DC);
@@ -128,10 +129,18 @@ static void Automap_shutdown_persistent_data(TSRMLS_D)
  
 static void Automap_mnt_info_dtor(Automap_Mnt_Info * mp)
 {
+	TSRMLS_FETCH();
+
 	if (mp->refcountp) (*(mp->refcountp))--;
 
 	if (mp->mnt) zval_ptr_dtor(&(mp->mnt));
-	if (mp->instance) zval_ptr_dtor(&(mp->instance));
+
+	if (mp->instance) {
+		(void)zend_hash_del(Z_OBJPROP_P(mp->instance),MP_PROPERTY_NAME
+			,sizeof(MP_PROPERTY_NAME)); /* Invalidate object */
+		zval_ptr_dtor(&(mp->instance));
+	}
+
 	if (mp->path) zval_ptr_dtor(&(mp->path));
 	if (mp->base_dir) zval_ptr_dtor(&(mp->base_dir));
 	if (mp->flags) zval_ptr_dtor(&(mp->flags));
@@ -360,13 +369,13 @@ static PHP_METHOD(Automap, mnt_list)
 
 /* }}} */
 /*---------------------------------------------------------------*/
-/* In case of error, free mem allocated by compute_mnt() */
+/* In case of error, free mem allocated by ut_path_unique_id() */
 
 static void Automap_path_to_mnt(zval * path, zval * mnt TSRMLS_DC)
 {
 	zval *tmp_mnt;
 
-	Automap_compute_mnt(path, &tmp_mnt TSRMLS_CC);
+	ut_path_unique_id('m', path, &tmp_mnt, NULL TSRMLS_CC);
 	if (EG(exception)) return;
 
 	Automap_get_mnt_info(tmp_mnt, 0, 1 TSRMLS_CC);
@@ -395,39 +404,6 @@ static PHP_METHOD(Automap, path_to_mnt)
 }
 
 /* }}} */
-/*---------------------------------------------------------------*/
-
-static void Automap_compute_mnt(zval * path, zval ** mnt TSRMLS_DC)
-{
-	char *p;
-	php_stream_statbuf ssb;
-	time_t mti;
-
-	DBG_MSG1("Starting Automap_compute_mnt(%s)",Z_STRVAL_P(path));
-
-	if (php_stream_stat_path(Z_STRVAL_P(path), &ssb) != 0) {
-		THROW_EXCEPTION_1("%s: File not found", Z_STRVAL_P(path));
-		return;
-	}
-
-	DBG_MSG("after stat");
-
-#ifdef NETWARE
-	mti = ssb.sb.st_mtime.tv_sec;
-#else
-	mti = ssb.sb.st_mtime;
-#endif
-
-	if (mnt) {
-		spprintf(&p, 256, "%lX_%lX_%lX", (unsigned long) (ssb.sb.st_dev)
-				 , (unsigned long) (ssb.sb.st_ino), (unsigned long) mti);
-		MAKE_STD_ZVAL(*mnt);
-		ZVAL_STRING((*mnt), p, 0);
-	}
-
-	DBG_MSG("Ending Automap_compute_mnt");
-}
-
 /*---------------------------------------------------------------*/
 
 #define INIT_AUTOMAP_MOUNT() \
@@ -459,7 +435,7 @@ static Automap_Mnt_Info *Automap_mount(zval * path, zval * base_dir,
 		SEPARATE_ARG_IF_REF(mnt);
 		if (!ZVAL_IS_STRING(mnt)) convert_to_string(mnt);
 	} else {
-		Automap_compute_mnt(path, &mnt TSRMLS_CC);
+		ut_path_unique_id('m',path,&mnt,NULL TSRMLS_CC);
 		if (EG(exception)) ABORT_AUTOMAP_MOUNT();
 	}
 
@@ -1311,7 +1287,8 @@ static int Automap_resolve_key(zval *key, unsigned long hash
 	type=*Z_STRVAL_PP(value);
 
 	if (type == AUTOMAP_F_EXTENSION) {
-		ut_load_extension(symbol,slen TSRMLS_CC);
+		ZVAL_STRINGL(&zv,symbol,slen,0);
+		ut_load_extension_file(&zv TSRMLS_CC);
 		if (EG(exception)) return 0;
 		Automap_call_success_handlers(key,*value,mp TSRMLS_CC);
 		return 1;
@@ -1591,7 +1568,8 @@ static PHP_METHOD(Automap, export)
 
 static void Automap_set_mp_property(zval * obj, Automap_Mnt_Info * mp TSRMLS_DC)
 {
-	add_property_stringl_ex(obj, "m", 2, (char *)(&mp), sizeof(mp),1 TSRMLS_CC);
+	zend_update_property_stringl(Z_OBJCE_P(obj),obj,"m",1,(char *)(&mp)
+		, sizeof(mp) TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/
@@ -1610,6 +1588,33 @@ static void Automap_register_autoload_hook(TSRMLS_D)
 	zval_ptr_dtor(&zp); /* This way, spl_autoload_register can keep the zval */
 }
 
+/*---------------------------------------------------------------*/
+/* {{{ proto bool PHK::accelerator_is_present() */
+
+static PHP_METHOD(Automap, accelerator_is_present)
+{
+	RETVAL_TRUE;
+}
+
+/* }}} */
+/*---------------------------------------------------------------*/
+/* {{{ proto void Automap::accel_techinfo() */
+
+static PHP_METHOD(Automap, accel_techinfo)
+{
+	if (sapi_module.phpinfo_as_text) {
+		php_printf("Using Automap Accelerator: Yes\n");
+		php_printf("Accelerator Version: %s\n", AUTOMAP_EXT_VERSION);
+	} else {
+		php_printf("<table border=0>");
+		php_printf("<tr><td>Using Automap Accelerator:&nbsp;</td><td>Yes</td></tr>");
+		php_printf("<tr><td>Accelerator Version:&nbsp;</td><td>%s</td></tr>",
+			 AUTOMAP_EXT_VERSION);
+		php_printf("</table>");
+	}
+}
+
+/* }}} */
 /*---------------------------------------------------------------*/
 
 static ZEND_BEGIN_ARG_INFO_EX(Automap_mount_arginfo, 0, 1, 1)
@@ -1683,6 +1688,10 @@ static zend_function_entry Automap_functions[] = {
 	PHP_ME(Automap, option, UT_1arg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, show, UT_noarg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, export, UT_noarg_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Automap, accelerator_is_present, UT_noarg_arginfo,
+		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	PHP_ME(Automap, accel_techinfo, UT_noarg_arginfo,
+		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	{NULL, NULL, NULL, 0, 0}
 };
 
@@ -1736,6 +1745,9 @@ static int MINIT_Automap(TSRMLS_D)
 
 	INIT_CLASS_ENTRY(ce, "Automap", Automap_functions);
 	entry = zend_register_internal_class(&ce TSRMLS_CC);
+
+	zend_declare_property_null(entry,"m",1,ZEND_ACC_PRIVATE TSRMLS_CC);
+
 	set_constants(entry);
 
 	return SUCCESS;

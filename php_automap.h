@@ -54,7 +54,9 @@ static DECLARE_CZVAL(spl_autoload_register);
 
 static DECLARE_HKEY(map);
 static DECLARE_HKEY(options);
-static DECLARE_HKEY(m);
+static DECLARE_HKEY(automap);
+
+static DECLARE_HKEY(mp_property_name);
 
 /*============================================================================*/
 
@@ -98,6 +100,13 @@ ZEND_END_MODULE_GLOBALS(automap)
 #else
 #define AUTOMAP_G(v) (automap_globals.v)
 #endif
+
+/*---------------------------------------------------------------*/
+
+/* We need a private property here, so that it cannot be accessed nor
+   modified by a malicious PHP script */
+
+#define MP_PROPERTY_NAME "\0Automap\0m"
 
 /*---------------------------------------------------------------*/
 #endif							/* PHP_AUTOMAP_H */
