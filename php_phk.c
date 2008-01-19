@@ -35,7 +35,6 @@
 #include "PHK_Stream.h"
 #include "PHK_Mgr.h"
 #include "PHK.h"
-#include "phk_stream_parse_uri2.h"
 
 /*------------------------*/
 
@@ -45,6 +44,8 @@ ZEND_DECLARE_MODULE_GLOBALS(phk)
 	ZEND_GET_MODULE(phk)
 #endif
 
+static int init_done=0;
+
 /*------------------------*/
 
 #include "utils.c"
@@ -52,7 +53,6 @@ ZEND_DECLARE_MODULE_GLOBALS(phk)
 #include "PHK_Stream.c"
 #include "PHK_Mgr.c"
 #include "PHK.c"
-#include "phk_stream_parse_uri2.c"
 
 /*---------------------------------------------------------------*/
 /* phpinfo() output                                              */
@@ -63,28 +63,9 @@ static PHP_MINFO_FUNCTION(phk)
 
 	php_info_print_table_row(2, "PHK Accelerator", "enabled");
 	php_info_print_table_row(2, "Version", PHK_ACCEL_VERSION);
-	php_info_print_table_row(2, "Cache used",
-							 PHK_Cache_cache_name(TSRMLS_C));
+	php_info_print_table_row(2, "Cache used",PHK_Cache_cache_name(TSRMLS_C));
 
 	php_info_print_table_end();
-}
-
-/*---------------------------------------------------------------*/
-
-static PHP_FUNCTION(_phk_techinfo)
-{
-	if (sapi_module.phpinfo_as_text) {
-		php_printf("Using PHK Accelerator: Yes\n");
-		php_printf("Accelerator Version: %s\n", PHK_ACCEL_VERSION);
-	} else {
-		php_printf("<table border=0>");
-		php_printf
-			("<tr><td>Using PHK Accelerator:&nbsp;</td><td>Yes</td></tr>");
-		php_printf
-			("<tr><td>Accelerator Version:&nbsp;</td><td>%s</td></tr>",
-			 PHK_ACCEL_VERSION);
-		php_printf("</table>");
-	}
 }
 
 /*---------------------------------------------------------------*/
@@ -119,11 +100,8 @@ static void build_constant_values()
 	INIT_ZVAL(CZVAL(null));
 	ZVAL_NULL(&CZVAL(null));
 
-	INIT_ZVAL(CZVAL(slash));
-	ZVAL_STRING(&CZVAL(slash), "/", 0);
-
-	INIT_ZVAL(CZVAL(application_x_httpd_php));
-	ZVAL_STRING(&CZVAL(application_x_httpd_php), "application/x-httpd-php", 0);
+	INIT_CZVAL_VALUE(slash,"/");
+	INIT_CZVAL_VALUE(application_x_httpd_php,"application/x-httpd-php");
 
 	INIT_CZVAL(PHK_Stream_Backend);
 	INIT_CZVAL(PHK_Backend);
@@ -168,7 +146,7 @@ static void build_constant_values()
 	INIT_HKEY(max_php_version);
 	INIT_HKEY(mime_types);
 	INIT_HKEY(web_run_script);
-	INIT_HKEY(m);
+	INIT_HKEY_VALUE(mp_property_name,MP_PROPERTY_NAME);
 	INIT_HKEY(web_main_redirect);
 	INIT_HKEY(_PHK_path);
 	INIT_HKEY(ORIG_PATH_INFO);
@@ -181,12 +159,15 @@ static void build_constant_values()
 	INIT_HKEY(automap);
 	INIT_HKEY(phk_stream_backend);
 	INIT_HKEY(eaccelerator_get);
+	INIT_HKEY(phk);
 }
 
 /*---------------------------------------------------------------*/
 
 static PHP_RINIT_FUNCTION(phk)
 {
+	if (!init_done) return SUCCESS;
+
 	DBG_INIT();
 
 	if (RINIT_utils(TSRMLS_C) == FAILURE) return FAILURE;
@@ -206,6 +187,8 @@ static PHP_RINIT_FUNCTION(phk)
 
 static PHP_RSHUTDOWN_FUNCTION(phk)
 {
+	if (!init_done) return SUCCESS;
+
 	if (RSHUTDOWN_PHK(TSRMLS_C) == FAILURE) return FAILURE;
 
 	if (RSHUTDOWN_PHK_Mgr(TSRMLS_C) == FAILURE) return FAILURE;
@@ -223,12 +206,19 @@ static PHP_RSHUTDOWN_FUNCTION(phk)
 
 static PHP_MINIT_FUNCTION(phk)
 {
+	build_constant_values();
+
+	/* Handle case where the PHK extension is dynamically loaded from a
+	   PHK package (as when Automap.phk registers extensions). In this case,
+	   we must not define anything/ */
+
+	if (EG(class_table) && HKEY_EXISTS(EG(class_table),phk)) return SUCCESS;
+	else init_done=1;
+
 	ZEND_INIT_MODULE_GLOBALS(phk, phk_globals_ctor, NULL);
 
 	REGISTER_STRING_CONSTANT("PHK_ACCEL_VERSION", PHK_ACCEL_VERSION,
 							 CONST_CS | CONST_PERSISTENT);
-
-	build_constant_values();
 
 	if (MINIT_utils(TSRMLS_C) == FAILURE) return FAILURE;
 
@@ -247,6 +237,8 @@ static PHP_MINIT_FUNCTION(phk)
 
 static PHP_MSHUTDOWN_FUNCTION(phk)
 {
+	if (!init_done) return SUCCESS;
+
 #ifndef ZTS
 	phk_globals_dtor(&phk_globals TSRMLS_CC);
 #endif
@@ -264,22 +256,6 @@ static PHP_MSHUTDOWN_FUNCTION(phk)
 	return SUCCESS;
 }
 
-/*-- Function entries --*/
-
-static ZEND_BEGIN_ARG_INFO_EX(phk_stream_parse_uri2_arginfo, 0, 0, 5)
-ZEND_ARG_INFO(0, uri)
-ZEND_ARG_INFO(1, command)
-ZEND_ARG_INFO(1, params)
-ZEND_ARG_INFO(1, mnt)
-ZEND_ARG_INFO(1, path)
-ZEND_END_ARG_INFO()
-
-static function_entry phk_functions[] = {
-	PHP_FE(_phk_techinfo, UT_noarg_arginfo)
-	PHP_FE(_phk_stream_parse_uri2, phk_stream_parse_uri2_arginfo)
-	{NULL, NULL, NULL, 0, 0}
-};
-
 /*-- Module definition --*/
 
 zend_module_entry phk_module_entry = {
@@ -287,7 +263,7 @@ zend_module_entry phk_module_entry = {
 	STANDARD_MODULE_HEADER,
 #endif
 	PHP_PHK_EXTNAME,
-	phk_functions,
+	NULL,
 	PHP_MINIT(phk),
 	PHP_MSHUTDOWN(phk),
 	PHP_RINIT(phk),

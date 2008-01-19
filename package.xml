@@ -49,8 +49,6 @@
    <file name="PHK_Mgr.c" role="src"/>
    <file name="PHK_Mgr.h" role="src"/>
    <file name="php_phk.c" role="src"/>
-   <file name="phk_stream_parse_uri2.c" role="src"/>
-   <file name="phk_stream_parse_uri2.h" role="src"/>
    <file name="php_phk.c" role="src"/>
    <file name="php_phk.h" role="src"/>
    <file name="utils.c" role="src"/>

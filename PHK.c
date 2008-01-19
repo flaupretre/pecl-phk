@@ -76,7 +76,9 @@ ZEND_EXTERN_MODULE_GLOBALS(phk)
 	\
 	DBG_MSG("Entering PHK::" #_func); \
 	CHECK_MEM(); \
-	FIND_HKEY(Z_OBJPROP_P(getThis()),m,&_tmp); \
+	if (FIND_HKEY(Z_OBJPROP_P(getThis()),mp_property_name,&_tmp)!=SUCCESS) { ; \
+		EXCEPTION_ABORT("Accessing invalid or unmounted object"); \
+	} \
 	mp= *((PHK_Mnt_Info **)(Z_STRVAL_PP(_tmp)));
 
 /*---------------------------------------------------------------*/
@@ -142,8 +144,8 @@ static void set_constants(zend_class_entry * ce);
 
 static void PHK_set_mp_property(zval * obj, PHK_Mnt_Info * mp TSRMLS_DC)
 {
-	add_property_stringl_ex(obj, "m", 2, (char *) (&mp), sizeof(mp),
-							1 TSRMLS_CC);
+	zend_update_property_stringl(Z_OBJCE_P(obj),obj,"m",1,(char *)(&mp)
+		, sizeof(mp) TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/
@@ -953,6 +955,24 @@ static PHP_METHOD(PHK, __call)
 
 /* }}} */
 /*---------------------------------------------------------------*/
+/* {{{ proto void PHK::accel_techinfo() */
+
+static PHP_METHOD(PHK, accel_techinfo)
+{
+	if (sapi_module.phpinfo_as_text) {
+		php_printf("Using PHK Accelerator: Yes\n");
+		php_printf("Accelerator Version: %s\n", PHK_ACCEL_VERSION);
+	} else {
+		php_printf("<table border=0>");
+		php_printf("<tr><td>Using PHK Accelerator:&nbsp;</td><td>Yes</td></tr>");
+		php_printf("<tr><td>Accelerator Version:&nbsp;</td><td>%s</td></tr>",
+			 PHK_ACCEL_VERSION);
+		php_printf("</table>");
+	}
+}
+
+/* }}} */
+/*---------------------------------------------------------------*/
 /* {{{ proto string PHK::prolog(string file, mixed &cmd, mixed &ret) */
 
 /* Undocumented - called by the PHK runtime code only */
@@ -966,6 +986,12 @@ static PHP_METHOD(PHK, prolog)
 	struct stat dummy_sb;
 
 	DBG_MSG("Entering Prolog");
+
+	/* Workaround to PHP bug #39903 (__COMPILER_HALT_OFFSET__ already defined) */
+	/* Not perfect but can suppress further notice messages */
+
+	(void)zend_hash_del(EG(zend_constants),"__COMPILER_HALT_OFFSET__"
+		,sizeof("__COMPILER_HALT_OFFSET__"));
 
 	if (zend_parse_parameters
 		(ZEND_NUM_ARGS()TSRMLS_CC, "zzz", &file, &cmd, &ret) == FAILURE)
@@ -1067,7 +1093,8 @@ ZEND_ARG_INFO(1, ret)
 ZEND_END_ARG_INFO()
 
 /*---------------------------------------------------------------*/
- static zend_function_entry PHK_functions[] = {
+
+static zend_function_entry PHK_functions[] = {
 	PHP_ME(PHK, need_php_runtime, UT_noarg_arginfo,
 		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	PHP_ME(PHK, __construct, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
@@ -1104,6 +1131,8 @@ ZEND_END_ARG_INFO()
 		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	PHP_ME(PHK, __call, UT_2args_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, prolog, PHK_prolog_arginfo,
+		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	PHP_ME(PHK, accel_techinfo, UT_noarg_arginfo,
 		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	{NULL, NULL, NULL, 0, 0}
 };
@@ -1155,6 +1184,9 @@ static int MINIT_PHK(TSRMLS_D)
 
 	INIT_CLASS_ENTRY(ce, "PHK", PHK_functions);
 	entry = zend_register_internal_class(&ce TSRMLS_CC);
+
+	zend_declare_property_null(entry,"m",1,ZEND_ACC_PRIVATE TSRMLS_CC);
+
 	set_constants(entry);
 
 	/*--- Init mime table */

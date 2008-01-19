@@ -4,7 +4,7 @@ _phk_techinfo
 <?php if (!extension_loaded("phk")) print "skip"; ?>
 --FILE--
 <?php
-_phk_techinfo();
+PHK::techinfo();
 ?>
 ===DONE===
 --EXPECT--

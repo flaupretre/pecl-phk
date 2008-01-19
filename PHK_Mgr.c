@@ -32,7 +32,6 @@
 #include "utils.h"
 #include "PHK.h"
 #include "PHK_Mgr.h"
-#include "phk_stream_parse_uri2.h"
 
 ZEND_EXTERN_MODULE_GLOBALS(phk)
 
@@ -75,7 +74,7 @@ static HashTable persistent_mtab;
 
 static int tmp_mnt_num;
 
-MutexDeclare(persistent_mtab);
+static MutexDeclare(persistent_mtab);
 
 /*---------------------------------------------------------------*/
 
@@ -873,14 +872,13 @@ static void PHK_Mgr_compute_mnt(zval * path, PHK_Mnt_Info ** parent_mpp,
 	zval subpath, tmp_mnt, tmp_parent_mnt;
 	int len;
 	char *p;
-	php_stream_statbuf ssb;
 	PHK_Mnt_Info *parent_mp;
 	time_t mti;
 
 	INIT_PHK_MGR_COMPUTE_MNT();
 
 	if (PHK_Mgr_is_a_phk_uri(path TSRMLS_CC)) {	/* Sub-package */
-		_phk_stream_parse_uri2(path, NULL, NULL, &tmp_parent_mnt,
+		PHK_Stream_parse_uri(path, NULL, NULL, &tmp_parent_mnt,
 							   &subpath TSRMLS_CC);
 		if (EG(exception)) ABORT_PHK_MGR_COMPUTE_MNT();
 
@@ -909,26 +907,10 @@ static void PHK_Mgr_compute_mnt(zval * path, PHK_Mnt_Info ** parent_mpp,
 			ZVAL_ADDREF(parent_mp->mtime);
 		}
 	} else {
-		if (php_stream_stat_path(Z_STRVAL_P(path), &ssb) != 0) {
-			THROW_EXCEPTION_1("%s: File not found", Z_STRVAL_P(path));
-			ABORT_PHK_MGR_COMPUTE_MNT();
-		}
-#ifdef NETWARE
-		mti = ssb.sb.st_mtime.tv_sec;
-#else
-		mti = ssb.sb.st_mtime;
-#endif
+		ut_path_unique_id('p',path,mnt,&mti TSRMLS_CC);
+		if (EG(exception)) ABORT_PHK_MGR_COMPUTE_MNT();
 
 		if (parent_mpp) (*parent_mpp) = NULL;
-
-		if (mnt) {
-			spprintf(&p, 256, "%lX_%lX_%lX",
-					 (unsigned long) (ssb.sb.st_dev)
-					 , (unsigned long) (ssb.sb.st_ino),
-					 (unsigned long) mti);
-			MAKE_STD_ZVAL(*mnt);
-			ZVAL_STRING((*mnt), p, 0);
-		}
 
 		if (mtime) {
 			if (*mtime) zval_ptr_dtor(mtime);
@@ -1143,7 +1125,7 @@ static PHK_Mnt_Persistent_Data *PHK_Mgr_get_or_create_persistent_data(zval * mnt
 	HashTable *opt_ht;
 	char *p;
 
-	DBG_MSG1("Entering PHK_Mgr_get_persistent_data(%s)", Z_STRVAL_P(mnt));
+	DBG_MSG1("Entering PHK_Mgr_get_or_create_persistent_data(%s)", Z_STRVAL_P(mnt));
 
 	INIT_PHK_GET_OR_CREATE_PERSISTENT_DATA();
 

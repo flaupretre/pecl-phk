@@ -23,7 +23,9 @@
 #endif
 
 #include "php.h"
+#include "SAPI.h"
 #include "php_streams.h"
+#include "php_variables.h"
 #include "ext/standard/basic_functions.h"
 #include "streams/php_streams_int.h"
 #include "zend_hash.h"
@@ -32,7 +34,6 @@
 
 #include "PHK_Stream.h"
 #include "PHK_Mgr.h"
-#include "phk_stream_parse_uri2.h"
 #include "utils.h"
 
 ZEND_EXTERN_MODULE_GLOBALS(phk)
@@ -363,7 +364,7 @@ static int do_stat(php_stream_wrapper * wrapper, char *uri,
 		DBG_MSG("do_stat: Parsing uri");
 		INIT_ZVAL(z_uri);
 		ZVAL_STRINGL(&z_uri, uri, uri_len, 0);
-		_phk_stream_parse_uri2(&z_uri, &(dp->z_command)
+		PHK_Stream_parse_uri(&z_uri, &(dp->z_command)
 							   , &(dp->z_params), &(dp->z_mnt),
 							   &(dp->z_path) TSRMLS_CC);
 		if (EG(exception)) {
@@ -632,7 +633,7 @@ static php_stream *PHK_Stream_generic_open(int dir,
 
 	/*-- Parse the URI */
 
-	_phk_stream_parse_uri2(&z_uri, &(dp->z_command), &(dp->z_params)
+	PHK_Stream_parse_uri(&z_uri, &(dp->z_command), &(dp->z_params)
 						   , &(dp->z_mnt), &(dp->z_path) TSRMLS_CC);
 	if (EG(exception)) {
 		DBG_MSG("generic_open:Invalid uri");
@@ -723,6 +724,135 @@ static php_stream *PHK_Stream_opendir(php_stream_wrapper * wrapper,
 								   context STREAMS_CC TSRMLS_CC);
 }
 
+/*---------------------------------------------------------------*/
+
+static void PHK_Stream_parse_uri(zval * uri, zval * z_command,
+								 zval * z_params, zval * z_mnt,
+								 zval * z_path TSRMLS_DC)
+{
+	char *cmdp, *ampp, *path, *p, *res, *urip;
+	int cmd_len, path_len, mnt_len, slash1, uri_len;
+
+	DBG_MSG("Entering PHK_Stream_parse_uri");
+	/*DBG_MSG1("parse_uri: on entry, uri=<%s>",Z_STRVAL_P(uri));*/
+
+	/* Check that it is a phk uri (should always succed) */
+
+	if (!PHK_Mgr_is_a_phk_uri(uri TSRMLS_CC)) {
+		EXCEPTION_ABORT_1("%s: Not a PHK URI", Z_STRVAL_P(uri));
+	}
+
+	urip = Z_STRVAL_P(uri) + 6;	/* Remove 'phk://' */
+	uri_len = Z_STRLEN_P(uri) - 6;
+
+	while ((*urip) == '/') {	/* Suppress leading '/' chars */
+		urip++;
+		uri_len--;
+	}
+
+	/*DBG_MSG2("parse_uri: after stripping, uri=<%s> - uri_len=%d",urip,uri_len);*/
+
+	for (p = urip, cmdp = ampp = NULL, mnt_len = uri_len, slash1 =
+		 1, cmd_len = 0;; p++) {
+		if ((*p) == '\0')
+			break;
+		switch (*p) {
+		  case '\\':
+			  (*p) = '/';
+		  case '/':
+			  if (slash1) {
+				  slash1 = 0;
+				  mnt_len = p - urip;
+			  }
+			  break;
+
+		  case '?':
+			  if (slash1) {
+				  slash1 = 0;
+				  mnt_len = p - urip;
+			  }
+			  uri_len = p - urip;
+			  cmdp = p + 1;
+			  if ((*cmdp) == '\0') {
+				  EXCEPTION_ABORT_1("%s: Empty command", Z_STRVAL_P(uri));
+			  }
+			  break;
+
+		  case '&':
+			  if (!cmdp) {		/* Parameters before command */
+				  EXCEPTION_ABORT_1("%s: Parameters before command",
+									Z_STRVAL_P(uri));
+			  }
+			  cmd_len = p - cmdp;
+			  ampp = p + 1;
+
+			  if (z_params) {
+				  zval_dtor(z_params);
+				  res = estrdup(ampp);	/* Leaked ? */
+				  array_init(z_params);
+				  DBG_MSG1
+					  ("parse_uri: calling sapi_module.treat_data, ampp=<%s>",
+					   ampp);
+				  sapi_module.treat_data(PARSE_STRING, res,
+										 z_params TSRMLS_CC);
+			  }
+			  break;
+		}
+	}
+
+	if (cmdp && (cmd_len == 0))
+		cmd_len = p - cmdp;		/* Command without argument */
+
+	p = &(urip[uri_len - 1]);
+	while (uri_len && (*(p--) == '/'))
+		uri_len--;				/* Suppress trailing '/' */
+
+	/*DBG_MSG2("parse_uri: after stripping2, uri=<%s> - uri_len=%d",urip,uri_len);*/
+	/*DBG_MSG1("parse_uri: after stripping2, mnt_len=%d",mnt_len);*/
+	/*DBG_MSG1("parse_uri: after stripping2, cmd_len=%d",cmd_len);*/
+
+	path_len = 0;
+	path = "";
+	if ((mnt_len = MIN(uri_len, mnt_len)) != 0) {	/* Not a global command */
+		if (uri_len > (mnt_len + 1)) {
+			path_len = uri_len - mnt_len - 1;
+			path = &(urip[mnt_len + 1]);
+		}
+	}
+
+	if ((!cmdp) && (!mnt_len))
+		THROW_EXCEPTION_1("Empty URI", NULL);
+
+/* Return values */
+
+	if (z_command) {
+		zval_dtor(z_command);
+		if (cmdp) {
+			ZVAL_STRINGL(z_command, cmdp, cmd_len, 1);
+		} else {
+			ZVAL_NULL(z_command);
+		}
+	}
+
+	if (z_mnt) {
+		zval_dtor(z_mnt);
+		if (mnt_len) {
+			ZVAL_STRINGL(z_mnt, urip, mnt_len, 1);
+		} else {
+			ZVAL_NULL(z_mnt);
+		}
+	}
+
+	if (z_path) {
+		zval_dtor(z_path);
+		if (path_len) {
+			ZVAL_STRINGL(z_path, path, path_len, 1);
+		} else {
+			ZVAL_NULL(z_path);
+		}
+	}
+}
+
 /*--------------------*/
 /* A PHK URI is opcode-cacheable if :
 	- it corresponds to a currently mounted package,
@@ -777,7 +907,7 @@ static php_stream_wrapper_ops phk_stream_wops = {
 	NULL,						/* rename */
 	NULL,						/* mkdir */
 	NULL						/* rmdir */
-#ifdef ZEND_ENGINE_SUPPORTS_CACHE_KEY_WRAPPER_OPS
+#ifdef STREAMS_SUPPORT_CACHE_KEY
 	, PHK_Stream_cache_key		/* cache_key */
 #endif
 };

@@ -33,7 +33,7 @@
 
 /*---------------------------------------------------------------*/
 
-#define PHK_ACCEL_VERSION "1.1.0"
+#define PHK_ACCEL_VERSION "1.4.0"
 
 #define PHK_ACCEL_MIN_VERSION "1.4.0"
 
@@ -42,12 +42,6 @@
 GLOBAL zend_module_entry phk_module_entry;
 
 #define phpext_phk_ptr &phk_module_entry
-
-/* Condition is experimental and will change */
-
-#if ZEND_EXTENSION_API_NO >= 220071023
-#	define ZEND_ENGINE_SUPPORTS_CACHE_KEY_WRAPPER_OPS
-#endif
 
 /*---------------------------------------------------------------*/
 
@@ -99,7 +93,7 @@ static DECLARE_HKEY(min_php_version);
 static DECLARE_HKEY(max_php_version);
 static DECLARE_HKEY(mime_types);
 static DECLARE_HKEY(web_run_script);
-static DECLARE_HKEY(m);
+static DECLARE_HKEY(mp_property_name);
 static DECLARE_HKEY(web_main_redirect);
 static DECLARE_HKEY(_PHK_path);
 static DECLARE_HKEY(ORIG_PATH_INFO);
@@ -112,6 +106,7 @@ static DECLARE_HKEY(argv);
 static DECLARE_HKEY(automap);
 static DECLARE_HKEY(phk_stream_backend);
 static DECLARE_HKEY(eaccelerator_get);
+static DECLARE_HKEY(phk);
 
 /*----- Mount flags --------*/
 
@@ -187,6 +182,13 @@ ZEND_END_MODULE_GLOBALS(phk)
 #else
 #	define PHK_G(v) (phk_globals.v)
 #endif
+
+/*---------------------------------------------------------------*/
+
+/* We need a private property here, so that it cannot be accessed nor
+   modified by a malicious PHP script */
+
+#define MP_PROPERTY_NAME "\0PHK\0m"
 
 /*---------------------------------------------------------------*/
 #endif							/* PHP_PHK_H */

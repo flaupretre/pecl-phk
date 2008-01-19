@@ -29,4 +29,8 @@ static void PHK_Stream_get_file(int dir, zval * z_ret_p, zval * z_uri_p,
 								zval * z_params_p, zval * z_path_p,
 								zval * z_cache_p TSRMLS_DC);
 
+static void PHK_Stream_parse_uri(zval * uri, zval * z_command,
+								 zval * z_params, zval * z_mnt,
+								 zval * z_path TSRMLS_DC);
+								   
 /*============================================================================*/
