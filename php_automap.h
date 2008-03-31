@@ -31,7 +31,7 @@
 
 /*---------------------------------------------------------------*/
 
-#define AUTOMAP_EXT_VERSION "1.1.0"
+#define PHP_AUTOMAP_VERSION "1.1.1-dev"
 
 #define AUTOMAP_API "1.1.0"
 
