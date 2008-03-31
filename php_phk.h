@@ -33,8 +33,9 @@
 
 /*---------------------------------------------------------------*/
 
-#define PHK_ACCEL_VERSION "1.4.0"
+#define PHP_PHK_VERSION "1.4.1-dev"
 
+#define PHK_ACCEL_VERSION PHP_PHK_VERSION
 #define PHK_ACCEL_MIN_VERSION "1.4.0"
 
 #define PHP_PHK_EXTNAME "phk"
