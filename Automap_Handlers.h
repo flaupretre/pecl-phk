@@ -1,6 +1,6 @@
 /*
   +----------------------------------------------------------------------+
-  | Automap extension <http://automap.tekwire.net>                     |
+  | Automap extension <http://automap.tekwire.net>                       |
   +----------------------------------------------------------------------+
   | Copyright (c) 2005-2007 The PHP Group                                |
   +----------------------------------------------------------------------+
@@ -18,38 +18,24 @@
 
 /* $Id$ */
 
-#ifndef AUTOMAP_H
-#define AUTOMAP_H 1
-/*---------------------------------------------------------------*/
+#ifndef __AUTOMAP_HANDLERS_H
+#define __AUTOMAP_HANDLERS_H
 
-#define AUTOMAP_MAGIC "AUTOMAP  M\024\010\6\3"
+#include "Automap_Pmap.h"
+#include "Automap_Mnt.h"
 
-/* Key types */
+/*============================================================================*/
 
-#define AUTOMAP_T_FUNCTION	'F'
-#define AUTOMAP_T_CONSTANT	'C'
-#define AUTOMAP_T_CLASS		'L'
-#define AUTOMAP_T_EXTENSION	'E'
+static PHP_METHOD(Automap, register_failure_handler);
+static void Automap_call_failure_handlers(char type, char *symbol, int slen TSRMLS_DC);
+static PHP_METHOD(Automap, register_success_handler);
+static void Automap_call_success_handlers(Automap_Mnt *mp,Automap_Pmap_Entry *pep
+	TSRMLS_DC);
 
-#define AUTOMAP_F_SCRIPT	'S'
-#define AUTOMAP_F_EXTENSION	'X'
-#define AUTOMAP_F_PACKAGE	'P'
+static int MINIT_Automap_Handlers(TSRMLS_D);
+static int MSHUTDOWN_Automap_Handlers(TSRMLS_D);
+static int RINIT_Automap_Handlers(TSRMLS_D);
+static int RSHUTDOWN_Automap_Handlers(TSRMLS_D);
 
-typedef struct {
-	char type;
-	char *string;
-} automap_type_string;
-
-static automap_type_string automap_type_strings[]={
-	{ AUTOMAP_T_FUNCTION,	"function" },
-	{ AUTOMAP_T_CONSTANT,	"constant" },
-	{ AUTOMAP_T_CLASS, 		"class" },
-	{ AUTOMAP_T_EXTENSION,	"extension" },
-	{ AUTOMAP_F_SCRIPT,		"script" },
-	{ AUTOMAP_F_EXTENSION,	"extension file" },
-	{ AUTOMAP_F_PACKAGE,	"package" },
-	{ '\0', NULL }
-};
-
-/*---------------------------------------------------------------*/
-#endif							/*AUTOMAP_H */
+/*============================================================================*/
+#endif

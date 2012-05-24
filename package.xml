@@ -1,72 +1,55 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<package packagerversion="1.5.4" version="2.0" xmlns="http://pear.php.net/dtd/package-2.0" xmlns:tasks="http://pear.php.net/dtd/tasks-1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://pear.php.net/dtd/tasks-1.0 http://pear.php.net/dtd/tasks-1.0.xsd http://pear.php.net/dtd/package-2.0 http://pear.php.net/dtd/package-2.0.xsd">
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE package SYSTEM "http://pear.php.net/dtd/package-1.0">
+<package version="1.0" packagerversion="1.9.4">
  <name>automap</name>
- <channel>pecl.php.net</channel>
  <summary>A fast map-based autoloader</summary>
- <description>A fast map-based autoloader</description>
- <lead>
-  <name>Francois Laupretre</name>
-  <user>francois</user>
-  <email>francois@php.net</email>
-  <active>yes</active>
- </lead>
- <date>2008-01-19</date>
- <time>12:00:00</time>
- <version>
-  <release>1.1.0</release>
-  <api>1.1.0</api>
- </version>
- <stability>
-  <release>alpha</release>
-  <api>alpha</api>
- </stability>
- <license uri="http://www.php.net/license">PHP License</license>
- <notes>Initial release in PECL</notes>
- <contents>
-  <dir baseinstalldir="/" name="/">
-   <dir name="tests">
-   </dir> <!-- /tests -->
-   <file name="Automap.c" role="src"/>
-   <file name="Automap.h" role="src"/>
-   <file name="config.m4" role="src"/>
-   <file name="config.w32" role="src"/>
-   <file name="CREDITS" role="doc"/>
-   <file name="LICENSE" role="doc"/>
-   <file name="README" role="doc"/>
-   <file name="php_automap.c" role="src"/>
-   <file name="php_automap.h" role="src"/>
-   <file name="utils.c" role="src"/>
-   <file name="utils.h" role="src"/>
-  </dir> <!-- / -->
- </contents>
- <dependencies>
-  <required>
-   <php>
-    <min>5.1.0</min>
-   </php>
-   <pearinstaller>
-    <min>1.4.0</min>
-   </pearinstaller>
-   <extension>
-    <name>SPL</name>
-   </extension>
-  </required>
- </dependencies>
- <providesextension>automap</providesextension>
- <extsrcrelease/>
- <changelog>
-  <release>
-   <version>
-    <release>1.1.0</release>
-    <api>1.1.0</api>
-   </version>
-   <stability>
-    <release>alpha</release>
-    <api>alpha</api>
-   </stability>
-   <date>2008-01-19</date>
-   <license uri="http://www.php.net/license">PHP License</license>
-   <notes>Initial release in PECL</notes>
-  </release>
- </changelog>
+ <description>A fast map-based autoloader
+ </description>
+ <maintainers>
+  <maintainer>
+   <user>francois</user>
+   <name>Francois Laupretre</name>
+   <email>francois@php.net</email>
+   <role>lead</role>
+  </maintainer>
+  </maintainers>
+ <release>
+  <version>2.0.0</version>
+  <date>2012-05-25</date>
+  <license>PHP License</license>
+  <state>beta</state>
+  <notes>Tested with PHP versions 5.1.0 to 5.4.1
+  </notes>
+  <deps>
+   <dep type="php" rel="ge" version="5.1.0"/>
+  </deps>
+  <filelist>
+   <file role="src" baseinstalldir="/" name="Automap_Handlers.c"/>
+   <file role="src" baseinstalldir="/" name="Automap_Handlers.h"/>
+   <file role="src" baseinstalldir="/" name="Automap_Instance.c"/>
+   <file role="src" baseinstalldir="/" name="Automap_Instance.h"/>
+   <file role="src" baseinstalldir="/" name="Automap_Key.c"/>
+   <file role="src" baseinstalldir="/" name="Automap_Key.h"/>
+   <file role="src" baseinstalldir="/" name="Automap_Loader.c"/>
+   <file role="src" baseinstalldir="/" name="Automap_Loader.h"/>
+   <file role="src" baseinstalldir="/" name="Automap_Mnt.c"/>
+   <file role="src" baseinstalldir="/" name="Automap_Mnt.h"/>
+   <file role="src" baseinstalldir="/" name="Automap_Pmap.c"/>
+   <file role="src" baseinstalldir="/" name="Automap_Pmap.h"/>
+   <file role="src" baseinstalldir="/" name="Automap_Type.c"/>
+   <file role="src" baseinstalldir="/" name="Automap_Type.h"/>
+   <file role="src" baseinstalldir="/" name="Automap_Util.c"/>
+   <file role="src" baseinstalldir="/" name="Automap_Util.h"/>
+   <file role="doc" baseinstalldir="/" name="CREDITS"/>
+   <file role="doc" baseinstalldir="/" name="LICENSE"/>
+   <file role="doc" baseinstalldir="/" name="README"/>
+   <file role="src" baseinstalldir="/" name="cleanup"/>
+   <file role="src" baseinstalldir="/" name="config.m4"/>
+   <file role="src" baseinstalldir="/" name="config.w32"/>
+   <file role="src" baseinstalldir="/" name="php_automap.c"/>
+   <file role="src" baseinstalldir="/" name="php_automap.h"/>
+   <file role="src" baseinstalldir="/" name="utils.c"/>
+   <file role="src" baseinstalldir="/" name="utils.h"/>
+  </filelist>
+ </release>
 </package>

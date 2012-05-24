@@ -18,19 +18,9 @@
 
 /* $Id$ */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "php.h"
-#include "TSRM/TSRM.h"
-#include "ext/standard/info.h"
-
 #define ALLOCATE
 
 #include "php_automap.h"
-#include "utils.h"
-#include "Automap.h"
 
 /*------------------------*/
 
@@ -46,7 +36,14 @@ static int init_done=0;
 
 #include "utils.c"
 
-#include "Automap.c"
+#include "Automap_Handlers.c"
+#include "Automap_Instance.c"
+#include "Automap_Key.c"
+#include "Automap_Loader.c"
+#include "Automap_Mnt.c"
+#include "Automap_Pmap.c"
+#include "Automap_Type.c"
+#include "Automap_Util.c"
 
 /*---------------------------------------------------------------*/
 /* phpinfo() output                                              */
@@ -57,6 +54,14 @@ static PHP_MINFO_FUNCTION(automap)
 
 	php_info_print_table_row(2, "Automap", "enabled");
 	php_info_print_table_row(2, "Version", AUTOMAP_EXT_VERSION);
+#ifdef AUTOMAP_DEBUG
+	{
+	char buf[10];
+
+	sprintf(buf,"%d",zend_hash_num_elements(&ptab));
+	php_info_print_table_row(2, "Persistent map count",buf);
+	}
+#endif
 
 	php_info_print_table_end();
 }
@@ -95,7 +100,8 @@ static void build_constant_values()
 
 	INIT_CZVAL(Automap);
 	INIT_CZVAL(spl_autoload_register);
-
+	INIT_CZVAL_VALUE(Automap__autoload_hook,"Automap::autoload_hook");
+	
 	/* Hash keys */
 
 	INIT_HKEY(map);
@@ -114,8 +120,14 @@ static PHP_RINIT_FUNCTION(automap)
 	DBG_INIT();
 
 	if (RINIT_utils(TSRMLS_C) == FAILURE) return FAILURE;
-
-	if (RINIT_Automap(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RINIT_Automap_Handlers(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RINIT_Automap_Instance(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RINIT_Automap_Key(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RINIT_Automap_Loader(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RINIT_Automap_Mnt(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RINIT_Automap_Pmap(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RINIT_Automap_Type(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RINIT_Automap_Util(TSRMLS_C) == FAILURE) return FAILURE;
 
 	return SUCCESS;
 }
@@ -126,9 +138,15 @@ static PHP_RSHUTDOWN_FUNCTION(automap)
 {
 	if (!init_done) return SUCCESS;
 
-	if (RSHUTDOWN_Automap(TSRMLS_C) == FAILURE) return FAILURE;
-
 	if (RSHUTDOWN_utils(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RSHUTDOWN_Automap_Handlers(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RSHUTDOWN_Automap_Instance(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RSHUTDOWN_Automap_Key(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RSHUTDOWN_Automap_Loader(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RSHUTDOWN_Automap_Mnt(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RSHUTDOWN_Automap_Pmap(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RSHUTDOWN_Automap_Type(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RSHUTDOWN_Automap_Util(TSRMLS_C) == FAILURE) return FAILURE;
 
 	return SUCCESS;
 }
@@ -141,7 +159,7 @@ static PHP_MINIT_FUNCTION(automap)
 
 	/* Handle case where the Automap extension is dynamically loaded after
 	   the Automap PHP runtime has been initialized. In this case,
-	   we must not define anything/ */
+	   we must not define anything */
 
 	if (EG(class_table) && HKEY_EXISTS(EG(class_table),automap)) return SUCCESS;
 	else init_done=1;
@@ -151,9 +169,17 @@ static PHP_MINIT_FUNCTION(automap)
 	REGISTER_STRING_CONSTANT("AUTOMAP_EXT_VERSION", AUTOMAP_EXT_VERSION,
 							 CONST_CS | CONST_PERSISTENT);
 
+	/*----*/
+								
 	if (MINIT_utils(TSRMLS_C) == FAILURE) return FAILURE;
-
-	if (MINIT_Automap(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MINIT_Automap_Handlers(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MINIT_Automap_Instance(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MINIT_Automap_Key(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MINIT_Automap_Loader(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MINIT_Automap_Pmap(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MINIT_Automap_Mnt(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MINIT_Automap_Type(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MINIT_Automap_Util(TSRMLS_C) == FAILURE) return FAILURE;
 
 	return SUCCESS;
 }
@@ -168,13 +194,20 @@ static PHP_MSHUTDOWN_FUNCTION(automap)
 	automap_globals_dtor(&automap_globals TSRMLS_CC);
 #endif
 
-	if (MSHUTDOWN_Automap(TSRMLS_C) == FAILURE) return FAILURE;
-
 	if (MSHUTDOWN_utils(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MSHUTDOWN_Automap_Handlers(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MSHUTDOWN_Automap_Instance(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MSHUTDOWN_Automap_Key(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MSHUTDOWN_Automap_Loader(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MSHUTDOWN_Automap_Mnt(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MSHUTDOWN_Automap_Pmap(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MSHUTDOWN_Automap_Type(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MSHUTDOWN_Automap_Util(TSRMLS_C) == FAILURE) return FAILURE;
 
 	return SUCCESS;
 }
 
+/*---------------------------------------------------------------*/
 /*-- Module definition --*/
 
 zend_module_entry automap_module_entry = {

@@ -18,22 +18,51 @@
 
 /* $Id$ */
 
-/*#define AUTOMAP_DEBUG*/
+/* #define AUTOMAP_DEBUG */
 
-#ifndef PHP_AUTOMAP_H
-#define PHP_AUTOMAP_H 1
+#ifndef __PHP_AUTOMAP_H
+#define __PHP_AUTOMAP_H 1
 
 #ifdef AUTOMAP_DEBUG
 #define UT_DEBUG
 #endif
 
+#ifdef HAVE_STDARG_H
+#include <stdarg.h>
+#endif
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include "php.h"
+#include "TSRM/TSRM.h"
+#include "ext/standard/info.h"
+#include "ext/standard/php_string.h"
+#include "ext/standard/php_versioning.h"
+#include "zend_constants.h"
+#include "zend_execute.h"
+#include "zend_errors.h"
+#include "TSRM/tsrm_virtual_cwd.h"
+
 #include "utils.h"
+
+#include "Automap_Handlers.h"
+#include "Automap_Instance.h"
+#include "Automap_Key.h"
+#include "Automap_Loader.h"
+#include "Automap_Pmap.h"
+#include "Automap_Mnt.h"
+#include "Automap_Type.h"
+#include "Automap_Util.h"
 
 /*---------------------------------------------------------------*/
 
-#define PHP_AUTOMAP_VERSION "1.1.1-dev"
+#define AUTOMAP_EXT_VERSION "2.0.0"
 
-#define AUTOMAP_API "1.1.0"
+#define AUTOMAP_API "2.0.0"
+
+#define AUTOMAP_MIN_MAP_VERSION "2.0.0"
 
 #define PHP_AUTOMAP_EXTNAME "automap"
 
@@ -49,6 +78,7 @@ static DECLARE_CZVAL(null);
 
 static DECLARE_CZVAL(Automap);
 static DECLARE_CZVAL(spl_autoload_register);
+static DECLARE_CZVAL(Automap__autoload_hook);
 
 /* Hash keys */
 
@@ -60,31 +90,10 @@ static DECLARE_HKEY(mp_property_name);
 
 /*============================================================================*/
 
-typedef struct _Automap_Mnt_Info {
-	zval *mnt;					/* (String zval *) */
-	ulong hash;					/* Mnt hash */
-	unsigned long *refcountp;
-	int mnt_count;				/* Allows to mount/umount the same map */
-	zval *instance;				/* Automap object (NULL until created) */
-	zval *path;					/* (String zval *) */
-	zval *base_dir;				/* (String zval *) */
-	zval *flags;				/* (Long zval *) */
-	int order;
-
-	/* Persistent data */
-
-	zval *min_version;			/* (String zval *) */
-	zval *version;				/* (String zval *) */
-	zval *options;				/* (Array zval *) */
-	zval *symbols;				/* (Array zval *) */
-} Automap_Mnt_Info;
-
-/*============================================================================*/
-
 ZEND_BEGIN_MODULE_GLOBALS(automap)
 
-HashTable *mtab;				/* Null before the first mount */
-Automap_Mnt_Info **mount_order; /* Array of (Automap_Mnt_Info *)|NULL */
+HashTable mnttab;
+Automap_Mnt **mount_order; /* Array of (Automap_Mnt *)|NULL */
 int mcount;						/* Size of the mount_order table */
 
 zval **failure_handlers;
@@ -109,4 +118,4 @@ ZEND_END_MODULE_GLOBALS(automap)
 #define MP_PROPERTY_NAME "\0Automap\0m"
 
 /*---------------------------------------------------------------*/
-#endif							/* PHP_AUTOMAP_H */
+#endif							/* __PHP_AUTOMAP_H */
