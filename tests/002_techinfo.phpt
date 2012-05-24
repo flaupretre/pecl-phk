@@ -4,10 +4,10 @@ _phk_techinfo
 <?php if (!extension_loaded("phk")) print "skip"; ?>
 --FILE--
 <?php
-PHK::techinfo();
+PHK::accel_techinfo();
 ?>
 ===DONE===
 --EXPECT--
 Using PHK Accelerator: Yes
-Accelerator Version: 1.1.0
+Accelerator Version: 2.0.0
 ===DONE===

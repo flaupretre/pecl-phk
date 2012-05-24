@@ -60,51 +60,75 @@ static HashTable simul_inodes;
 
 static unsigned long simul_inode_index;
 
-static MutexDeclare(simul_inodes);
+StaticMutexDeclare(simul_inodes);
 
 /*============================================================================*/
 /* Generic arginfo structures */
 
-static ZEND_BEGIN_ARG_INFO_EX(UT_noarg_arginfo, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(UT_noarg_arginfo, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
-static ZEND_BEGIN_ARG_INFO_EX(UT_noarg_ref_arginfo, 0, 1, 0)
-ZEND_END_ARG_INFO()
-
-static ZEND_BEGIN_ARG_INFO_EX(UT_1arg_arginfo, 0, 0, 1)
+ZEND_BEGIN_ARG_INFO_EX(UT_1arg_arginfo, 0, 0, 1)
 ZEND_ARG_INFO(0, arg1)
 ZEND_END_ARG_INFO()
 
-static ZEND_BEGIN_ARG_INFO_EX(UT_1arg_ref_arginfo, 0, 1, 1)
-ZEND_ARG_INFO(0, arg1)
-ZEND_END_ARG_INFO()
-
-static ZEND_BEGIN_ARG_INFO_EX(UT_2args_arginfo, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(UT_2args_arginfo, 0, 0, 2)
 ZEND_ARG_INFO(0, arg1)
 ZEND_ARG_INFO(0, arg2)
 ZEND_END_ARG_INFO()
 
-static ZEND_BEGIN_ARG_INFO_EX(UT_2args_ref_arginfo, 0, 1, 2)
-ZEND_ARG_INFO(0, arg1)
-ZEND_ARG_INFO(0, arg2)
-ZEND_END_ARG_INFO()
-
-static ZEND_BEGIN_ARG_INFO_EX(UT_3args_arginfo, 0, 0, 3)
+ZEND_BEGIN_ARG_INFO_EX(UT_3args_arginfo, 0, 0, 3)
 ZEND_ARG_INFO(0, arg1)
 ZEND_ARG_INFO(0, arg2)
 ZEND_ARG_INFO(0, arg3)
 ZEND_END_ARG_INFO()
 
-static ZEND_BEGIN_ARG_INFO_EX(UT_3args_ref_arginfo, 0, 1, 3)
+#ifdef RETURN_BY_REF_IS_BROKEN
+
+ZEND_BEGIN_ARG_INFO_EX(UT_noarg_ref_arginfo, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(UT_1arg_ref_arginfo, 0, 0, 1)
+ZEND_ARG_INFO(0, arg1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(UT_2args_ref_arginfo, 0, 0, 2)
+ZEND_ARG_INFO(0, arg1)
+ZEND_ARG_INFO(0, arg2)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(UT_3args_ref_arginfo, 0, 0, 3)
 ZEND_ARG_INFO(0, arg1)
 ZEND_ARG_INFO(0, arg2)
 ZEND_ARG_INFO(0, arg3)
 ZEND_END_ARG_INFO()
+
+#else
+
+ZEND_BEGIN_ARG_INFO_EX(UT_noarg_ref_arginfo, 0, 1, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(UT_1arg_ref_arginfo, 0, 1, 1)
+ZEND_ARG_INFO(0, arg1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(UT_2args_ref_arginfo, 0, 1, 2)
+ZEND_ARG_INFO(0, arg1)
+ZEND_ARG_INFO(0, arg2)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(UT_3args_ref_arginfo, 0, 1, 3)
+ZEND_ARG_INFO(0, arg1)
+ZEND_ARG_INFO(0, arg2)
+ZEND_ARG_INFO(0, arg3)
+ZEND_END_ARG_INFO()
+
+#endif
 
 /*============================================================================*/
 /*--- Init persistent data */
 
-static void ut_init_persistent_data(TSRMLS_D)
+static void _ut_init_persistent_data(TSRMLS_D)
 {
 	MutexSetup(simul_inodes);
 
@@ -115,7 +139,7 @@ static void ut_init_persistent_data(TSRMLS_D)
 
 /*---------------------------------------------------------------*/
 
-static void ut_shutdown_persistent_data(TSRMLS_D)
+static void _ut_shutdown_persistent_data(TSRMLS_D)
 {
 	zend_hash_destroy(&simul_inodes);
 
@@ -141,8 +165,9 @@ return ptr;
 #define eallocate(ptr, size) _allocate(ptr, size, 0)
 #define pallocate(ptr, size) _allocate(ptr, size, 1)
 
-#define EALLOCATE(ptr, size)	ptr=eallocate(ptr, size)
-#define PALLOCATE(ptr, size)	ptr=pallocate(ptr, size)
+#define PEALLOCATE(ptr, size, persistent)	ptr=_allocate(ptr, size, persistent)
+#define EALLOCATE(ptr, size)	PEALLOCATE(ptr, size, 0)
+#define PALLOCATE(ptr, size)	PEALLOCATE(ptr, size, 1)
 
 /*---------------------------------------------------------------*/
 
@@ -214,80 +239,104 @@ static inline int ut_is_web()
 
 /*---------*/
 
-static void ut_persistent_zval_dtor(zval * zvalue)
+static void ut_decref(zval *zp)
 {
-	switch (zvalue->type & ~IS_CONSTANT_INDEX) {
-	  case IS_STRING:
-	  case IS_CONSTANT:
-		  pefree(Z_STRVAL_P(zvalue), 1);
-		  break;
+	Z_DELREF_P(zp);
+	if (Z_REFCOUNT_P(zp)<=1) Z_UNSET_ISREF_P(zp);
+}
 
-	  case IS_ARRAY:
-	  case IS_CONSTANT_ARRAY:
-		  zend_hash_destroy(Z_ARRVAL_P(zvalue));
-		  pefree(Z_ARRVAL_P(zvalue), 1);
-		  break;
+/*---------*/
+/* Free zval content and reset it */
+
+static void ut_pezval_dtor(zval *zp, int persistent)
+{
+	if (persistent) {
+		switch (Z_TYPE_P(zp) & ~IS_CONSTANT_INDEX) {
+		  case IS_STRING:
+		  case IS_CONSTANT:
+			  pefree(Z_STRVAL_P(zp), persistent);
+			  break;
+
+		  case IS_ARRAY:
+		  case IS_CONSTANT_ARRAY:
+			  zend_hash_destroy(Z_ARRVAL_P(zp));
+			  pefree(Z_ARRVAL_P(zp), persistent);
+			  break;
+		}
+	} else {
+		zval_dtor(zp);
+	}
+	INIT_ZVAL(*zp);
+}
+
+/*---------*/
+
+static void ut_ezval_dtor(zval *zp) { ut_pezval_dtor(zp,0); }
+static void ut_pzval_dtor(zval *zp) { ut_pezval_dtor(zp,1); }
+
+/*---------*/
+/* clear the zval pointer */
+
+static void ut_pezval_ptr_dtor(zval ** zpp, int persistent)
+{
+	if (*zpp) {
+		if (persistent) {
+			ut_decref(*zpp);
+			/* php_printf("Reference count = %d\n",Z_REFCOUNT_PP(zpp)); */
+			if (Z_REFCOUNT_PP(zpp) == 0) {
+				ut_pzval_dtor(*zpp);
+				GC_REMOVE_ZVAL_FROM_BUFFER(*zpp);
+				pallocate(*zpp, 0);
+			} 
+		} else {
+			zval_ptr_dtor(zpp);
+		}
+		(*zpp)=NULL;
 	}
 }
 
 /*---------*/
 
-static void ut_persistent_zval_ptr_dtor(zval ** zval_ptr)
-{
-	(*zval_ptr)->refcount--;
-	if ((*zval_ptr)->refcount == 0) {
-		ut_persistent_zval_dtor(*zval_ptr);
-		pefree(*zval_ptr, 1);
-	} else {
-		if ((*zval_ptr)->refcount == 1)
-			(*zval_ptr)->is_ref = 0;
-	}
-}
+static void ut_ezval_ptr_dtor(zval **zpp) { ut_pezval_ptr_dtor(zpp,0); }
+static void ut_pzval_ptr_dtor(zval **zpp) { ut_pezval_ptr_dtor(zpp,1); }
 
 /*---------*/
 
 static void ut_persistent_array_init(zval * zp)
 {
-	HashTable *htp=NULL;
+	HashTable *htp;
 
+	htp=pallocate(NULL,sizeof(HashTable));
+	(void)zend_hash_init(htp,0, NULL,(dtor_func_t)ut_pzval_ptr_dtor,1);
 	INIT_PZVAL(zp);
-
-	PALLOCATE(htp,sizeof(HashTable));
-	(void)zend_hash_init(htp,0, NULL,(dtor_func_t)ut_persistent_zval_ptr_dtor,1);
-	ZVAL_ARRAY_P(zp, htp);
+	ZVAL_ARRAY(zp, htp);
 }
 
 /*---------*/
 
 static void ut_persistent_copy_ctor(zval ** ztpp)
 {
-	zval *zsp;
-
-	zsp = *ztpp;
-
-	(*ztpp) = pallocate(NULL,sizeof(zval));
-
-	ut_persist_zval(zsp, *ztpp);
+	*ztpp=ut_persist_zval(*ztpp);
 }
 
 /*---------*/
 /* Duplicates a zval and all its descendants to persistent storage */
 /* Does not support objects and resources */
 
-static void ut_persist_zval(zval * zsp, zval * ztp)
+static zval *ut_persist_zval(zval * zsp)
 {
 	int type, len;
 	char *p;
+	zval *ztp;
 
-	(*ztp) = (*zsp);
-	INIT_PZVAL(ztp);
+	ALLOC_PERMANENT_ZVAL(ztp);
+	INIT_PZVAL_COPY(ztp,zsp);
 
 	switch (type = Z_TYPE_P(ztp)) {	/* Default: do nothing (when no additional data) */
 	  case IS_STRING:
 	  case IS_CONSTANT:
 		  len = Z_STRLEN_P(zsp);
-		  p = pallocate(NULL,len + 1);
-		  memmove(p, Z_STRVAL_P(zsp), len + 1);
+		  p=pduplicate(Z_STRVAL_P(zsp), len + 1);
 		  ZVAL_STRINGL(ztp, p, len, 0);
 		  break;
 
@@ -302,135 +351,190 @@ static void ut_persist_zval(zval * zsp, zval * ztp)
 
 	  case IS_OBJECT:
 	  case IS_RESOURCE:
-		  {
-			  TSRMLS_FETCH();
-			  EXCEPTION_ABORT_1("Cannot make resources/objects persistent",
-								NULL);
-		  }
+			{
+			TSRMLS_FETCH();
+			EXCEPTION_ABORT_RET(NULL,"Cannot make resources/objects persistent");
+			}
 	}
+	return ztp;
 }
 
 /*---------------------------------------------------------------*/
 
-static void ut_new_instance(zval ** ret_pp, zval * class_name,
-							int construct, int nb_args,
-							zval ** args TSRMLS_DC)
+static zval *ut_new_instance(char *class_name, int class_name_len,
+	int construct, int nb_args,	zval ** args TSRMLS_DC)
 {
 	zend_class_entry **ce;
+	zval *instance;
 
-	if (zend_lookup_class_ex(Z_STRVAL_P(class_name), Z_STRLEN_P(class_name)
-							 , 0, &ce TSRMLS_CC) == FAILURE) {
-		EXCEPTION_ABORT_1("%s: class does not exist",
-						  Z_STRVAL_P(class_name));
+	if (zend_lookup_class_ex(class_name, class_name_len
+#if PHP_API_VERSION >= 20100412
+/* PHP 5.4+: additional argument to zend_lookup_class_ex */
+							, NULL
+#endif
+							, 0, &ce TSRMLS_CC) == FAILURE) {
+		EXCEPTION_ABORT_RET_1(NULL,"%s: class does not exist",class_name);
 	}
 
-	MAKE_STD_ZVAL(*ret_pp);
-	object_init_ex(*ret_pp, *ce);
+	ALLOC_INIT_ZVAL(instance);
+	object_init_ex(instance, *ce);
 
 	if (construct) {
-		ut_call_user_function_void(*ret_pp, &CZVAL(__construct), nb_args,
-								   args TSRMLS_CC);
+		ut_call_user_function_void(instance, ZEND_STRL("__construct"), nb_args,
+			args TSRMLS_CC);
 	}
+
+	return instance;
 }
 
 /*---------------------------------------------------------------*/
 
-static inline void ut_call_user_function_void(zval * obj_zp, zval * func_zp,
-									   int nb_args, zval ** args TSRMLS_DC)
+static inline void ut_call_user_function_void(zval *obj_zp, char *func,
+	int func_len, int nb_args, zval ** args TSRMLS_DC)
 {
-	zval dummy_ret;
+	zval *ret;
 
-	ut_call_user_function(obj_zp, func_zp, &dummy_ret, nb_args,
-						  args TSRMLS_CC);
-	zval_dtor(&dummy_ret);		/* Discard return value */
+	ALLOC_INIT_ZVAL(ret);
+	ut_call_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
+	ut_ezval_ptr_dtor(&ret);		/* Discard return value */
 }
 
 /*---------------------------------------------------------------*/
 
-static inline int ut_call_user_function_bool(zval * obj_zp, zval * func_zp,
-									  int nb_args, zval ** args TSRMLS_DC)
+static inline int ut_call_user_function_bool(zval * obj_zp, char *func,
+	int func_len, int nb_args, zval ** args TSRMLS_DC)
 {
-	zval dummy_ret;
+	zval *ret;
 	int result;
 
-	ut_call_user_function(obj_zp, func_zp, &dummy_ret, nb_args,
-						  args TSRMLS_CC);
-	result = zend_is_true(&dummy_ret);
-	zval_dtor(&dummy_ret);
+	ALLOC_INIT_ZVAL(ret);
+	ut_call_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
+	result = zend_is_true(ret);
+	ut_ezval_ptr_dtor(&ret);
 
 	return result;
 }
 
 /*---------------------------------------------------------------*/
 
-static inline long ut_call_user_function_long(zval * obj_zp, zval * func_zp,
-									   int nb_args, zval ** args TSRMLS_DC)
+static inline long ut_call_user_function_long(zval *obj_zp, char *func,
+	int func_len, int nb_args, zval ** args TSRMLS_DC)
 {
-	zval ret;
+	zval *ret;
+	long result;
 
-	ut_call_user_function(obj_zp, func_zp, &ret, nb_args, args TSRMLS_CC);
-	if (EG(exception))
-		return 0;
+	ALLOC_INIT_ZVAL(ret);
+	ut_call_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
 
-	if (Z_TYPE(ret) != IS_LONG)
-		convert_to_long((&ret));
-	return Z_LVAL(ret);
+	ENSURE_LONG(ret);
+	result=Z_LVAL_P(ret);
+	ut_ezval_ptr_dtor(&ret);
+
+	return result;
 }
 
 /*---------------------------------------------------------------*/
 
-static inline void ut_call_user_function_string(zval * obj_zp, zval * func_zp,
-										 zval * ret, int nb_args,
-										 zval ** args TSRMLS_DC)
+static inline void ut_call_user_function_string(zval *obj_zp, char *func,
+	int func_len, zval * ret, int nb_args, zval ** args TSRMLS_DC)
 {
+	ut_call_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
+	if (EG(exception)) return;
 
-	ut_call_user_function(obj_zp, func_zp, ret, nb_args, args TSRMLS_CC);
-	if (EG(exception))
-		return;
-
-	if (Z_TYPE_P(ret) != IS_STRING)
-		convert_to_string(ret);
+	ENSURE_STRING(ret);
 }
 
 /*---------------------------------------------------------------*/
 
-static inline void ut_call_user_function_array(zval * obj_zp, zval * func_zp,
-										zval * ret, int nb_args,
-										zval ** args TSRMLS_DC)
+static inline void ut_call_user_function_array(zval * obj_zp, char *func,
+	int func_len, zval * ret, int nb_args, zval ** args TSRMLS_DC)
 {
+	ut_call_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
+	if (EG(exception)) return;
 
-	ut_call_user_function(obj_zp, func_zp, ret, nb_args, args TSRMLS_CC);
-	if (EG(exception))
-		return;
-
-	if (Z_TYPE_P(ret) != IS_ARRAY) {
-		THROW_EXCEPTION_2("%s method should return a string (type=%d)",
-						  Z_STRVAL_P(func_zp), Z_TYPE_P(ret));
+	if (!ZVAL_IS_ARRAY(ret)) {
+		THROW_EXCEPTION_2("%s method should return an array (type=%d)",
+			func, Z_TYPE_P(ret));
 	}
 }
 
 /*---------------------------------------------------------------*/
 
-static inline void ut_call_user_function(zval * obj_zp, zval * func_zp,
-								  zval * ret, int nb_args,
-								  zval ** args TSRMLS_DC)
+static inline void ut_call_user_function(zval *obj_zp, char *func,
+	int func_len, zval *ret, int nb_args, zval ** args TSRMLS_DC)
 {
-	call_user_function(EG(function_table), &obj_zp, func_zp, ret, nb_args,
-					   args TSRMLS_CC);
+	int status;
+	zval *func_zp;
+
+#if ZEND_MODULE_API_NO <= 20050922
+/* PHP version 5.1 doesn't accept 'class::function' as func_zp (static method).
+It requires passing the class name as a string zval in obj_zp, and the method
+name in func_zp. Unfortunately, this mechanism is rejected by PHP 5.3, which
+requires a null obj_zp and a string 'class::function' in func_zp. This function
+always receives 'class::function' and makes it compatible with old versions.
+Note: I am not sure of the ZEND_MODULE_API value where this behavior changed. If
+it is wrong, let me know. The only thing I know is that it changed between 5.1.6
+and 5.3.9 */
+
+	char *p,*op,*p2;
+	int clen;
+
+	MAKE_STD_ZVAL(func_zp);
+	clen=0;
+	if (!obj_zp) { /* Only on static calls */
+		for (op=p=func;;p++) {
+			if (!(*p)) break;
+			if (((*p)==':')&&((*(p+1))==':')) {
+				clen=p-op;
+				break;
+			}
+		}
+	}	
+	if (clen) {
+		p2=eduplicate(op,clen+1);
+		p2[clen]='\0';
+		MAKE_STD_ZVAL(obj_zp);
+		ZVAL_STRINGL(obj_zp,p2,clen,0);
+		ZVAL_STRINGL(func_zp,op+clen+2,func_len-clen-2,1);
+	} else {
+		ZVAL_STRINGL(func_zp,func,func_len,1);	/* Default */
+	}
+#else
+	MAKE_STD_ZVAL(func_zp);
+	ZVAL_STRINGL(func_zp,func,func_len,1);
+#endif
+
+	status=call_user_function(EG(function_table), &obj_zp, func_zp, ret, nb_args,
+		args TSRMLS_CC);
+	ut_ezval_ptr_dtor(&func_zp);
+
+#if ZEND_MODULE_API_NO <= 20050922
+	if (clen) {
+		ut_ezval_ptr_dtor(&obj_zp);
+	}
+#endif
+
+	if (status!=SUCCESS) {
+		THROW_EXCEPTION_1("call_user_function(func=%s) failed",func);
+	}
 }
 
 /*---------------------------------------------------------------*/
 
 static int ut_extension_loaded(char *name, int len TSRMLS_DC)
 {
-	return zend_hash_exists(&module_registry, name, len + 1);
+	int status;
+
+	status=zend_hash_exists(&module_registry, name, len + 1);
+	DBG_MSG2("Checking if extension %s is loaded: %s",name,(status ? "yes" : "no"));
+	return status;
 }
 
 /*---------------------------------------------------------------*/
 
 static void ut_load_extension_file(zval *file TSRMLS_DC)
 {
-	if (!ut_call_user_function_bool(NULL,&CZVAL(dl),1,&file TSRMLS_CC)) {
+	if (!ut_call_user_function_bool(NULL,ZEND_STRL("dl"),1,&file TSRMLS_CC)) {
 		THROW_EXCEPTION_1("%s: Cannot load extension",Z_STRVAL_P(file));
 	}
 }
@@ -445,18 +549,18 @@ static void ut_load_extension_file(zval *file TSRMLS_DC)
 
 static void ut_load_extension(char *name, int len TSRMLS_DC)
 {
-	zval zv;
+	zval *zp;
 	char *p;
 
 	if (ut_extension_loaded(name, len TSRMLS_CC)) return;
 
 	spprintf(&p,1024,_UT_LE_PREFIX "%s." PHP_SHLIB_SUFFIX,name);
-	INIT_ZVAL(zv);
-	ZVAL_STRING(&zv,p,0);
+	MAKE_STD_ZVAL(zp);
+	ZVAL_STRING(zp,p,0);
 
-	ut_load_extension_file(&zv TSRMLS_CC);
+	ut_load_extension_file(zp TSRMLS_CC);
 
-	zval_dtor(&zv);
+	ut_ezval_ptr_dtor(&zp);
 }
 
 /*---------------------------------------------------------------*/
@@ -505,13 +609,10 @@ static inline int ut_strings_are_equal(zval * zp1, zval * zp2 TSRMLS_DC)
 	if ((!zp1) || (!zp2))
 		return 0;
 
-	if (Z_TYPE_P(zp1) != IS_STRING)
-		convert_to_string(zp1);
-	if (Z_TYPE_P(zp2) != IS_STRING)
-		convert_to_string(zp2);
+	ENSURE_STRING(zp1);
+	ENSURE_STRING(zp2);
 
-	if (Z_STRLEN_P(zp1) != Z_STRLEN_P(zp2))
-		return 0;
+	if (Z_STRLEN_P(zp1) != Z_STRLEN_P(zp2)) return 0;
 
 	return (!memcmp(Z_STRVAL_P(zp1), Z_STRVAL_P(zp1), Z_STRLEN_P(zp1)));
 }
@@ -560,16 +661,19 @@ static void ut_exit(int status TSRMLS_DC)
 static inline zval *_ut_SERVER_element(HKEY_STRUCT * hkey TSRMLS_DC)
 {
 	zval **array, **token;
+	int status;
 
-	if ((FIND_HKEY(&EG(symbol_table), _SERVER, &array) == SUCCESS)
-		&& (Z_TYPE_PP(array) == IS_ARRAY)
-		&&
-		(zend_hash_quick_find
-		 (Z_ARRVAL_PP(array), hkey->string, hkey->len, hkey->hash,
-		  (void **) (&token)) == SUCCESS)) {
-		return *token;
+	status=FIND_HKEY(&EG(symbol_table), _SERVER, &array);
+	if (status == FAILURE) {
+		EXCEPTION_ABORT_RET(NULL,"_SERVER: symbol not found");
 	}
-	return NULL;
+
+	if (!ZVAL_IS_ARRAY(*array))
+		EXCEPTION_ABORT_RET(NULL,"_SERVER: symbol is not of type array");
+
+	status=zend_hash_quick_find(Z_ARRVAL_PP(array), hkey->string, hkey->len
+		, hkey->hash, (void **) (&token));
+	return (status == SUCCESS) ? (*token) : NULL;
 }
 
 /*---------------------------------------------------------------*/
@@ -577,16 +681,19 @@ static inline zval *_ut_SERVER_element(HKEY_STRUCT * hkey TSRMLS_DC)
 static inline zval *_ut_REQUEST_element(HKEY_STRUCT * hkey TSRMLS_DC)
 {
 	zval **array, **token;
+	int status;
 
-	if ((FIND_HKEY(&EG(symbol_table), _REQUEST, &array) == SUCCESS)
-		&& (Z_TYPE_PP(array) == IS_ARRAY)
-		&&
-		(zend_hash_quick_find
-		 (Z_ARRVAL_PP(array), hkey->string, hkey->len, hkey->hash,
-		  (void **) (&token)) == SUCCESS)) {
-		return *token;
+	status=FIND_HKEY(&EG(symbol_table), _REQUEST, &array);
+	if (status == FAILURE) {
+		EXCEPTION_ABORT_RET(NULL,"_REQUEST: symbol not found");
 	}
-	return NULL;
+
+	if (!ZVAL_IS_ARRAY(*array))
+		EXCEPTION_ABORT_RET(NULL,"_REQUEST: symbol is not of type array");
+
+	status=zend_hash_quick_find(Z_ARRVAL_PP(array), hkey->string, hkey->len
+		, hkey->hash, (void **) (&token));
+	return (status == SUCCESS) ? (*token) : NULL;
 }
 
 /*---------------------------------------------------------------*/
@@ -597,24 +704,22 @@ static char *ut_http_base_url(TSRMLS_D)
 	int ilen, slen, nslen;
 	static char buffer[UT_PATH_MAX];
 
-	if (!ut_is_web())
-		return "";
+	if (!ut_is_web()) return "";
 
-	if (!(pathinfo = SERVER_ELEMENT(PATH_INFO)))
-		return Z_STRVAL_P(SERVER_ELEMENT(PHP_SELF));
+	pathinfo = SERVER_ELEMENT(PATH_INFO);
+	if (EG(exception)) return NULL;
+	php_self=SERVER_ELEMENT(PHP_SELF);
+	if (EG(exception)) return NULL;
+
+	if (!pathinfo) return Z_STRVAL_P(php_self);
 
 	ilen = Z_STRLEN_P(pathinfo);
-
-	php_self = SERVER_ELEMENT(PHP_SELF);
 	slen = Z_STRLEN_P(php_self);
 
 	nslen = slen - ilen;
-	if ((nslen > 0)
-		&&
-		(!memcmp
-		 (Z_STRVAL_P(pathinfo), Z_STRVAL_P(php_self) + nslen, ilen))) {
-		if (nslen >= UT_PATH_MAX)
-			nslen = UT_PATH_MAX - 1;
+	if ((nslen > 0)	&& (!memcmp(Z_STRVAL_P(pathinfo)
+		, Z_STRVAL_P(php_self) + nslen, ilen))) {
+		if (nslen >= UT_PATH_MAX) nslen = UT_PATH_MAX - 1;
 		memmove(buffer, Z_STRVAL_P(php_self), nslen);
 		buffer[nslen] = '\0';
 		return buffer;
@@ -625,22 +730,22 @@ static char *ut_http_base_url(TSRMLS_D)
 
 /*---------------------------------------------------------------*/
 
-static void ut_http_301_redirect(zval * path, int must_free TSRMLS_DC)
+static void ut_http_301_redirect(char *path, int must_free TSRMLS_DC)
 {
-	char *p;
+	char *p,*base_url;
+
+	base_url=ut_http_base_url(TSRMLS_C);
+	if (EG(exception)) return;
 
 	spprintf(&p, UT_PATH_MAX, "Location: http://%s%s%s",
-			 Z_STRVAL_P(SERVER_ELEMENT(HTTP_HOST)),
-			 ut_http_base_url(TSRMLS_C)
-			 , Z_STRVAL_P(path));
+			 Z_STRVAL_P(SERVER_ELEMENT(HTTP_HOST)),base_url,path);
 
 	ut_header(301, p TSRMLS_CC);
 	efree(p);
 
 	ut_header(301, "HTTP/1.1 301 Moved Permanently" TSRMLS_CC);
 
-	if (must_free)
-		zval_dtor(path);
+	if (must_free) EALLOCATE(path,0);
 	ut_exit(0 TSRMLS_CC);
 }
 
@@ -691,8 +796,7 @@ static inline void ut_file_suffix(zval * path, zval * ret TSRMLS_DC)
 			found = 1;
 			break;
 		}
-		if ((*p) == '/')
-			break;
+		if ((*p) == '/') break;
 	}
 
 	if (!found) {
@@ -717,8 +821,9 @@ static void ut_unserialize_zval(const unsigned char *buffer
 
 	PHP_VAR_UNSERIALIZE_INIT(var_hash);
 
+	INIT_ZVAL(*ret);
 	if (!php_var_unserialize(&ret,&buffer,buffer+len,&var_hash TSRMLS_CC)) {
-		zval_dtor(ret);
+		ut_ezval_dtor(ret);
 		THROW_EXCEPTION("Unserialize error");
 		}
 	PHP_VAR_UNSERIALIZE_DESTROY(var_hash);
@@ -741,18 +846,21 @@ static void ut_file_get_contents(char *path, zval *ret TSRMLS_DC)
 
 	if (len < 0) EXCEPTION_ABORT_1("%s : Cannot read file",path);
 
+	ut_ezval_dtor(ret);
 	ZVAL_STRINGL(ret,contents,len,0);
 }
 
 /*---------------------------------------------------------------*/
 
-static char *ut_htmlspecialchars(char *src, int srclen, int *retlen TSRMLS_DC)
+static char *ut_htmlspecialchars(char *src, int srclen
+	, PHP_ESCAPE_HTML_ENTITIES_SIZE *retlen TSRMLS_DC)
 {
-	int dummy;
+	PHP_ESCAPE_HTML_ENTITIES_SIZE dummy;
 
 	if (!retlen) retlen = &dummy;
 
-	return php_escape_html_entities(src,srclen,retlen,0,ENT_COMPAT,NULL TSRMLS_CC);
+	return php_escape_html_entities((unsigned char *)src,srclen,retlen,0
+		,ENT_COMPAT,NULL TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/
@@ -927,18 +1035,20 @@ static char *ut_mk_absolute_path(char *path, int len, int *reslen
 
 /*---------------------------------------------------------------*/
 
-static int ut_rtrim(char *p TSRMLS_DC)
+static int ut_cut_at_space(char *p)
 {
-	int i;
+char *p1;
 
-	for (i=0;;i++,p++) {
-		if ((!(*p))||((*p)==' ')||((*p)=='\t')) {
-			(*p)='\0';
-			break;
-		}
-	}
-	return i;
+for(p1=p;;p++) {
+	if (((*p)==' ')||((*p)=='\t')) (*p)='\0';
+	if (!(*p)) break;
 }
+return (p-p1);
+}
+
+#define ut_zval_cut_at_space(zp) { \
+	Z_STRLEN_P(zp)=ut_cut_at_space(Z_STRVAL_P(zp)); \
+	}
 
 /*---------------------------------------------------------------*/
 
@@ -992,13 +1102,10 @@ static void ut_path_unique_id(char prefix, zval * path, zval ** mnt
 	if (mtp) (*mtp)=mtime;
 }	
 
-/*========================================================================*/
+/*---------------------------------------------------------------*/
 
-static void ut_build_constants(TSRMLS_D)
+static void _ut_build_hkeys(TSRMLS_D)
 {
-	INIT_CZVAL(__construct);
-	INIT_CZVAL(dl);
-
 	INIT_HKEY(_SERVER);
 	INIT_HKEY(_REQUEST);
 	INIT_HKEY(PATH_INFO);
@@ -1006,13 +1113,12 @@ static void ut_build_constants(TSRMLS_D)
 	INIT_HKEY(HTTP_HOST);
 }
 
-/*---------------------------------------------------------------*/
+/*========================================================================*/
 
 static int MINIT_utils(TSRMLS_D)
 {
-	ut_build_constants(TSRMLS_C);
-
-	ut_init_persistent_data(TSRMLS_C);
+	_ut_build_hkeys(TSRMLS_C);
+	_ut_init_persistent_data(TSRMLS_C);
 
 	return SUCCESS;
 }
@@ -1021,7 +1127,7 @@ static int MINIT_utils(TSRMLS_D)
 
 static int MSHUTDOWN_utils(TSRMLS_D)
 {
-	ut_shutdown_persistent_data(TSRMLS_C);
+	_ut_shutdown_persistent_data(TSRMLS_C);
 
 	return SUCCESS;
 }
@@ -1030,6 +1136,9 @@ static int MSHUTDOWN_utils(TSRMLS_D)
 
 static inline int RINIT_utils(TSRMLS_D)
 {
+	(void)zend_is_auto_global("_SERVER", sizeof("_SERVER")-1 TSRMLS_CC);
+	(void)zend_is_auto_global("_REQUEST", sizeof("_REQUEST")-1 TSRMLS_CC);
+
 	return SUCCESS;
 }
 

@@ -38,11 +38,55 @@
 #	define NULL (char *)0
 #endif
 
-typedef struct {
-	char *string;
-	unsigned int len;
-	ulong hash;
-} HKEY_STRUCT;
+/*----------------*/
+/* Compatibility macros - Allow using these macros with PHP 5.1 and more */
+
+#ifndef Z_ADDREF
+#define Z_ADDREF_P(_zp)		ZVAL_ADDREF(_zp)
+#define Z_ADDREF(_z)		Z_ADDREF_P(&(_z))
+#define Z_ADDREF_PP(ppz)	Z_ADDREF_P(*(ppz))
+#endif
+
+#ifndef Z_DELREF_P
+#define Z_DELREF_P(_zp)		ZVAL_DELREF(_zp)
+#define Z_DELREF(_z)		Z_DELREF_P(&(_z))
+#define Z_DELREF_PP(ppz)	Z_DELREF_P(*(ppz))
+#endif
+
+#ifndef Z_REFCOUNT_P
+#define Z_REFCOUNT_P(_zp)	ZVAL_REFCOUNT(_zp)
+#define Z_REFCOUNT_PP(_zpp)	ZVAL_REFCOUNT(*(_zpp))
+#endif
+
+#ifndef Z_UNSET_ISREF_P
+#define Z_UNSET_ISREF_P(_zp)	{ (_zp)->is_ref=0; }
+#endif
+
+#ifndef ZVAL_COPY_VALUE
+#define ZVAL_COPY_VALUE(z, v) \
+	do { \
+		(z)->value = (v)->value; \
+		Z_TYPE_P(z) = Z_TYPE_P(v); \
+	} while (0)
+#endif
+
+#ifndef ALLOC_PERMANENT_ZVAL
+#define ALLOC_PERMANENT_ZVAL(z)		{ z=pallocate(NULL, sizeof(zval)); }
+#endif
+
+#ifndef GC_REMOVE_ZVAL_FROM_BUFFER
+#define GC_REMOVE_ZVAL_FROM_BUFFER(z)
+#endif
+
+#ifndef INIT_PZVAL_COPY
+#define INIT_PZVAL_COPY(z, v) \
+	do { \
+		INIT_PZVAL(z); \
+		ZVAL_COPY_VALUE(z, v); \
+	} while (0)
+#endif
+
+/*----------------*/
 
 #define CZVAL(name) ( czval_ ## name )
 
@@ -56,7 +100,17 @@ typedef struct {
 	ZVAL_STRING(&(CZVAL(name)), value,0); \
 	}
 
+typedef struct {
+	char *string;
+	unsigned int len;
+	ulong hash;
+} HKEY_STRUCT;
+
 #define HKEY(name) ( hkey_ ## name )
+
+#define HKEY_STRING(name)	HKEY(name).string
+#define HKEY_LEN(name)		HKEY(name).len
+#define HKEY_HASH(name)		HKEY(name).hash
 
 #define DECLARE_HKEY(name)	HKEY_STRUCT HKEY(name)
 
@@ -64,17 +118,17 @@ typedef struct {
 
 #define INIT_HKEY_VALUE(name,value) \
 	{ \
-	HKEY(name).string= value ; \
-	HKEY(name).len=sizeof( value ); \
-	HKEY(name).hash=zend_get_hash_value(HKEY(name).string,HKEY(name).len); \
+	HKEY_STRING(name)= value ; \
+	HKEY_LEN(name)=sizeof( value ); \
+	HKEY_HASH(name)=zend_get_hash_value(HKEY_STRING(name),HKEY_LEN(name)); \
 	}
 
 #define FIND_HKEY(ht,name,respp) \
-	zend_hash_quick_find(ht,HKEY(name).string \
-		,HKEY(name).len,HKEY(name).hash,(void **)(respp))
+	zend_hash_quick_find(ht,HKEY_STRING(name) \
+		,HKEY_LEN(name),HKEY_HASH(name),(void **)(respp))
 
 #define HKEY_EXISTS(ht,name) \
-	zend_hash_quick_exists(ht,HKEY(name).string, HKEY(name).len,HKEY(name).hash)
+	zend_hash_quick_exists(ht,HKEY_STRING(name), HKEY_LEN(name),HKEY_HASH(name))
 
 #define SERVER_ELEMENT(name) _ut_SERVER_element(&HKEY(name) TSRMLS_CC)
 
@@ -87,6 +141,8 @@ typedef struct {
 #ifndef MAX
 #	define MAX(a,b) (((a) > (b)) ? (a) : (b))
 #endif
+
+#define CLEAR_DATA(_v)	memset(&(_v),'\0',sizeof(_v)); \
 
 /*---------------------------------------------------------------*/
 /* (Taken from pcre/pcrelib/internal.h) */
@@ -141,17 +197,26 @@ which is the case in this extension. */
 
 #define THROW_EXCEPTION(_format)	\
 	{ \
+	DBG_MSG("Throwing exception: " _format); \
 	(void)zend_throw_exception_ex(NULL,0 TSRMLS_CC ,_format); \
 	}
 
 #define THROW_EXCEPTION_1(_format,_arg1)	\
 	{ \
+	DBG_MSG1("Throwing exception: " _format , _arg1); \
 	(void)zend_throw_exception_ex(NULL,0 TSRMLS_CC ,_format,_arg1); \
 	}
 
 #define THROW_EXCEPTION_2(_format,_arg1,_arg2)	\
 	{ \
+	DBG_MSG2("Throwing exception: " _format , _arg1, _arg2); \
 	(void)zend_throw_exception_ex(NULL,0 TSRMLS_CC ,_format,_arg1,_arg2); \
+	}
+
+#define THROW_EXCEPTION_3(_format,_arg1,_arg2,_arg3)	\
+	{ \
+	DBG_MSG3("Throwing exception: " _format , _arg1, _arg2, _arg3); \
+	(void)zend_throw_exception_ex(NULL,0 TSRMLS_CC ,_format,_arg1,_arg2,_arg3); \
 	}
 
 #define EXCEPTION_ABORT(_format)	\
@@ -164,6 +229,12 @@ which is the case in this extension. */
 	{ \
 	THROW_EXCEPTION_1(_format,_arg1); \
 	return; \
+	}
+
+#define EXCEPTION_ABORT_RET(_ret,_format)	\
+	{ \
+	THROW_EXCEPTION(_format); \
+	return _ret; \
 	}
 
 #define EXCEPTION_ABORT_RET_1(_ret,_format,_arg1)	\
@@ -193,22 +264,18 @@ which is the case in this extension. */
 		} \
 	}
 
-/*----- These could go to zend.h --------*/
+/*-----------*/
 
-#define ALLOC_PERSISTENT_ZVAL(zp) (zp)=pallocate(NULL,sizeof(zval))
-
-#define MAKE_STD_PERSISTENT_ZVAL(zp) \
-	ALLOC_PERSISTENT_ZVAL(zp); \
-	INIT_PZVAL(zp);
+#define ALLOC_INIT_PERMANENT_ZVAL(zp) { \
+	ALLOC_PERMANENT_ZVAL(zp); \
+	INIT_ZVAL(*zp); \
+	}
 
 #ifndef ZVAL_ARRAY /*--------------*/
 
-#define ZVAL_ARRAY_P(zp,ht) ZVAL_ARRAY((*(zp)),ht)
-#define ZVAL_ARRAY_PP(zpp,ht) ZVAL_ARRAY((**(zpp)),ht)
-
-#define ZVAL_ARRAY(zv,ht) \
-	Z_TYPE(zv)=IS_ARRAY; \
-	Z_ARRVAL(zv)=ht;
+#define ZVAL_ARRAY(zp,ht) \
+	Z_TYPE_P(zp)=IS_ARRAY; \
+	Z_ARRVAL_P(zp)=ht;
 
 #endif /* ZVAL_ARRAY -------------- */
 
@@ -232,32 +299,35 @@ which is the case in this extension. */
 #define ENSURE_BOOL(zp) { if (Z_TYPE_P((zp))!=IS_BOOL) convert_to_boolean((zp)); }
 #define ENSURE_STRING(zp) { if (Z_TYPE_P((zp))!=IS_STRING) convert_to_string((zp)); }
 
-/* Note: return by ref does not work because, after the call, the refcount is
-systematically reset to 1. Workaround: Return a copy (slower).
-This is a bug present at least in 5.2.4. Bug is
-at line 1005 in zend_execute_API.c 'v 1.331.2.20.2.24 2007/07/21'. The bug
-is corrected in CVS (5.3 branch). When we can test for a release version, we
-will make it conditional. */
+#define RETVAL_BY_VAL(zp) \
+	{ \
+	INIT_PZVAL_COPY(return_value,zp); \
+	zval_copy_ctor(return_value); \
+	}
 
+/* Note: return by ref does not work in PHP 5.2 because, after the call,
+   the refcount is systematically reset to 1. Workaround: Return a copy
+   (slower). This is a bug present at least in 5.2.4. Bug is at line 1005
+   in zend_execute_API.c 'v 1.331.2.20.2.24 2007/07/21'. The bug is fixed
+   in CVS (5.3 branch).
+   Warning: Using RETVAL_BY_REF requires to set the 'return_by_ref' flag in
+   the corresponding ARG_INFO declaration. If not set, return_value_ptr is null.
+*/
+
+#if ZEND_MODULE_API_NO < 20090626
 #define RETURN_BY_REF_IS_BROKEN
+#endif
 
 #ifdef RETURN_BY_REF_IS_BROKEN
-#define RETVAL_BY_REF(zp) \
-	{ \
-	**return_value_ptr=*zp; \
-	INIT_PZVAL(*return_value_ptr); \
-	zval_copy_ctor(*return_value_ptr); \
-	}
+#define RETVAL_BY_REF(zp) RETVAL_BY_VAL(zp)
 #else
 #define RETVAL_BY_REF(zp) \
 	{ \
-	zval_ptr_dtor(return_value_ptr); \
-	ZVAL_ADDREF(zp); \
+	ut_ezval_ptr_dtor(return_value_ptr); \
+	Z_ADDREF_P(zp); \
 	*return_value_ptr=(zp); \
 	}
 #endif
-
-#define UT_NEW_PZP() { ALLOC_PERSISTENT_ZVAL(zp); INIT_PZVAL(zp); }
 
 #define UT_ADD_PZP_CONST(ce,name) \
 	zend_hash_add(&((ce)->constants_table),name,sizeof(name) \
@@ -268,7 +338,7 @@ will make it conditional. */
 	char *p=NULL; \
 	zval *zp; \
 	\
-	UT_NEW_PZP(); \
+	ALLOC_INIT_PERMANENT_ZVAL(zp); \
 	PALLOCATE(p,2); \
 	p[0]=_def; \
 	p[1]='\0'; \
@@ -281,7 +351,7 @@ will make it conditional. */
 	char *p=NULL;  \
 	zval *zp;  \
 	 \
-	UT_NEW_PZP();  \
+	ALLOC_INIT_PERMANENT_ZVAL(zp);  \
 	PALLOCATE(p,sizeof(_def));  \
 	memmove(p,_def,sizeof(_def)); \
 	ZVAL_STRINGL(zp,p,sizeof(_def)-1,0);  \
@@ -292,7 +362,7 @@ will make it conditional. */
 	{  \
 	zval *zp; \
 	\
-	UT_NEW_PZP(); \
+	ALLOC_INIT_PERMANENT_ZVAL(zp); \
 	ZVAL_LONG(zp, _def); \
 	UT_ADD_PZP_CONST(ce,_name); \
 	}
@@ -301,12 +371,14 @@ will make it conditional. */
 
 #ifdef ZTS
 #define MutexDeclare(x)		MUTEX_T x ## _mutex
+#define StaticMutexDeclare(x)	static MUTEX_T x ## _mutex
 #define MutexSetup(x)		x ## _mutex = tsrm_mutex_alloc()
 #define MutexShutdown(x)	tsrm_mutex_free(x ## _mutex)
 #define MutexLock(x)		tsrm_mutex_lock(x ## _mutex)
 #define MutexUnlock(x)		tsrm_mutex_unlock(x ## _mutex)
 #else
 #define MutexDeclare(x)
+#define StaticMutexDeclare(x)
 #define MutexSetup(x)
 #define MutexShutdown(x)
 #define MutexLock(x)
@@ -314,9 +386,16 @@ will make it conditional. */
 #endif
 
 /*============================================================================*/
+/* Compatibility */
 
-static DECLARE_CZVAL(__construct);
-static DECLARE_CZVAL(dl);
+#if PHP_API_VERSION >= 20100412
+/* PHP 5.4+ */
+	typedef size_t PHP_ESCAPE_HTML_ENTITIES_SIZE;
+#else
+	typedef int PHP_ESCAPE_HTML_ENTITIES_SIZE;
+#endif
+
+/*============================================================================*/
 
 static DECLARE_HKEY(_SERVER);
 static DECLARE_HKEY(_REQUEST);
@@ -331,44 +410,35 @@ static void dbg_init_time();
 static inline void dbg_print_time();
 #endif
 
-static inline void *_allocate(void *ptr, size_t size, int persistent);
-static void ut_persistent_copy_ctor(zval ** ztpp);
-static int MINIT_utils(TSRMLS_D);
-static int MSHUTDOWN_utils(TSRMLS_D);
-
-static int RINIT_utils(TSRMLS_D);
-static int RSHUTDOWN_utils(TSRMLS_D);
-
 static inline int ut_is_web(void);
-static void ut_persistent_zval_dtor(zval * zvalue);
-static void ut_persistent_zval_ptr_dtor(zval ** zval_ptr);
+static void ut_decref(zval *zp);
+static void ut_pezval_dtor(zval *zp, int persistent);
+static void ut_ezval_dtor(zval *zp);
+static void ut_pzval_dtor(zval *zp);
+static void ut_pezval_ptr_dtor(zval ** zpp, int persistent);
+static void ut_ezval_ptr_dtor(zval **zpp);
+static void ut_pzval_ptr_dtor(zval **zpp);
 static void ut_persistent_array_init(zval * zp);
-static void ut_persist_zval(zval * zsp, zval * ztp);
-static void ut_new_instance(zval ** ret_pp, zval * class_name,
-							int construct, int num_args,
-							zval ** args TSRMLS_DC);
-
-static inline void ut_call_user_function_void(zval * obj_zp, zval * func_zp,
-									   int nb_args,
-									   zval ** args TSRMLS_DC);
-static inline int ut_call_user_function_bool(zval * obj_zp, zval * func_zp,
-									  int nb_args, zval ** args TSRMLS_DC);
-static inline long ut_call_user_function_long(zval * obj_zp, zval * func_zp,
-									   int nb_args,
-									   zval ** args TSRMLS_DC);
-static inline void ut_call_user_function_string(zval * obj_zp, zval * func_zp,
-										 zval * ret, int nb_args,
-										 zval ** args TSRMLS_DC);
-static inline void ut_call_user_function_array(zval * obj_zp, zval * func_zp,
-										zval * ret, int nb_args,
-										zval ** args TSRMLS_DC);
-static inline void ut_call_user_function(zval * obj_zp, zval * func_zp,
-								  zval * ret, int nb_args,
-								  zval ** args TSRMLS_DC);
-
+static void ut_persistent_copy_ctor(zval ** ztpp);
+static zval *ut_persist_zval(zval * zsp);
+static zval *ut_new_instance(char *class_name, int class_name_len,
+	int construct, int nb_args,	zval ** args TSRMLS_DC);
+static inline void ut_call_user_function_void(zval *obj_zp, char *func,
+	int func_len, int nb_args, zval ** args TSRMLS_DC);
+static inline int ut_call_user_function_bool(zval * obj_zp, char *func,
+	int func_len, int nb_args, zval ** args TSRMLS_DC);
+static inline long ut_call_user_function_long(zval *obj_zp, char *func,
+	int func_len, int nb_args, zval ** args TSRMLS_DC);
+static inline void ut_call_user_function_string(zval *obj_zp, char *func,
+	int func_len, zval * ret, int nb_args, zval ** args TSRMLS_DC);
+static inline void ut_call_user_function_array(zval * obj_zp, char *func,
+	int func_len, zval * ret, int nb_args, zval ** args TSRMLS_DC);
+static inline void ut_call_user_function(zval *obj_zp, char *func,
+	int func_len, zval *ret, int nb_args, zval ** args TSRMLS_DC);
 static int ut_extension_loaded(char *name, int len TSRMLS_DC);
 static void ut_load_extension_file(zval *file TSRMLS_DC);
 static void ut_load_extension(char *name, int len TSRMLS_DC);
+static void ut_load_extensions(zval * extensions TSRMLS_DC);
 static void ut_require(char *string, zval * ret TSRMLS_DC);
 static inline int ut_strings_are_equal(zval * zp1, zval * zp2 TSRMLS_DC);
 static void ut_header(long response_code, char *string TSRMLS_DC);
@@ -378,14 +448,14 @@ static void ut_exit(int status TSRMLS_DC);
 static inline zval *_ut_SERVER_element(HKEY_STRUCT * hkey TSRMLS_DC);
 static inline zval *_ut_REQUEST_element(HKEY_STRUCT * hkey TSRMLS_DC);
 static char *ut_http_base_url(TSRMLS_D);
-static void ut_http_301_redirect(zval * path, int must_free TSRMLS_DC);
+static void ut_http_301_redirect(char *path, int must_free TSRMLS_DC);
 static inline void ut_rtrim_zval(zval * zp TSRMLS_DC);
 static inline void ut_tolower(char *p, int len TSRMLS_DC);
 static inline void ut_file_suffix(zval * path, zval * ret TSRMLS_DC);
 static void ut_unserialize_zval(const unsigned char *buffer
 	, unsigned long len, zval *ret TSRMLS_DC);
 static void ut_file_get_contents(char *path, zval *ret TSRMLS_DC);
-static char *ut_htmlspecialchars(char *src, int srclen, int *retlen TSRMLS_DC);
+static char *ut_htmlspecialchars(char *src, int srclen, PHP_ESCAPE_HTML_ENTITIES_SIZE *retlen TSRMLS_DC);
 static char *ut_ucfirst(char *ptr, int len TSRMLS_DC);
 static void ut_repeat_printf(char c, int count TSRMLS_DC);
 static void ut_printf_pad_right(char *str, int len, int size TSRMLS_DC);
@@ -393,9 +463,16 @@ static void ut_printf_pad_both(char *str, int len, int size TSRMLS_DC);
 static char *ut_absolute_dirname(char *path, int len, int *reslen, int separ TSRMLS_DC);
 static char *ut_dirname(char *path, int len, int *reslen TSRMLS_DC);
 static inline int ut_is_uri(char *path, int len TSRMLS_DC);
-static char *ut_mk_absolute_path(char *path, int len, int *reslen, int separ TSRMLS_DC);
-static int ut_rtrim(char *p TSRMLS_DC);
-static void ut_path_unique_id(char prefix, zval * path, zval ** mnt, time_t *mtp  TSRMLS_DC);
+static char *ut_mk_absolute_path(char *path, int len, int *reslen
+	, int separ TSRMLS_DC);
+static int ut_cut_at_space(char *p);
+static void ut_path_unique_id(char prefix, zval * path, zval ** mnt
+	, time_t *mtp  TSRMLS_DC);
+
+static int MINIT_utils(TSRMLS_D);
+static int MSHUTDOWN_utils(TSRMLS_D);
+static inline int RINIT_utils(TSRMLS_D);
+static inline int RSHUTDOWN_utils(TSRMLS_D);
 
 /*============================================================================*/
 #endif	/* FLP_UTILS_H */

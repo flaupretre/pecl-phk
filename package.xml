@@ -18,18 +18,20 @@
   <email>francois@php.net</email>
   <active>yes</active>
  </lead>
- <date>2007-12-01</date>
+ <date>2012-05-24</date>
  <time>12:00:00</time>
  <version>
-  <release>1.1.1</release>
-  <api>1.1.1</api>
+  <release>2.0.0</release>
+  <api>2.0.0</api>
  </version>
  <stability>
-  <release>alpha</release>
-  <api>alpha</api>
+  <release>beta</release>
+  <api>beta</api>
  </stability>
  <license uri="http://www.php.net/license">PHP License</license>
- <notes>Bugfix and performance release</notes>
+ <notes>
+Tested with PHP versions 5.1.0 to 5.4.1
+ </notes>
  <contents>
   <dir baseinstalldir="/" name="/">
    <dir name="tests">
@@ -61,7 +63,7 @@
     <min>5.1.0</min>
    </php>
    <pearinstaller>
-    <min>1.4.0</min>
+    <min>1.4.0b1</min>
    </pearinstaller>
   </required>
   <optional>
@@ -75,19 +77,4 @@
  </dependencies>
  <providesextension>phk</providesextension>
  <extsrcrelease/>
- <changelog>
-  <release>
-   <version>
-    <release>1.1.1</release>
-    <api>1.1.0</api>
-   </version>
-   <stability>
-    <release>alpha</release>
-    <api>alpha</api>
-   </stability>
-   <date>2007-12-01</date>
-   <license uri="http://www.php.net/license">PHP License</license>
-   <notes>Bugfix and performance release</notes>
-  </release>
- </changelog>
 </package>

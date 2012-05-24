@@ -18,42 +18,6 @@
 
 /* $Id$ */
 
-#include <stdio.h>
-
-#include "php_ini.h"
-
-#include "PHK_Cache.h"
-
-ZEND_EXTERN_MODULE_GLOBALS(phk)
-
-/*============================================================================*/
-
-typedef struct {
-	char *name;
-	int (*init) (TSRMLS_D);
-	void (*get) (zval * z_key_p, zval * z_ret_p TSRMLS_DC);
-	void (*set) (zval * z_key_p, zval * z_data_p TSRMLS_DC);
-} PHK_CACHE;
-
-static PHK_CACHE cache_table[] = {
-	{"apc", PHK_Cache_apc_init, NULL, NULL},
-	{"xcache", PHK_Cache_xcache_init, NULL, NULL},
-	{"eaccelerator", PHK_Cache_eaccelerator_init, NULL, NULL},
-	{NULL, NULL, NULL, NULL}
-};
-
-static PHK_CACHE *cache = NULL;
-
-static int maxsize = 524288;	/* Default: 512 Kb */
-
-static zend_class_entry *class_entry;
-
-static zval get_funcname;
-static zval set_funcname;
-
-#define PHK_TTL 3600
-static zval ttl_zval;
-
 /*============================================================================*/
 /* APC */
 
@@ -62,13 +26,7 @@ static zval ttl_zval;
 
 static int PHK_Cache_apc_init(TSRMLS_D)
 {
-	if (ut_is_web() || INI_BOOL("apc.enable_cli")) {
-		ZVAL_STRING(&get_funcname, "apc_fetch", 0);
-		ZVAL_STRING(&set_funcname, "apc_store", 0);
-
-		return 1;
-	} else
-		return 0;
+	return ((ut_is_web() || INI_BOOL("apc.enable_cli")) ? 1 : 0);
 }
 
 /*============================================================================*/
@@ -79,13 +37,7 @@ static int PHK_Cache_apc_init(TSRMLS_D)
 
 static int PHK_Cache_xcache_init(TSRMLS_D)
 {
-	if (ut_is_web()) {
-		ZVAL_STRING(&get_funcname, "xcache_get", 0);
-		ZVAL_STRING(&set_funcname, "xcache_set", 0);
-
-		return 1;
-	} else
-		return 0;
+	return ((ut_is_web()) ? 1 : 0);
 }
 
 /*============================================================================*/
@@ -98,12 +50,7 @@ static int PHK_Cache_eaccelerator_init(TSRMLS_D)
 {
 	if (!HKEY_EXISTS(EG(function_table),eaccelerator_get)) return 0;
 
-	if (ut_is_web()) {
-		ZVAL_STRING(&get_funcname, "eaccelerator_get", 0);
-		ZVAL_STRING(&set_funcname, "eaccelerator_put", 0);
-
-		return 1;
-	} else return 0;
+	return ((ut_is_web()) ? 1 : 0);
 }
 
 /*============================================================================*/
@@ -157,7 +104,7 @@ static PHP_METHOD(PHK_Cache, cache_name)
 /*-- C API ----*/
 
 static void PHK_Cache_cache_id(char *prefix, int prefix_len, char *key,
-							   int key_len, zval * z_ret_p TSRMLS_DC)
+	int key_len, zval * z_ret_p TSRMLS_DC)
 {
 	char *p;
 	int len;
@@ -169,6 +116,7 @@ static void PHK_Cache_cache_id(char *prefix, int prefix_len, char *key,
 	memmove(p + prefix_len + 9, key, key_len);
 	p[prefix_len + key_len + 9] = '\0';
 
+	ut_ezval_dtor(z_ret_p);
 	ZVAL_STRINGL(z_ret_p, p, len, 0);
 }
 
@@ -183,7 +131,7 @@ static PHP_METHOD(PHK_Cache, cache_id)
 	if (zend_parse_parameters
 		(ZEND_NUM_ARGS()TSRMLS_CC, "ss", &prefix, &prefix_len, &key,
 		 &key_len) == FAILURE)
-		EXCEPTION_ABORT_1("Cannot parse parameters", 0);
+		EXCEPTION_ABORT("Cannot parse parameters");
 
 	PHK_Cache_cache_id(prefix, prefix_len, key, key_len,
 					   return_value TSRMLS_CC);
@@ -195,9 +143,9 @@ static PHP_METHOD(PHK_Cache, cache_id)
 
 static PHP_METHOD(PHK_Cache, set_maxsize)
 {
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "l", &maxsize)
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "l", &cache_maxsize)
 		== FAILURE)
-		EXCEPTION_ABORT_1("Cannot parse parameters", 0);
+		EXCEPTION_ABORT("Cannot parse parameters");
 }
 
 /* }}} */
@@ -208,7 +156,7 @@ static PHP_METHOD(PHK_Cache, set_maxsize)
 
 static void PHK_Cache_get(zval * z_key_p, zval * z_ret_p TSRMLS_DC)
 {
-	ZVAL_NULL(z_ret_p);
+	ut_ezval_dtor(z_ret_p);
 
 	if (!cache) return;
 
@@ -216,8 +164,8 @@ static void PHK_Cache_get(zval * z_key_p, zval * z_ret_p TSRMLS_DC)
 	else {
 		/* Forward the call to the registered 'get' function */
 
-		ut_call_user_function(NULL, &get_funcname, z_ret_p, 1,
-							  &z_key_p TSRMLS_CC);
+		ut_call_user_function(NULL, cache->get_funcname_string
+			, cache->get_funcname_len, z_ret_p, 1, &z_key_p TSRMLS_CC);
 	}
 	/* Convert false to null */
 
@@ -234,7 +182,7 @@ static PHP_METHOD(PHK_Cache, get)
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &z_key_p)
 		== FAILURE)
-		EXCEPTION_ABORT_1("Cannot parse parameters", 0);
+		EXCEPTION_ABORT("Cannot parse parameters");
 
 	PHK_Cache_get(z_key_p, return_value TSRMLS_CC);
 }
@@ -247,16 +195,15 @@ static PHP_METHOD(PHK_Cache, get)
 
 static void PHK_Cache_set(zval * z_key_p, zval * z_data_p TSRMLS_DC)
 {
-	zval *args[3];
+	zval *args[3],*ttl;
 
-	if (!cache)
-		return;
+	if (!cache) return;
 
 	/* Check max size if string */
 
 	if (Z_TYPE_P(z_data_p) != IS_ARRAY) {
 		if (Z_TYPE_P(z_data_p) != IS_STRING) convert_to_string(z_data_p);
-		if (Z_STRLEN_P(z_data_p) > maxsize) return;
+		if (Z_STRLEN_P(z_data_p) > cache_maxsize) return;
 	}
 
 	/* Call setter */
@@ -265,10 +212,17 @@ static void PHK_Cache_set(zval * z_key_p, zval * z_data_p TSRMLS_DC)
 	else {
 		/* Forward to a PHP function when there is no C API */
 
+		MAKE_STD_ZVAL(ttl);
+		ZVAL_LONG(ttl,PHK_TTL);
+
 		args[0] = z_key_p;
 		args[1] = z_data_p;
-		args[2] = &ttl_zval;
-		ut_call_user_function_void(NULL, &set_funcname, 3, args TSRMLS_CC);
+		args[2] = ttl;
+
+		ut_call_user_function_void(NULL, cache->set_funcname_string
+			,cache->set_funcname_len, 3, args TSRMLS_CC);
+		
+		ut_ezval_ptr_dtor(&ttl);
 	}
 }
 
@@ -282,7 +236,7 @@ static PHP_METHOD(PHK_Cache, set)
 	if (zend_parse_parameters
 		(ZEND_NUM_ARGS()TSRMLS_CC, "zz", &z_key_p, &z_data_p)
 		== FAILURE)
-		EXCEPTION_ABORT_1("Cannot parse parameters", 0);
+		EXCEPTION_ABORT("Cannot parse parameters");
 
 	PHK_Cache_set(z_key_p, z_data_p TSRMLS_CC);
 }
@@ -311,14 +265,14 @@ static zend_function_entry PHK_Cache_functions[] = {
 
 static int MINIT_PHK_Cache(TSRMLS_D)
 {
-	zend_class_entry ce;
+	zend_class_entry ce, *entry;
 	PHK_CACHE *cp;
 
 	/*------*/
 	/* Init class */
 
 	INIT_CLASS_ENTRY(ce, "PHK_Cache", PHK_Cache_functions);
-	class_entry = zend_register_internal_class(&ce TSRMLS_CC);
+	entry = zend_register_internal_class(&ce TSRMLS_CC);
 
 	/*------*/
 	/* Which cache system do we use ? */
@@ -335,13 +289,6 @@ static int MINIT_PHK_Cache(TSRMLS_D)
 		cp++;
 	}
 
-	if (cache) {
-		/* Initialize the TTL zval */
-
-		INIT_ZVAL(ttl_zval);
-		ZVAL_LONG((&ttl_zval), PHK_TTL);
-	}
-
 	return SUCCESS;
 }
 
@@ -355,14 +302,14 @@ static int MSHUTDOWN_PHK_Cache(TSRMLS_D)
 
 /*---------------------------------------------------------------*/
 
-static int RINIT_PHK_Cache(TSRMLS_D)
+static inline int RINIT_PHK_Cache(TSRMLS_D)
 {
 	return SUCCESS;
 }
 
 /*---------------------------------------------------------------*/
 
-static int RSHUTDOWN_PHK_Cache(TSRMLS_D)
+static inline int RSHUTDOWN_PHK_Cache(TSRMLS_D)
 {
 	return SUCCESS;
 }

@@ -18,23 +18,9 @@
 
 /* $Id$ */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "php.h"
-#include "SAPI.h"
-#include "TSRM/TSRM.h"
-#include "ext/standard/info.h"
-
 #define ALLOCATE
 
 #include "php_phk.h"
-#include "utils.h"
-#include "PHK_Cache.h"
-#include "PHK_Stream.h"
-#include "PHK_Mgr.h"
-#include "PHK.h"
 
 /*------------------------*/
 
@@ -59,11 +45,20 @@ static int init_done=0;
 
 static PHP_MINFO_FUNCTION(phk)
 {
+
 	php_info_print_table_start();
 
 	php_info_print_table_row(2, "PHK Accelerator", "enabled");
 	php_info_print_table_row(2, "Version", PHK_ACCEL_VERSION);
 	php_info_print_table_row(2, "Cache used",PHK_Cache_cache_name(TSRMLS_C));
+#ifdef PHK_DEBUG
+	{
+	char buf[10];
+
+	sprintf(buf,"%d",zend_hash_num_elements(&persistent_mtab));
+	php_info_print_table_row(2, "Persistent package count",buf);
+	}
+#endif
 
 	php_info_print_table_end();
 }
@@ -73,7 +68,7 @@ static PHP_MINFO_FUNCTION(phk)
 
 static void phk_globals_ctor(zend_phk_globals * globals TSRMLS_DC)
 {
-	memset(globals, 0, sizeof(*globals)); /* Init everything to 0/NULL */
+	CLEAR_DATA(*globals); /* Init everything to 0/NULL */
 }
 
 /*------------------------*/
@@ -87,53 +82,8 @@ static void phk_globals_dtor(zend_phk_globals * globals TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static void build_constant_values()
+static void init_hkeys()
 {
-	/* Constant zvalues */
-
-	INIT_ZVAL(CZVAL(false));
-	ZVAL_BOOL(&CZVAL(false), 0);
-
-	INIT_ZVAL(CZVAL(true));
-	ZVAL_BOOL(&CZVAL(true), 1);
-
-	INIT_ZVAL(CZVAL(null));
-	ZVAL_NULL(&CZVAL(null));
-
-	INIT_CZVAL_VALUE(slash,"/");
-	INIT_CZVAL_VALUE(application_x_httpd_php,"application/x-httpd-php");
-
-	INIT_CZVAL(PHK_Stream_Backend);
-	INIT_CZVAL(PHK_Backend);
-	INIT_CZVAL(PHK_Util);
-	INIT_CZVAL(PHK_Proxy);
-	INIT_CZVAL(PHK_Creator);
-	INIT_CZVAL(PHK);
-	INIT_CZVAL(Automap);
-
-	INIT_CZVAL(cache_enabled);
-	INIT_CZVAL(umount);
-	INIT_CZVAL(is_mounted);
-	INIT_CZVAL(get_file_data);
-	INIT_CZVAL(get_dir_data);
-	INIT_CZVAL(get_stat_data);
-	INIT_CZVAL(get_min_version);
-	INIT_CZVAL(get_options);
-	INIT_CZVAL(get_build_info);
-	INIT_CZVAL(init);
-	INIT_CZVAL(mount);
-	INIT_CZVAL(crc_check);
-	INIT_CZVAL(file_is_package);
-	INIT_CZVAL(data_is_package);
-	INIT_CZVAL(umount);
-	INIT_CZVAL(subpath_url);
-	INIT_CZVAL(call_method);
-	INIT_CZVAL(run_webinfo);
-	INIT_CZVAL(builtin_prolog);
-
-	/* Hash keys */
-
-	INIT_HKEY(crc_check);
 	INIT_HKEY(no_cache);
 	INIT_HKEY(no_opcode_cache);
 	INIT_HKEY(required_extensions);
@@ -171,13 +121,9 @@ static PHP_RINIT_FUNCTION(phk)
 	DBG_INIT();
 
 	if (RINIT_utils(TSRMLS_C) == FAILURE) return FAILURE;
-
 	if (RINIT_PHK_Cache(TSRMLS_C) == FAILURE) return FAILURE;
-
 	if (RINIT_PHK_Stream(TSRMLS_C) == FAILURE) return FAILURE;
-
 	if (RINIT_PHK_Mgr(TSRMLS_C) == FAILURE) return FAILURE;
-
 	if (RINIT_PHK(TSRMLS_C) == FAILURE) return FAILURE;
 
 	return SUCCESS;
@@ -190,13 +136,9 @@ static PHP_RSHUTDOWN_FUNCTION(phk)
 	if (!init_done) return SUCCESS;
 
 	if (RSHUTDOWN_PHK(TSRMLS_C) == FAILURE) return FAILURE;
-
 	if (RSHUTDOWN_PHK_Mgr(TSRMLS_C) == FAILURE) return FAILURE;
-
 	if (RSHUTDOWN_PHK_Stream(TSRMLS_C) == FAILURE) return FAILURE;
-
 	if (RSHUTDOWN_PHK_Cache(TSRMLS_C) == FAILURE) return FAILURE;
-
 	if (RSHUTDOWN_utils(TSRMLS_C) == FAILURE) return FAILURE;
 
 	return SUCCESS;
@@ -206,7 +148,7 @@ static PHP_RSHUTDOWN_FUNCTION(phk)
 
 static PHP_MINIT_FUNCTION(phk)
 {
-	build_constant_values();
+	init_hkeys();
 
 	/* Handle case where the PHK extension is dynamically loaded from a
 	   PHK package (as when Automap.phk registers extensions). In this case,
@@ -221,13 +163,9 @@ static PHP_MINIT_FUNCTION(phk)
 							 CONST_CS | CONST_PERSISTENT);
 
 	if (MINIT_utils(TSRMLS_C) == FAILURE) return FAILURE;
-
 	if (MINIT_PHK_Cache(TSRMLS_C) == FAILURE) return FAILURE;
-
 	if (MINIT_PHK_Stream(TSRMLS_C) == FAILURE) return FAILURE;
-
 	if (MINIT_PHK_Mgr(TSRMLS_C) == FAILURE) return FAILURE;
-
 	if (MINIT_PHK(TSRMLS_C) == FAILURE) return FAILURE;
 
 	return SUCCESS;
@@ -244,13 +182,9 @@ static PHP_MSHUTDOWN_FUNCTION(phk)
 #endif
 
 	if (MSHUTDOWN_PHK(TSRMLS_C) == FAILURE) return FAILURE;
-
 	if (MSHUTDOWN_PHK_Mgr(TSRMLS_C) == FAILURE) return FAILURE;
-
 	if (MSHUTDOWN_PHK_Stream(TSRMLS_C) == FAILURE) return FAILURE;
-
 	if (MSHUTDOWN_PHK_Cache(TSRMLS_C) == FAILURE) return FAILURE;
-
 	if (MSHUTDOWN_utils(TSRMLS_C) == FAILURE) return FAILURE;
 
 	return SUCCESS;
