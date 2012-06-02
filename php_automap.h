@@ -62,7 +62,7 @@
 
 #define AUTOMAP_API "2.0.0"
 
-#define AUTOMAP_MIN_MAP_VERSION "2.0.0"
+#define AUTOMAP_MIN_MAP_VERSION "1.1.0"
 
 #define PHP_AUTOMAP_EXTNAME "automap"
 
