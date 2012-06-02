@@ -64,6 +64,11 @@ static PHP_METHOD(Automap, symbols);
 static PHP_METHOD(Automap, get_symbol);
 static unsigned long Automap_symbol_count(Automap_Mnt *mp TSRMLS_DC);
 static PHP_METHOD(Automap, option);
+static PHP_METHOD(Automap, check);
+static PHP_METHOD(Automap, show);
+static PHP_METHOD(Automap, show_text);
+static PHP_METHOD(Automap, show_html);
+static PHP_METHOD(Automap, export);
 static void Automap_Instance_set_constants(zend_class_entry * ce);
 
 static int MINIT_Automap_Instance(TSRMLS_D);
