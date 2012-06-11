@@ -90,7 +90,7 @@ static char *autoindex_fnames[] = {
 /*============================================================================*/
 
 static void PHK_set_mp_property(zval * obj, int order TSRMLS_DC);
-static void PHK_need_php_runtime(TSRMLS_D);
+ZEND_DLEXPORT void PHK_need_php_runtime(TSRMLS_D);
 static PHP_METHOD(PHK, need_php_runtime);
 static void PHK_init(PHK_Mnt * mp TSRMLS_DC);
 static PHP_METHOD(PHK, map_defined);

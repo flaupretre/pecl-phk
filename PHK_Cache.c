@@ -109,7 +109,7 @@ static void PHK_Cache_cache_id(char *prefix, int prefix_len, char *key,
 	char *p;
 	int len;
 
-	p = eallocate(NULL,(len = prefix_len + key_len + 9) + 1);
+	p = ut_eallocate(NULL,(len = prefix_len + key_len + 9) + 1);
 	memmove(p, "phk.acc.", 8);
 	memmove(p + 8, prefix, prefix_len);
 	p[prefix_len + 8] = '.';

@@ -28,7 +28,7 @@ static void PHK_set_mp_property(zval * obj, int order TSRMLS_DC)
 /*---------------------------------------------------------------*/
 /* Slow path */
 
-static void PHK_need_php_runtime(TSRMLS_D)
+ZEND_DLEXPORT void PHK_need_php_runtime(TSRMLS_D)
 {
 	FILE *fp;
 	int size, offset,nb_read;
@@ -54,9 +54,9 @@ static void PHK_need_php_runtime(TSRMLS_D)
 
 	nb_read=fread(buf1, 1, 241, fp);
 	if (nb_read != 241)	EXCEPTION_ABORT("Cannot load PHP runtime code - Cannot get offset/size");
-	buf1[224]='\0'; // Avoids valgrind warning
+	buf1[224]='\0'; /* Avoids valgrind warning */
 	sscanf(buf1 + 212, "%d", &offset);
-	buf1[239]='\0'; // Avoids valgrind warning
+	buf1[239]='\0'; /* Avoids valgrind warning */
 	sscanf(buf1 + 227, "%d", &size);
 
 	EALLOCATE(buf, size + 1);
@@ -473,7 +473,7 @@ static char *web_tunnel(PHK_Mnt * mp, zval * path,
 		ut_http_404_fail(TSRMLS_C);
 	}
 
-	if (S_ISDIR(ssb.sb.st_mode))	// Directory autoindex
+	if (S_ISDIR(ssb.sb.st_mode))	/* Directory autoindex */
 	{
 		found = 0;
 		if (last_slash) {

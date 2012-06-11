@@ -24,7 +24,7 @@ static PHK_STREAM_DATA *new_dp(int show_errors)
 {
 	PHK_STREAM_DATA *dp;
 
-	dp = eallocate(NULL,sizeof(PHK_STREAM_DATA));
+	dp = ut_eallocate(NULL,sizeof(PHK_STREAM_DATA));
 
 	dp->show_errors = show_errors;
 
@@ -148,7 +148,7 @@ static void PHK_Stream_get_file(int dir, zval * ret_p, zval * uri_p,
 				, ret_p, 5, args TSRMLS_CC);
 		}
 		if (EG(exception) || ZVAL_IS_NULL(ret_p))
-			ABORT_PHK_STREAM_GET_FILE();	// Forward the exception
+			ABORT_PHK_STREAM_GET_FILE();	/* Forward the exception */
 
 		if (zend_is_true(can_cache)) {
 			if (!is_last_cached_opcode(Z_STRVAL_P(uri_p), Z_STRLEN_P(uri_p)
@@ -388,7 +388,7 @@ static int do_stat(php_stream_wrapper * wrapper, char *uri,
 			ENSURE_LONG(z_size);
 			ENSURE_LONG(z_mtime);
 
-			tssb = (php_stream_statbuf *)eallocate(NULL,(ssb_len=sizeof(*tssb))+1);
+			tssb = (php_stream_statbuf *)ut_eallocate(NULL,(ssb_len=sizeof(*tssb))+1);
 			memset(tssb, 0, ssb_len+1);
 
 			tssb->sb.st_size = (off_t) Z_LVAL_P(z_size);
@@ -413,7 +413,7 @@ static int do_stat(php_stream_wrapper * wrapper, char *uri,
 			tssb->sb.st_blocks = -1;
 #endif
 		} else {
-			tssb = eallocate(NULL,1);
+			tssb = ut_eallocate(NULL,1);
 			*((char *) tssb) = '\0';
 			ssb_len = 0;
 		}
