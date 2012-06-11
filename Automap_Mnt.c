@@ -131,7 +131,7 @@ static PHP_METHOD(Automap, is_mounted)
 /* }}} */
 /*---------------------------------------------------------------*/
 
-static void Automap_Mnt_validate(zval * mnt, ulong hash TSRMLS_DC)
+ZEND_DLEXPORT void Automap_Mnt_validate(zval * mnt, ulong hash TSRMLS_DC)
 {
 	(void) Automap_Mnt_get(mnt, hash, 1 TSRMLS_CC);
 }
@@ -165,7 +165,7 @@ static PHP_METHOD(Automap, validate)
 	return (_ret); \
 	}
 
-static Automap_Mnt *Automap_Mnt_mount(zval * path, zval * base_dir,
+ZEND_DLEXPORT Automap_Mnt *Automap_Mnt_mount(zval * path, zval * base_dir,
 									   zval * mnt, ulong flags TSRMLS_DC)
 {
 	Automap_Mnt *mp;
@@ -229,7 +229,7 @@ static PHP_METHOD(Automap, mount)
 /*---------------------------------------------------------------*/
 /* Must accept an invalid mount point without error */
 
-static void Automap_umount(zval *mnt, ulong hash TSRMLS_DC)
+ZEND_DLEXPORT void Automap_umount(zval *mnt, ulong hash TSRMLS_DC)
 {
 	Automap_Mnt *mp;
 
@@ -283,7 +283,7 @@ static char *Automap_Mnt_abs_path(Automap_Mnt *mp, Automap_Pmap_Entry *pep
 	char *ret;
 
 	if (pep->ftype==AUTOMAP_F_PACKAGE) {
-	ret=eduplicate(Z_STRVAL(pep->zfpath),Z_STRLEN(pep->zfpath)+1);
+	ret=ut_eduplicate(Z_STRVAL(pep->zfpath),Z_STRLEN(pep->zfpath)+1);
 	(*lenp)=Z_STRLEN(pep->zfpath);
 	}
 	else {

@@ -79,12 +79,12 @@ static int Automap_Pmap_create_entry(zval **zpp
 				EXCEPTION_ABORT_RET(ZEND_HASH_APPLY_STOP,"Automap_Pmap_create_entry: Invalid entry (V1 map)");
 			}
 			tmp_entry.stype=hash_key->arKey[0];
-			p=pduplicate((void *)(&(hash_key->arKey[1])),(len=hash_key->nKeyLength-2)+1);
+			p=ut_pduplicate((void *)(&(hash_key->arKey[1])),(len=hash_key->nKeyLength-2)+1);
 			ZVAL_STRINGL(&(tmp_entry.zsname),p,len,0);
 			ZVAL_STRINGL(&zkey,hash_key->arKey,len+1,0);
 			len=Z_STRLEN_PP(zpp)-1;
 			tmp_entry.ftype=sp[0];
-			p=pduplicate(sp+1,len);
+			p=ut_pduplicate(sp+1,len);
 			ZVAL_STRINGL(&(tmp_entry.zfpath),p,len,0);
 			zend_hash_update(htp,Z_STRVAL(zkey),Z_STRLEN(zkey)+1
 				,&tmp_entry,sizeof(tmp_entry),NULL);
@@ -107,10 +107,10 @@ static int Automap_Pmap_create_entry(zval **zpp
 			if (!p2) {
 				EXCEPTION_ABORT_RET(ZEND_HASH_APPLY_STOP,"Automap_Pmap_create_entry: Invalid entry");
 			}
-			p=pduplicate(sp+2,len+1);
+			p=ut_pduplicate(sp+2,len+1);
 			ZVAL_STRINGL(&(tmp_entry.zsname),p,len,0);
 			len=Z_STRLEN_PP(zpp)-len-3;
-			p=pduplicate(p2,len+1);
+			p=ut_pduplicate(p2,len+1);
 			ZVAL_STRINGL(&(tmp_entry.zfpath),p,len,0);
 
 			Automap_key(tmp_entry.stype, Z_STRVAL(tmp_entry.zsname), Z_STRLEN(tmp_entry.zsname)
@@ -303,7 +303,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zpathp, zval *zmntp
 		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	}
 
-	htp=(HashTable *)pallocate(NULL,sizeof(HashTable));
+	htp=(HashTable *)ut_pallocate(NULL,sizeof(HashTable));
 	zend_hash_init(htp,zend_hash_num_elements(Z_ARRVAL_PP(zpp)),NULL
 		,(dtor_func_t)Automap_Pmap_Entry_dtor,1);
 	ALLOC_INIT_PERMANENT_ZVAL(tmp_map.zsymbols);

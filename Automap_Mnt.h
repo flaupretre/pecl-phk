@@ -43,12 +43,12 @@ static Automap_Mnt *Automap_Mnt_create(Automap_Pmap *pmp, zval *zpathp, zval *zb
 	, ulong flags TSRMLS_DC);
 static Automap_Mnt *Automap_Mnt_get(zval *mnt, ulong hash, int exception TSRMLS_DC);
 static PHP_METHOD(Automap, is_mounted);
-static void Automap_Mnt_validate(zval * mnt, ulong hash TSRMLS_DC);
+ZEND_DLEXPORT void Automap_Mnt_validate(zval * mnt, ulong hash TSRMLS_DC);
 static PHP_METHOD(Automap, validate);
-static Automap_Mnt *Automap_Mnt_mount(zval * path, zval * base_dir,
+ZEND_DLEXPORT Automap_Mnt *Automap_Mnt_mount(zval * path, zval * base_dir,
 									   zval * mnt, ulong flags TSRMLS_DC);
 static PHP_METHOD(Automap, mount);
-static void Automap_umount(zval *mnt, ulong hash TSRMLS_DC);
+ZEND_DLEXPORT void Automap_umount(zval *mnt, ulong hash TSRMLS_DC);
 static PHP_METHOD(Automap, umount);
 static PHP_METHOD(Automap, mnt_list);
 static char *Automap_Mnt_abs_path(Automap_Mnt *mp, Automap_Pmap_Entry *pep, int *lenp TSRMLS_DC);

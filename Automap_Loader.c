@@ -56,7 +56,7 @@ static void Automap_Loader_register_hook(TSRMLS_D)
 /*---------------------------------------------------------------*/
 /* Returns SUCCESS/FAILURE */
 
-static int Automap_resolve_symbol(char type, char *symbol, int slen, int autoload
+ZEND_DLEXPORT int Automap_resolve_symbol(char type, char *symbol, int slen, int autoload
 	, int exception TSRMLS_DC)
 {
 	zval *zkey;

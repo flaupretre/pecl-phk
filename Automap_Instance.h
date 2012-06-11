@@ -49,7 +49,7 @@
 /*---------------------------------------------------------------*/
 
 static zval *Automap_instance_by_mp(Automap_Mnt *mp TSRMLS_DC);
-static zval *Automap_instance(zval * mnt, ulong hash TSRMLS_DC);
+ZEND_DLEXPORT zval *Automap_instance(zval * mnt, ulong hash TSRMLS_DC);
 static PHP_METHOD(Automap, instance);
 static PHP_METHOD(Automap, is_valid);
 static PHP_METHOD(Automap, mnt);

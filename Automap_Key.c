@@ -31,7 +31,7 @@ static void Automap_key(char type, char *symbol, unsigned long len
 		len--;
 	}
 
-	p=eallocate(NULL,len+2);
+	p=ut_eallocate(NULL,len+2);
 	p[0]=type;
 	memmove(p+1,symbol,len+1);
 
