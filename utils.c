@@ -56,11 +56,11 @@
 
 /*============================================================================*/
 
-static HashTable simul_inodes;
+static HashTable _ut_simul_inodes;
 
-static unsigned long simul_inode_index;
+static unsigned long _ut_simul_inode_index;
 
-StaticMutexDeclare(simul_inodes);
+StaticMutexDeclare(_ut_simul_inodes);
 
 /*============================================================================*/
 /* Generic arginfo structures */
@@ -130,25 +130,25 @@ ZEND_END_ARG_INFO()
 
 static void _ut_init_persistent_data(TSRMLS_D)
 {
-	MutexSetup(simul_inodes);
+	MutexSetup(_ut_simul_inodes);
 
-	zend_hash_init(&simul_inodes, 16, NULL,NULL, 1);
+	zend_hash_init(&_ut_simul_inodes, 16, NULL,NULL, 1);
 
-	simul_inode_index = 1;
+	_ut_simul_inode_index = 1;
 }
 
 /*---------------------------------------------------------------*/
 
 static void _ut_shutdown_persistent_data(TSRMLS_D)
 {
-	zend_hash_destroy(&simul_inodes);
+	zend_hash_destroy(&_ut_simul_inodes);
 
-	MutexShutdown(simul_inodes);
+	MutexShutdown(_ut_simul_inodes);
 }
 
 /*---------------------------------------------------------------*/
 
-static inline void *_allocate(void *ptr, size_t size, int persistent)
+static void *ut_allocate(void *ptr, size_t size, int persistent)
 {
 	if (ptr) {
 		if (size) ptr=perealloc(ptr, size, persistent);
@@ -162,52 +162,52 @@ static inline void *_allocate(void *ptr, size_t size, int persistent)
 return ptr;
 }
 	
-#define eallocate(ptr, size) _allocate(ptr, size, 0)
-#define pallocate(ptr, size) _allocate(ptr, size, 1)
+#define ut_eallocate(ptr, size) ut_allocate(ptr, size, 0)
+#define ut_pallocate(ptr, size) ut_allocate(ptr, size, 1)
 
-#define PEALLOCATE(ptr, size, persistent)	ptr=_allocate(ptr, size, persistent)
+#define PEALLOCATE(ptr, size, persistent)	ptr=ut_allocate(ptr, size, persistent)
 #define EALLOCATE(ptr, size)	PEALLOCATE(ptr, size, 0)
 #define PALLOCATE(ptr, size)	PEALLOCATE(ptr, size, 1)
 
 /*---------------------------------------------------------------*/
 
-static inline void *_duplicate(void *ptr, size_t size, int persistent)
+static void *ut_duplicate(void *ptr, size_t size, int persistent)
 {
 	char *p;
 
 	if (!ptr) return NULL;
-	if (size==0) return _allocate(NULL,1,persistent);
+	if (size==0) return ut_allocate(NULL,1,persistent);
 
-	p=_allocate(NULL,size,persistent);
+	p=ut_allocate(NULL,size,persistent);
 	memmove(p,ptr,size);
 	return p;
 }
 
-#define eduplicate(ptr, size) _duplicate(ptr, size, 0)
-#define pduplicate(ptr, size) _duplicate(ptr, size, 1)
+#define ut_eduplicate(ptr, size) ut_duplicate(ptr, size, 0)
+#define ut_pduplicate(ptr, size) ut_duplicate(ptr, size, 1)
 
 /*---------------------------------------------------------------*/
 
 #ifdef UT_DEBUG
 
 #ifdef HAVE_GETTIMEOFDAY
-static struct timeval base_tp;
+static struct timeval _ut_base_tp;
 #endif
 
 /*------------*/
 
-static void dbg_init_time()
+UT_SYMBOL void ut_dbg_init_time()
 {
 #ifdef HAVE_GETTIMEOFDAY
 	struct timezone tz;
 
-	(void)gettimeofday(&base_tp,&tz);
+	(void)gettimeofday(&_ut_base_tp,&tz);
 #endif
 }
 
 /*------------*/
 
-static inline void dbg_print_time()
+UT_SYMBOL void ut_dbg_print_time()
 {
 #ifdef HAVE_GETTIMEOFDAY
 	struct timeval tp;
@@ -219,8 +219,8 @@ static inline void dbg_print_time()
 	if (ut_is_web()) php_printf("<br>");
 	php_printf("<");
 	if (sec) php_printf("%ld/",sec);
-	php_printf("%ld> : ",tp.tv_usec-base_tp.tv_usec);
-	(void)gettimeofday(&base_tp,&tz);
+	php_printf("%ld> : ",tp.tv_usec-_ut_base_tp.tv_usec);
+	(void)gettimeofday(&_ut_base_tp,&tz);
 #endif
 }
 
@@ -228,18 +228,22 @@ static inline void dbg_print_time()
 
 /*---------------------------------------------------------------*/
 
-static inline int ut_is_web()
+UT_SYMBOL int ut_is_web()
 {
 	static int init_done=0;
 	static int web;
 
-	if (!init_done)	web=strcmp(sapi_module.name, "cli");
+	if (!init_done)
+		{
+		web=strcmp(sapi_module.name, "cli");
+		init_done=1;
+		}
 	return web;
 }
 
 /*---------*/
 
-static void ut_decref(zval *zp)
+UT_SYMBOL void ut_decref(zval *zp)
 {
 	Z_DELREF_P(zp);
 	if (Z_REFCOUNT_P(zp)<=1) Z_UNSET_ISREF_P(zp);
@@ -248,7 +252,7 @@ static void ut_decref(zval *zp)
 /*---------*/
 /* Free zval content and reset it */
 
-static void ut_pezval_dtor(zval *zp, int persistent)
+UT_SYMBOL void ut_pezval_dtor(zval *zp, int persistent)
 {
 	if (persistent) {
 		switch (Z_TYPE_P(zp) & ~IS_CONSTANT_INDEX) {
@@ -271,13 +275,13 @@ static void ut_pezval_dtor(zval *zp, int persistent)
 
 /*---------*/
 
-static void ut_ezval_dtor(zval *zp) { ut_pezval_dtor(zp,0); }
-static void ut_pzval_dtor(zval *zp) { ut_pezval_dtor(zp,1); }
+UT_SYMBOL void ut_ezval_dtor(zval *zp) { ut_pezval_dtor(zp,0); }
+UT_SYMBOL void ut_pzval_dtor(zval *zp) { ut_pezval_dtor(zp,1); }
 
 /*---------*/
 /* clear the zval pointer */
 
-static void ut_pezval_ptr_dtor(zval ** zpp, int persistent)
+UT_SYMBOL void ut_pezval_ptr_dtor(zval ** zpp, int persistent)
 {
 	if (*zpp) {
 		if (persistent) {
@@ -286,7 +290,7 @@ static void ut_pezval_ptr_dtor(zval ** zpp, int persistent)
 			if (Z_REFCOUNT_PP(zpp) == 0) {
 				ut_pzval_dtor(*zpp);
 				GC_REMOVE_ZVAL_FROM_BUFFER(*zpp);
-				pallocate(*zpp, 0);
+				ut_pallocate(*zpp, 0);
 			} 
 		} else {
 			zval_ptr_dtor(zpp);
@@ -297,16 +301,16 @@ static void ut_pezval_ptr_dtor(zval ** zpp, int persistent)
 
 /*---------*/
 
-static void ut_ezval_ptr_dtor(zval **zpp) { ut_pezval_ptr_dtor(zpp,0); }
-static void ut_pzval_ptr_dtor(zval **zpp) { ut_pezval_ptr_dtor(zpp,1); }
+UT_SYMBOL void ut_ezval_ptr_dtor(zval **zpp) { ut_pezval_ptr_dtor(zpp,0); }
+UT_SYMBOL void ut_pzval_ptr_dtor(zval **zpp) { ut_pezval_ptr_dtor(zpp,1); }
 
 /*---------*/
 
-static void ut_persistent_array_init(zval * zp)
+UT_SYMBOL void ut_persistent_array_init(zval * zp)
 {
 	HashTable *htp;
 
-	htp=pallocate(NULL,sizeof(HashTable));
+	htp=ut_pallocate(NULL,sizeof(HashTable));
 	(void)zend_hash_init(htp,0, NULL,(dtor_func_t)ut_pzval_ptr_dtor,1);
 	INIT_PZVAL(zp);
 	ZVAL_ARRAY(zp, htp);
@@ -314,7 +318,7 @@ static void ut_persistent_array_init(zval * zp)
 
 /*---------*/
 
-static void ut_persistent_copy_ctor(zval ** ztpp)
+UT_SYMBOL void ut_persistent_copy_ctor(zval ** ztpp)
 {
 	*ztpp=ut_persist_zval(*ztpp);
 }
@@ -323,7 +327,7 @@ static void ut_persistent_copy_ctor(zval ** ztpp)
 /* Duplicates a zval and all its descendants to persistent storage */
 /* Does not support objects and resources */
 
-static zval *ut_persist_zval(zval * zsp)
+UT_SYMBOL zval *ut_persist_zval(zval * zsp)
 {
 	int type, len;
 	char *p;
@@ -336,7 +340,7 @@ static zval *ut_persist_zval(zval * zsp)
 	  case IS_STRING:
 	  case IS_CONSTANT:
 		  len = Z_STRLEN_P(zsp);
-		  p=pduplicate(Z_STRVAL_P(zsp), len + 1);
+		  p=ut_pduplicate(Z_STRVAL_P(zsp), len + 1);
 		  ZVAL_STRINGL(ztp, p, len, 0);
 		  break;
 
@@ -361,7 +365,7 @@ static zval *ut_persist_zval(zval * zsp)
 
 /*---------------------------------------------------------------*/
 
-static zval *ut_new_instance(char *class_name, int class_name_len,
+UT_SYMBOL zval *ut_new_instance(char *class_name, int class_name_len,
 	int construct, int nb_args,	zval ** args TSRMLS_DC)
 {
 	zend_class_entry **ce;
@@ -389,7 +393,7 @@ static zval *ut_new_instance(char *class_name, int class_name_len,
 
 /*---------------------------------------------------------------*/
 
-static inline void ut_call_user_function_void(zval *obj_zp, char *func,
+UT_SYMBOL void ut_call_user_function_void(zval *obj_zp, char *func,
 	int func_len, int nb_args, zval ** args TSRMLS_DC)
 {
 	zval *ret;
@@ -401,7 +405,7 @@ static inline void ut_call_user_function_void(zval *obj_zp, char *func,
 
 /*---------------------------------------------------------------*/
 
-static inline int ut_call_user_function_bool(zval * obj_zp, char *func,
+UT_SYMBOL int ut_call_user_function_bool(zval * obj_zp, char *func,
 	int func_len, int nb_args, zval ** args TSRMLS_DC)
 {
 	zval *ret;
@@ -417,7 +421,7 @@ static inline int ut_call_user_function_bool(zval * obj_zp, char *func,
 
 /*---------------------------------------------------------------*/
 
-static inline long ut_call_user_function_long(zval *obj_zp, char *func,
+UT_SYMBOL long ut_call_user_function_long(zval *obj_zp, char *func,
 	int func_len, int nb_args, zval ** args TSRMLS_DC)
 {
 	zval *ret;
@@ -435,7 +439,7 @@ static inline long ut_call_user_function_long(zval *obj_zp, char *func,
 
 /*---------------------------------------------------------------*/
 
-static inline void ut_call_user_function_string(zval *obj_zp, char *func,
+UT_SYMBOL void ut_call_user_function_string(zval *obj_zp, char *func,
 	int func_len, zval * ret, int nb_args, zval ** args TSRMLS_DC)
 {
 	ut_call_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
@@ -446,7 +450,7 @@ static inline void ut_call_user_function_string(zval *obj_zp, char *func,
 
 /*---------------------------------------------------------------*/
 
-static inline void ut_call_user_function_array(zval * obj_zp, char *func,
+UT_SYMBOL void ut_call_user_function_array(zval * obj_zp, char *func,
 	int func_len, zval * ret, int nb_args, zval ** args TSRMLS_DC)
 {
 	ut_call_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
@@ -460,7 +464,7 @@ static inline void ut_call_user_function_array(zval * obj_zp, char *func,
 
 /*---------------------------------------------------------------*/
 
-static inline void ut_call_user_function(zval *obj_zp, char *func,
+UT_SYMBOL void ut_call_user_function(zval *obj_zp, char *func,
 	int func_len, zval *ret, int nb_args, zval ** args TSRMLS_DC)
 {
 	int status;
@@ -491,7 +495,7 @@ and 5.3.9 */
 		}
 	}	
 	if (clen) {
-		p2=eduplicate(op,clen+1);
+		p2=ut_eduplicate(op,clen+1);
 		p2[clen]='\0';
 		MAKE_STD_ZVAL(obj_zp);
 		ZVAL_STRINGL(obj_zp,p2,clen,0);
@@ -521,7 +525,7 @@ and 5.3.9 */
 
 /*---------------------------------------------------------------*/
 
-static int ut_extension_loaded(char *name, int len TSRMLS_DC)
+UT_SYMBOL int ut_extension_loaded(char *name, int len TSRMLS_DC)
 {
 	int status;
 
@@ -532,7 +536,7 @@ static int ut_extension_loaded(char *name, int len TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static void ut_load_extension_file(zval *file TSRMLS_DC)
+UT_SYMBOL void ut_load_extension_file(zval *file TSRMLS_DC)
 {
 	if (!ut_call_user_function_bool(NULL,ZEND_STRL("dl"),1,&file TSRMLS_CC)) {
 		THROW_EXCEPTION_1("%s: Cannot load extension",Z_STRVAL_P(file));
@@ -547,7 +551,7 @@ static void ut_load_extension_file(zval *file TSRMLS_DC)
 #define _UT_LE_PREFIX
 #endif
 
-static void ut_load_extension(char *name, int len TSRMLS_DC)
+UT_SYMBOL void ut_load_extension(char *name, int len TSRMLS_DC)
 {
 	zval *zp;
 	char *p;
@@ -565,7 +569,7 @@ static void ut_load_extension(char *name, int len TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static void ut_load_extensions(zval * extensions TSRMLS_DC)
+UT_SYMBOL void ut_load_extensions(zval * extensions TSRMLS_DC)
 {
 	HashTable *ht;
 	HashPosition pos;
@@ -591,7 +595,7 @@ static void ut_load_extensions(zval * extensions TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static void ut_require(char *string, zval * ret TSRMLS_DC)
+UT_SYMBOL void ut_require(char *string, zval * ret TSRMLS_DC)
 {
 	char *p;
 
@@ -604,7 +608,7 @@ static void ut_require(char *string, zval * ret TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static inline int ut_strings_are_equal(zval * zp1, zval * zp2 TSRMLS_DC)
+UT_SYMBOL int ut_strings_are_equal(zval * zp1, zval * zp2 TSRMLS_DC)
 {
 	if ((!zp1) || (!zp2))
 		return 0;
@@ -619,7 +623,7 @@ static inline int ut_strings_are_equal(zval * zp1, zval * zp2 TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static void ut_header(long response_code, char *string TSRMLS_DC)
+UT_SYMBOL void ut_header(long response_code, char *string TSRMLS_DC)
 {
 	sapi_header_line ctr;
 
@@ -632,7 +636,7 @@ static void ut_header(long response_code, char *string TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static void ut_http_403_fail(TSRMLS_D)
+UT_SYMBOL void ut_http_403_fail(TSRMLS_D)
 {
 	ut_header(403, "HTTP/1.0 403 Forbidden" TSRMLS_CC);
 
@@ -641,7 +645,7 @@ static void ut_http_403_fail(TSRMLS_D)
 
 /*---------------------------------------------------------------*/
 
-static void ut_http_404_fail(TSRMLS_D)
+UT_SYMBOL void ut_http_404_fail(TSRMLS_D)
 {
 	ut_header(404, "HTTP/1.0 404 Not Found" TSRMLS_CC);
 
@@ -650,7 +654,7 @@ static void ut_http_404_fail(TSRMLS_D)
 
 /*---------------------------------------------------------------*/
 
-static void ut_exit(int status TSRMLS_DC)
+UT_SYMBOL void ut_exit(int status TSRMLS_DC)
 {
 	EG(exit_status) = status;
 	zend_bailout();
@@ -658,7 +662,7 @@ static void ut_exit(int status TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static inline zval *_ut_SERVER_element(HKEY_STRUCT * hkey TSRMLS_DC)
+UT_SYMBOL zval *_ut_SERVER_element(HKEY_STRUCT * hkey TSRMLS_DC)
 {
 	zval **array, **token;
 	int status;
@@ -678,7 +682,7 @@ static inline zval *_ut_SERVER_element(HKEY_STRUCT * hkey TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static inline zval *_ut_REQUEST_element(HKEY_STRUCT * hkey TSRMLS_DC)
+UT_SYMBOL zval *_ut_REQUEST_element(HKEY_STRUCT * hkey TSRMLS_DC)
 {
 	zval **array, **token;
 	int status;
@@ -698,7 +702,7 @@ static inline zval *_ut_REQUEST_element(HKEY_STRUCT * hkey TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static char *ut_http_base_url(TSRMLS_D)
+UT_SYMBOL char *ut_http_base_url(TSRMLS_D)
 {
 	zval *pathinfo, *php_self;
 	int ilen, slen, nslen;
@@ -730,7 +734,7 @@ static char *ut_http_base_url(TSRMLS_D)
 
 /*---------------------------------------------------------------*/
 
-static void ut_http_301_redirect(char *path, int must_free TSRMLS_DC)
+UT_SYMBOL void ut_http_301_redirect(char *path, int must_free TSRMLS_DC)
 {
 	char *p,*base_url;
 
@@ -751,7 +755,7 @@ static void ut_http_301_redirect(char *path, int must_free TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static inline void ut_rtrim_zval(zval * zp TSRMLS_DC)
+UT_SYMBOL void ut_rtrim_zval(zval * zp TSRMLS_DC)
 {
 	char *p;
 
@@ -767,7 +771,7 @@ static inline void ut_rtrim_zval(zval * zp TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static inline void ut_tolower(char *p, int len TSRMLS_DC)
+UT_SYMBOL void ut_tolower(char *p, int len TSRMLS_DC)
 {
 	int i;
 
@@ -779,7 +783,7 @@ static inline void ut_tolower(char *p, int len TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static inline void ut_file_suffix(zval * path, zval * ret TSRMLS_DC)
+UT_SYMBOL void ut_file_suffix(zval * path, zval * ret TSRMLS_DC)
 {
 	int found, suffix_len;
 	char *p;
@@ -809,7 +813,7 @@ static inline void ut_file_suffix(zval * path, zval * ret TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static void ut_unserialize_zval(const unsigned char *buffer
+UT_SYMBOL void ut_unserialize_zval(const unsigned char *buffer
 	, unsigned long len, zval *ret TSRMLS_DC)
 {
 	php_unserialize_data_t var_hash;
@@ -832,7 +836,7 @@ static void ut_unserialize_zval(const unsigned char *buffer
 /*---------------------------------------------------------------*/
 /* Basic (and fast) file_get_contents(). Ignores safe mode and magic quotes */
 
-static void ut_file_get_contents(char *path, zval *ret TSRMLS_DC)
+UT_SYMBOL void ut_file_get_contents(char *path, zval *ret TSRMLS_DC)
 {
 	php_stream *stream;
 	char *contents;
@@ -852,7 +856,7 @@ static void ut_file_get_contents(char *path, zval *ret TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static char *ut_htmlspecialchars(char *src, int srclen
+UT_SYMBOL char *ut_htmlspecialchars(char *src, int srclen
 	, PHP_ESCAPE_HTML_ENTITIES_SIZE *retlen TSRMLS_DC)
 {
 	PHP_ESCAPE_HTML_ENTITIES_SIZE dummy;
@@ -865,13 +869,13 @@ static char *ut_htmlspecialchars(char *src, int srclen
 
 /*---------------------------------------------------------------*/
 
-static char *ut_ucfirst(char *ptr, int len TSRMLS_DC)
+UT_SYMBOL char *ut_ucfirst(char *ptr, int len TSRMLS_DC)
 {
 	char *p2;
 
 	if (!ptr) return NULL;
 
-	p2=eduplicate(ptr,len+1);
+	p2=ut_eduplicate(ptr,len+1);
 
 	if (((*p2) >= 'a') && ((*p2) <= 'z')) (*p2) -= 'a' - 'A';
 
@@ -880,13 +884,13 @@ static char *ut_ucfirst(char *ptr, int len TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static void ut_repeat_printf(char c, int count TSRMLS_DC)
+UT_SYMBOL void ut_repeat_printf(char c, int count TSRMLS_DC)
 {
 	char *p;
 
 	if (!count) return;
 
-	p=eallocate(NULL,count);
+	p=ut_eallocate(NULL,count);
 	memset(p,c,count);
 	PHPWRITE(p,count);
 	EALLOCATE(p,0);
@@ -894,7 +898,7 @@ static void ut_repeat_printf(char c, int count TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static void ut_printf_pad_right(char *str, int len, int size TSRMLS_DC)
+UT_SYMBOL void ut_printf_pad_right(char *str, int len, int size TSRMLS_DC)
 {
 	char *p;
 
@@ -903,7 +907,7 @@ static void ut_printf_pad_right(char *str, int len, int size TSRMLS_DC)
 		return;
 	}
 
-	p=eallocate(NULL,size);
+	p=ut_eallocate(NULL,size);
 	memset(p,' ',size);
 	memmove(p,str,len);
 	PHPWRITE(p,size);
@@ -912,7 +916,7 @@ static void ut_printf_pad_right(char *str, int len, int size TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static void ut_printf_pad_both(char *str, int len, int size TSRMLS_DC)
+UT_SYMBOL void ut_printf_pad_both(char *str, int len, int size TSRMLS_DC)
 {
 	int pad;
 	char *p;
@@ -922,7 +926,7 @@ static void ut_printf_pad_both(char *str, int len, int size TSRMLS_DC)
 		return;
 	}
 
-	p=eallocate(NULL,size);
+	p=ut_eallocate(NULL,size);
 	memset(p,' ',size);
 	pad=(size-len)/2;
 	memmove(p+pad,str,len);
@@ -932,7 +936,7 @@ static void ut_printf_pad_both(char *str, int len, int size TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static char *ut_absolute_dirname(char *path, int len, int *reslen, int separ TSRMLS_DC)
+UT_SYMBOL char *ut_absolute_dirname(char *path, int len, int *reslen, int separ TSRMLS_DC)
 {
 	char *dir,*res;
 	int dlen;
@@ -945,18 +949,18 @@ static char *ut_absolute_dirname(char *path, int len, int *reslen, int separ TSR
 
 /*---------------------------------------------------------------*/
 
-static char *ut_dirname(char *path, int len, int *reslen TSRMLS_DC)
+UT_SYMBOL char *ut_dirname(char *path, int len, int *reslen TSRMLS_DC)
 {
 	char *p;
 
-	p=eduplicate(path,len+1);
+	p=ut_eduplicate(path,len+1);
 	(*reslen)=php_dirname(p,len);
 	return p;
 }
 
 /*---------------------------------------------------------------*/
 
-static inline int ut_is_uri(char *path, int len TSRMLS_DC)
+UT_SYMBOL int ut_is_uri(char *path, int len TSRMLS_DC)
 {
 	const char *p;
 	int n;
@@ -976,7 +980,7 @@ static inline int ut_is_uri(char *path, int len TSRMLS_DC)
 /*---------------------------------------------------------------*/
 /* Return an absolute path with a trailing separator or not*/
 
-static char *ut_mk_absolute_path(char *path, int len, int *reslen
+UT_SYMBOL char *ut_mk_absolute_path(char *path, int len, int *reslen
 	, int separ TSRMLS_DC)
 {
 	char buf[1024];
@@ -987,7 +991,7 @@ static char *ut_mk_absolute_path(char *path, int len, int *reslen
 	if (!reslen) reslen=&dummy_reslen;
 
 	if (ut_is_uri(path,len TSRMLS_CC)) {
-		resp=eallocate(NULL,len+2);
+		resp=ut_eallocate(NULL,len+2);
 		memmove(resp,path,len+1);
 		(*reslen)=len;
 		if (separ && (resp[len-1]!='/')) {
@@ -999,7 +1003,7 @@ static char *ut_mk_absolute_path(char *path, int len, int *reslen
 	}
 
 	if (IS_ABSOLUTE_PATH(path, len)) {
-		resp=eallocate(NULL,len+2);
+		resp=ut_eallocate(NULL,len+2);
 		memmove(resp,path,len+1);
 		(*reslen)=len;
 		if (separ && (!IS_SLASH(resp[len-1]))) {
@@ -1014,7 +1018,7 @@ static char *ut_mk_absolute_path(char *path, int len, int *reslen
 
 	virtual_getcwd(buf,sizeof(buf) TSRMLS_CC);
 	clen=strlen(buf);
-	resp=eallocate(NULL,clen+len+3);
+	resp=ut_eallocate(NULL,clen+len+3);
 	memmove(resp,buf,clen+1);
 	p=&(resp[clen]);
 
@@ -1035,7 +1039,7 @@ static char *ut_mk_absolute_path(char *path, int len, int *reslen
 
 /*---------------------------------------------------------------*/
 
-static int ut_cut_at_space(char *p)
+UT_SYMBOL int ut_cut_at_space(char *p)
 {
 char *p1;
 
@@ -1052,7 +1056,7 @@ return (p-p1);
 
 /*---------------------------------------------------------------*/
 
-static void ut_path_unique_id(char prefix, zval * path, zval ** mnt
+UT_SYMBOL void ut_path_unique_id(char prefix, zval * path, zval ** mnt
 	, time_t *mtp  TSRMLS_DC)
 {
 	char *p;
@@ -1083,15 +1087,15 @@ static void ut_path_unique_id(char prefix, zval * path, zval ** mnt
 			rlen=strlen(resolved_path_buff)+1;
 			hash=zend_get_hash_value(resolved_path_buff,rlen);
 
-			MutexLock(simul_inodes);
-			if (zend_hash_quick_find(&simul_inodes,resolved_path_buff
+			MutexLock(_ut_simul_inodes);
+			if (zend_hash_quick_find(&_ut_simul_inodes,resolved_path_buff
 				,rlen,hash,(void **)(&lp))==SUCCESS) inode=(*lp);
 			else {
-				inode=simul_inode_index++;
-				zend_hash_quick_add(&simul_inodes,resolved_path_buff
+				inode=_ut_simul_inode_index++;
+				zend_hash_quick_add(&_ut_simul_inodes,resolved_path_buff
 					,rlen,hash,(void *)(&inode),sizeof(inode),NULL);
 			}
-			MutexUnlock(simul_inodes);
+			MutexUnlock(_ut_simul_inodes);
 		}
 
 		spprintf(&p, 256, "%c_%lX_%lX_%lX", prefix, dev, inode, mtime);
@@ -1104,7 +1108,7 @@ static void ut_path_unique_id(char prefix, zval * path, zval ** mnt
 
 /*---------------------------------------------------------------*/
 
-static void _ut_build_hkeys(TSRMLS_D)
+UT_SYMBOL void _ut_build_hkeys(TSRMLS_D)
 {
 	INIT_HKEY(_SERVER);
 	INIT_HKEY(_REQUEST);
@@ -1115,7 +1119,7 @@ static void _ut_build_hkeys(TSRMLS_D)
 
 /*========================================================================*/
 
-static int MINIT_utils(TSRMLS_D)
+UT_SYMBOL int MINIT_utils(TSRMLS_D)
 {
 	_ut_build_hkeys(TSRMLS_C);
 	_ut_init_persistent_data(TSRMLS_C);
@@ -1125,7 +1129,7 @@ static int MINIT_utils(TSRMLS_D)
 
 /*-------------*/
 
-static int MSHUTDOWN_utils(TSRMLS_D)
+UT_SYMBOL int MSHUTDOWN_utils(TSRMLS_D)
 {
 	_ut_shutdown_persistent_data(TSRMLS_C);
 
@@ -1134,7 +1138,7 @@ static int MSHUTDOWN_utils(TSRMLS_D)
 
 /*-------------*/
 
-static inline int RINIT_utils(TSRMLS_D)
+UT_SYMBOL int RINIT_utils(TSRMLS_D)
 {
 	(void)zend_is_auto_global("_SERVER", sizeof("_SERVER")-1 TSRMLS_CC);
 	(void)zend_is_auto_global("_REQUEST", sizeof("_REQUEST")-1 TSRMLS_CC);
@@ -1144,7 +1148,7 @@ static inline int RINIT_utils(TSRMLS_D)
 
 /*-------------*/
 
-static inline int RSHUTDOWN_utils(TSRMLS_D)
+UT_SYMBOL int RSHUTDOWN_utils(TSRMLS_D)
 {
 	return SUCCESS;
 }
