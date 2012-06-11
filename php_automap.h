@@ -66,7 +66,7 @@
 
 #define PHP_AUTOMAP_EXTNAME "automap"
 
-GLOBAL zend_module_entry automap_module_entry;
+zend_module_entry automap_module_entry;
 
 #define phpext_automap_ptr &automap_module_entry
 
