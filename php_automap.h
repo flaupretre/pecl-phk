@@ -58,9 +58,9 @@
 
 /*---------------------------------------------------------------*/
 
-#define AUTOMAP_EXT_VERSION "2.0.0"
+#define AUTOMAP_EXT_VERSION "2.1.0"
 
-#define AUTOMAP_API "2.0.0"
+#define AUTOMAP_API "2.1.0"
 
 #define AUTOMAP_MIN_MAP_VERSION "1.1.0"
 
