@@ -91,11 +91,11 @@
 
 /*---------------------------------------------------------------*/
 
-#define PHK_VERSION "2.0.0"
+#define PHK_VERSION "2.1.0"
 
-#define PHK_ACCEL_VERSION "2.0.0"
+#define PHK_ACCEL_VERSION "2.1.0"
 
-#define PHK_ACCEL_MIN_VERSION "2.0.0"
+#define PHK_ACCEL_MIN_VERSION "2.1.0"
 
 #define PHP_PHK_EXTNAME "phk"
 

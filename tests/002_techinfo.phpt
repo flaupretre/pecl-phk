@@ -9,5 +9,5 @@ PHK::accel_techinfo();
 ===DONE===
 --EXPECT--
 Using PHK Accelerator: Yes
-Accelerator Version: 2.0.0
+Accelerator Version: 2.1.0
 ===DONE===
