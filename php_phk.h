@@ -91,7 +91,7 @@
 
 /*---------------------------------------------------------------*/
 
-#define PHK_VERSION "2.1.0"
+#define PHP_PHK_VERSION "2.1.0"
 
 #define PHK_ACCEL_VERSION "2.1.0"
 
