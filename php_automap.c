@@ -53,7 +53,7 @@ static PHP_MINFO_FUNCTION(automap)
 	php_info_print_table_start();
 
 	php_info_print_table_row(2, "Automap", "enabled");
-	php_info_print_table_row(2, "Version", AUTOMAP_EXT_VERSION);
+	php_info_print_table_row(2, "Version", PHP_AUTOMAP_VERSION);
 #ifdef AUTOMAP_DEBUG
 	{
 	char buf[10];
@@ -166,7 +166,7 @@ static PHP_MINIT_FUNCTION(automap)
 
 	ZEND_INIT_MODULE_GLOBALS(automap, automap_globals_ctor, NULL);
 
-	REGISTER_STRING_CONSTANT("AUTOMAP_EXT_VERSION", AUTOMAP_EXT_VERSION,
+	REGISTER_STRING_CONSTANT("PHP_AUTOMAP_VERSION", PHP_AUTOMAP_VERSION,
 							 CONST_CS | CONST_PERSISTENT);
 
 	/*----*/
@@ -222,7 +222,7 @@ zend_module_entry automap_module_entry = {
 	PHP_RSHUTDOWN(automap),
 	PHP_MINFO(automap),
 #if ZEND_MODULE_API_NO >= 20010901
-	AUTOMAP_EXT_VERSION,
+	PHP_AUTOMAP_VERSION,
 #endif
 	STANDARD_MODULE_PROPERTIES
 };
