@@ -16,8 +16,6 @@
   +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
-
 /*---------------------------------------------------------------*/
 
 static void PHK_set_mp_property(zval * obj, int order TSRMLS_DC)
@@ -1042,7 +1040,7 @@ static void shutdown_mime_table(TSRMLS_D)
 
 static void set_constants(zend_class_entry * ce)
 {
-	UT_DECLARE_STRING_CONSTANT(PHK_VERSION,"VERSION");
+	UT_DECLARE_STRING_CONSTANT(PHP_PHK_VERSION,"VERSION");
 
 	UT_DECLARE_LONG_CONSTANT(PHK_F_CRC_CHECK,"F_CRC_CHECK");
 	UT_DECLARE_LONG_CONSTANT(PHK_F_NO_MOUNT_SCRIPT,"F_NO_MOUNT_SCRIPT");

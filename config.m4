@@ -1,6 +1,3 @@
-dnl
-dnl $Id$
-dnl
 
 PHP_ARG_ENABLE(phk, whether to enable the PHK accelerator,
 [  --enable-phk    Enable the PHK accelerator])
