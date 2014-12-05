@@ -16,8 +16,6 @@
   +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
-
 #include "ext/standard/php_versioning.h"
 
 #define AUTOMAP_LOCK_PTAB() { MutexLock(ptab); }

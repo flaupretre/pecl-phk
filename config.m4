@@ -1,6 +1,3 @@
-dnl
-dnl $Id$
-dnl
 
 PHP_ARG_ENABLE(automap, whether to enable the Automap extension,
 [  --enable-automap    Enable the Automap extension])

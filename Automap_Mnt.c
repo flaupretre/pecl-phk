@@ -16,8 +16,6 @@
   +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
-
 /*---------------------------------------------------------------*/
 /* Here, we check every pointers because the function can be called during
    the creation of the structure (mount failure) */

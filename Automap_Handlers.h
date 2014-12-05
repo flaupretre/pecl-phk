@@ -16,8 +16,6 @@
   +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
-
 #ifndef __AUTOMAP_HANDLERS_H
 #define __AUTOMAP_HANDLERS_H
 

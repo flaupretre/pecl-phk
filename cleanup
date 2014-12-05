@@ -1,6 +1,4 @@
 
-# $Id$
-
 [ -f Makefile ] && make clean
 
 /bin/rm -rf \
