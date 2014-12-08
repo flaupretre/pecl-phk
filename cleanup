@@ -1,4 +1,5 @@
 
+[ -f Makefile ] && make clean
 
 /bin/rm -rf \
 	.deps \
@@ -35,4 +36,6 @@
 	tests/00*.log \
 	tests/00*.out \
 	tests/00*.php \
-	tests/00*.sh
+	tests/00*.sh \
+	php.log \
+	test/php.log
