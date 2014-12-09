@@ -30,6 +30,7 @@
 	mkinstalldirs \
 	modules \
 	*.lo \
+	*.loT \
 	run-tests.php \
 	tests/00*.diff \
 	tests/00*.exp \
