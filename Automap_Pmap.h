@@ -38,6 +38,7 @@ typedef struct {				/* Persistent */
 	ulong ufid_hash;
 	zval *zmin_version;			/* Map requires at least this runtime version (String) */
 	zval *zversion;				/* Map was created with this creator version (String) */
+	char map_major_version;
 	zval *zoptions;				/* Array */
 	zval *zsymbols;				/* Array of Automap_Pmap_Entry structures */
 } Automap_Pmap;

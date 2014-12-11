@@ -73,11 +73,13 @@ static int Automap_Pmap_create_entry(zval **zpp
 	sp=Z_STRVAL_PP(zpp);
 	len=0; /* Avoid compile warning */
 
-	switch(Z_STRVAL_P(pmp->zversion)[0]) {	/* First char is major version */
-		/* Version 1 is not supported anymore (already filtered out) */
+	switch(pmp->map_major_version) {
+		/* Version 1 is not supported anymore */
 		case '2':
+		case '3':
 			if (Z_STRLEN_PP(zpp)<5) {
-				EXCEPTION_ABORT_RET(ZEND_HASH_APPLY_STOP,"Automap_Pmap_create_entry: Invalid entry (too short)");
+				EXCEPTION_ABORT_RET_1(ZEND_HASH_APPLY_STOP
+					,"Invalid value string: <%s>",Z_STRVAL_PP(zpp));
 			}
 
 			tmp_entry.stype=sp[0];
@@ -90,7 +92,8 @@ static int Automap_Pmap_create_entry(zval **zpp
 				}
 			}
 			if (!p2) {
-				EXCEPTION_ABORT_RET(ZEND_HASH_APPLY_STOP,"Automap_Pmap_create_entry: Invalid entry (no target)");
+				EXCEPTION_ABORT_RET_1(ZEND_HASH_APPLY_STOP
+					,"Invalid value string: <%s>",Z_STRVAL_PP(zpp));
 			}
 			/* Symbol name */
 			p=ut_pduplicate(sp+2,len+1);
@@ -118,6 +121,12 @@ static int Automap_Pmap_create_entry(zval **zpp
 				,Z_STRLEN(zkey)+1,&tmp_entry,sizeof(tmp_entry),NULL);
 
 			zval_dtor(&zkey);
+			break;
+
+		default:
+			EXCEPTION_ABORT_RET_1(ZEND_HASH_APPLY_STOP
+				,"Cannot understand this map version (%c)"
+				,pmp->map_major_version);
 	}
 
 	return ZEND_HASH_APPLY_KEEP;
@@ -220,7 +229,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 	/* Map is not in memory -> load it */
 	/*-- Slow path --*/
 
-	DBG_MSG1("Automap_Pmap cache miss (path=%s,ufid=%s)",Z_STRVAL_P(zpathp)
+	DBG_MSG2("Automap_Pmap cache miss (path=%s,ufid=%s)",Z_STRVAL_P(zpathp)
 			,Z_STRVAL_P(zufidp));
 
 	INIT_AUTOMAP_PMAP_GET_OR_CREATE();
@@ -310,6 +319,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 	ZVAL_STRINGL(&zversion, &(buf[30]), 12, 1);
 	ut_zval_cut_at_space(&zversion);
 	tmp_map.zversion=ut_persist_zval(&zversion);
+	tmp_map.map_major_version=Z_STRVAL(zversion)[0];
 	ut_ezval_dtor(&zversion);
 
 	/* Get the rest as an unserialized array */
