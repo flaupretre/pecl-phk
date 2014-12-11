@@ -74,7 +74,7 @@ static char *autoindex_fnames[] = {
 	DBG_MSG("Entering PHK::" #_func); \
 	CHECK_MEM(); \
 	_valid=0; \
-	if (FIND_HKEY(Z_OBJPROP_P(getThis()),mp_property_name,&_tmp)==SUCCESS) { \
+	if (FIND_HKEY(Z_OBJPROP_P(getThis()),PHK_mp_property_name,&_tmp)==SUCCESS) { \
 		_order=Z_LVAL_PP(_tmp); \
 		if (_order<PHK_G(mcount)) { \
 			mp=PHK_G(mount_order)[_order]; \
@@ -88,7 +88,7 @@ static char *autoindex_fnames[] = {
 /*============================================================================*/
 
 static void PHK_set_mp_property(zval * obj, int order TSRMLS_DC);
-ZEND_DLEXPORT void PHK_need_php_runtime(TSRMLS_D);
+static void PHK_need_php_runtime(TSRMLS_D);
 static PHP_METHOD(PHK, need_php_runtime);
 static void PHK_init(PHK_Mnt * mp TSRMLS_DC);
 static PHP_METHOD(PHK, map_defined);

@@ -18,7 +18,7 @@
 
 /*---------------------------------------------------------------*/
 
-ZEND_DLEXPORT char *Automap_type_to_string(char type TSRMLS_DC)
+static char *Automap_type_to_string(char type TSRMLS_DC)
 {
 	automap_type_string *sp;
 
@@ -48,7 +48,7 @@ static PHP_METHOD(Automap, type_to_string)
 /* }}} */
 /*---------------------------------------------------------------*/
 
-ZEND_DLEXPORT char Automap_string_to_type(char *string TSRMLS_DC)
+static char Automap_string_to_type(char *string TSRMLS_DC)
 {
 	automap_type_string *sp;
 

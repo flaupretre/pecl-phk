@@ -107,6 +107,7 @@ typedef struct _PHK_Mnt {
 
 	zval *base_uri;				/* (String zval *) */
 	zval *automap_uri;			/* (String zval *)|NULL */
+	long automap_id;			/* Long */
 	zval *mount_script_uri;		/* (String zval *)|NULL */
 	zval *umount_script_uri;	/* (String zval *)|NULL */
 	zval *lib_run_script_uri;	/* (String zval *)|NULL */
@@ -131,50 +132,50 @@ static PHK_Mnt *PHK_Mgr_new_mnt(zval * mnt, ulong hash TSRMLS_DC);
 static PHK_Mnt *PHK_Mgr_get_mnt(zval * mnt, ulong hash,
 										  int exception TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, is_mounted);
-ZEND_DLEXPORT void PHK_Mgr_validate(zval * mnt, ulong hash TSRMLS_DC);
+static void PHK_Mgr_validate(zval * mnt, ulong hash TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, validate);
-ZEND_DLEXPORT void PHK_Mgr_umount(zval * mnt, ulong hash TSRMLS_DC);
+static void PHK_Mgr_umount(zval * mnt, ulong hash TSRMLS_DC);
 static void PHK_Mgr_umount_mnt(PHK_Mnt * mp TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, umount);
 static zval *PHK_Mgr_instance_by_mp(PHK_Mnt * mp TSRMLS_DC);
-ZEND_DLEXPORT zval *PHK_Mgr_instance(zval * mnt, ulong hash TSRMLS_DC);
+static zval *PHK_Mgr_instance(zval * mnt, ulong hash TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, instance);
 static zval *PHK_Mgr_proxy_by_mp(PHK_Mnt * mp TSRMLS_DC);
 static zval *PHK_Mgr_proxy(zval * mnt, ulong hash TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, proxy);
-ZEND_DLEXPORT void PHK_Mgr_mnt_list(zval * ret TSRMLS_DC);
+static void PHK_Mgr_mnt_list(zval * ret TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, mnt_list);
-ZEND_DLEXPORT int PHK_Mgr_is_a_phk_uri(zval * path TSRMLS_DC);
+static int PHK_Mgr_is_a_phk_uri(zval * path TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, is_a_phk_uri);
-ZEND_DLEXPORT void PHK_Mgr_uri(zval * mnt, zval * path, zval * ret TSRMLS_DC);
+static void PHK_Mgr_uri(zval * mnt, zval * path, zval * ret TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, uri);
-ZEND_DLEXPORT void PHK_Mgr_command_uri(zval * mnt, zval * command,
+static void PHK_Mgr_command_uri(zval * mnt, zval * command,
 								zval * ret TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, command_uri);
-ZEND_DLEXPORT void PHK_Mgr_section_uri(zval * mnt, zval * section,
+static void PHK_Mgr_section_uri(zval * mnt, zval * section,
 								zval * ret TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, section_uri);
-ZEND_DLEXPORT void PHK_Mgr_normalize_uri(zval * uri, zval * ret TSRMLS_DC);
+static void PHK_Mgr_normalize_uri(zval * uri, zval * ret TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, normalize_uri);
 static void compute_automap_uri(zval * mnt, zval * ret TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, automap_uri);
 static void compute_base_uri(zval * mnt, zval * ret TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, base_uri);
-ZEND_DLEXPORT void PHK_Mgr_uri_to_mnt(zval * uri, zval * ret TSRMLS_DC);
+static void PHK_Mgr_uri_to_mnt(zval * uri, zval * ret TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, uri_to_mnt);
-ZEND_DLEXPORT void PHK_Mgr_toplevel_path(zval * zpath, zval * ret TSRMLS_DC);
+static void PHK_Mgr_toplevel_path(zval * zpath, zval * ret TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, toplevel_path);
 static void PHK_Mgr_php_version_check(TSRMLS_D);
 static PHP_METHOD(PHK_Mgr, php_version_check);
-ZEND_DLEXPORT void PHK_Mgr_set_cache(zval * zp TSRMLS_DC);
+static void PHK_Mgr_set_cache(zval * zp TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, set_cache);
-ZEND_DLEXPORT int PHK_Mgr_cache_enabled(zval * mnt, ulong hash, zval * command,
+static int PHK_Mgr_cache_enabled(zval * mnt, ulong hash, zval * command,
 								 zval * params, zval * path TSRMLS_DC);
-ZEND_DLEXPORT void PHK_Mgr_path_to_mnt(zval * path, zval * mnt TSRMLS_DC);
+static void PHK_Mgr_path_to_mnt(zval * path, zval * mnt TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, path_to_mnt);
 static void PHK_Mgr_compute_mnt(zval * path, PHK_Mnt ** parent_mpp,
 								zval ** mnt, zval ** mtime TSRMLS_DC);
-ZEND_DLEXPORT PHK_Mnt *PHK_Mgr_mount(zval * path, long flags TSRMLS_DC);
+static PHK_Mnt *PHK_Mgr_mount(zval * path, long flags TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, mount);
 static PHK_Pdata *PHK_Mgr_get_pdata(zval * mnt, ulong hash TSRMLS_DC);
 static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,ulong hash TSRMLS_DC);

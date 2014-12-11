@@ -54,7 +54,7 @@ static void Automap_Loader_register_hook(TSRMLS_D)
 /*---------------------------------------------------------------*/
 /* Returns SUCCESS/FAILURE */
 
-ZEND_DLEXPORT int Automap_resolve_symbol(char type, char *symbol, int slen, int autoload
+static int Automap_resolve_symbol(char type, char *symbol, int slen, int autoload
 	, int exception TSRMLS_DC)
 {
 	zval *zkey;
@@ -70,7 +70,7 @@ ZEND_DLEXPORT int Automap_resolve_symbol(char type, char *symbol, int slen, int 
 		return 1;
 	}
 
-	if ((i=AUTOMAP_G(mcount))==0) return 0;
+	if ((i=PHK_G(map_count))==0) return 0;
 
 	ALLOC_INIT_ZVAL(zkey);
 	Automap_key(type,symbol,slen,zkey TSRMLS_CC);
@@ -78,10 +78,10 @@ ZEND_DLEXPORT int Automap_resolve_symbol(char type, char *symbol, int slen, int 
 	hash=ZSTRING_HASH(zkey);
 
 	while ((--i) >= 0) {
-		mp=AUTOMAP_G(mount_order)[i];
+		mp=PHK_G(map_array)[i];
 		if (!mp) continue;
 		if (Automap_Mnt_resolve_key(mp, zkey, hash TSRMLS_CC)==SUCCESS) {
-			DBG_MSG2("Found key %s in map %s",Z_STRVAL_P(zkey),Z_STRVAL_P(mp->map->zmnt));
+			DBG_MSG2("Found key %s in map %d",Z_STRVAL_P(zkey),mp->id);
 			ut_ezval_ptr_dtor(&zkey);
 			return SUCCESS;
 		}

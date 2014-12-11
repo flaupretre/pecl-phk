@@ -26,7 +26,7 @@ static void PHK_set_mp_property(zval * obj, int order TSRMLS_DC)
 /*---------------------------------------------------------------*/
 /* Slow path */
 
-ZEND_DLEXPORT void PHK_need_php_runtime(TSRMLS_D)
+static void PHK_need_php_runtime(TSRMLS_D)
 {
 	FILE *fp;
 	int size, offset,nb_read;
@@ -89,7 +89,7 @@ static PHP_METHOD(PHK, need_php_runtime)
 
 static void PHK_init(PHK_Mnt * mp TSRMLS_DC)
 {
-	zval *args[3];
+	Automap_Mnt *automap_mp;
 
 	if (!mp->pdata->init_done) {
 		/* Always check CRC, but only once */
@@ -99,14 +99,11 @@ static void PHK_init(PHK_Mnt * mp TSRMLS_DC)
 		mp->pdata->init_done=1;
 	}
 
-	if (mp->automap_uri) {
-		args[0] = mp->automap_uri;
-		args[1] = mp->base_uri;
-		args[2] = mp->mnt;
-		if (!HKEY_EXISTS(EG(class_table), automap))
-			PHK_need_php_runtime(TSRMLS_C);
-		ut_call_user_function_void(NULL,ZEND_STRL("Automap::mount"),3,args TSRMLS_CC);
+	if (mp->automap_uri) {	/* Load map */
+		automap_mp=Automap_Mnt_load_extended(mp->automap_uri,mp->mnt,mp->hash
+			,mp->base_uri TSRMLS_CC);
 		if (EG(exception)) return;
+		mp->automap_id=automap_mp->id;
 	}
 
 	if (mp->mount_script_uri
@@ -211,9 +208,7 @@ static void PHK_umount(PHK_Mnt * mp TSRMLS_DC)
 	}
 
 	if (mp->automap_uri) {
-		/* No need to load the PHP runtime, the Automap class is defined */
-		ut_call_user_function_void(NULL, ZEND_STRL("Automap::umount"), 1,
-			&(mp->mnt) TSRMLS_CC);
+		Automap_unload(mp->automap_id);
 	}
 }
 
@@ -259,6 +254,16 @@ PHK_GET_PROPERTY_METHOD_OR_NULL(plugin)
 /* }}} */
 
 /*---------------------------------------------------------------*/
+/* {{{ proto long PHK::automap_id() */
+
+static PHP_METHOD(PHK, automap_id)
+{
+	PHK_GET_INSTANCE_DATA(automap_id) \
+
+	RETVAL_LONG(mp->automap_id);
+}
+
+	/*---------------------------------------------------------------*/
 /* {{{ proto string PHK::uri(string path) */
 
 static PHP_METHOD(PHK, uri)
@@ -986,6 +991,7 @@ static zend_function_entry PHK_functions[] = {
 	PHP_ME(PHK, section_uri, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, command_uri, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, automap_uri, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(PHK, automap_id, UT_noarg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, option, UT_1arg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, parent_mnt, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, web_tunnel, UT_noarg_arginfo, ZEND_ACC_PUBLIC)

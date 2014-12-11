@@ -16,6 +16,7 @@
   +----------------------------------------------------------------------+
 */
 
+/* Uncomment to see debug messages */
 /* #define PHK_DEBUG */
 
 #ifndef __PHP_PHK_H
@@ -108,11 +109,13 @@
 
 #define PHP_PHK_VERSION "2.1.0" /* The extension version */
 
-#define AUTOMAP_RUNTIME_VERSION "2.1.0"
+/* This version is compared to the minimum version required by the maps */
 
-#define AUTOMAP_API "2.1.0"
+#define AUTOMAP_API "2.2.0"
 
-#define AUTOMAP_MIN_MAP_VERSION "1.1.0"
+/* We cannot read versions older than this */
+
+#define AUTOMAP_MIN_MAP_VERSION "2.0.0"
 
 #define PHK_ACCEL_VERSION "2.1.0"
 
@@ -139,7 +142,8 @@ static DECLARE_CZVAL(Automap__autoload_hook);
 static DECLARE_HKEY(map);
 static DECLARE_HKEY(options);
 static DECLARE_HKEY(automap);
-static DECLARE_HKEY(mp_property_name);
+static DECLARE_HKEY(Automap_mp_property_name);
+static DECLARE_HKEY(base_path);
 
 static DECLARE_HKEY(no_cache);
 static DECLARE_HKEY(no_opcode_cache);
@@ -153,7 +157,7 @@ static DECLARE_HKEY(min_php_version);
 static DECLARE_HKEY(max_php_version);
 static DECLARE_HKEY(mime_types);
 static DECLARE_HKEY(web_run_script);
-static DECLARE_HKEY(mp_property_name);
+static DECLARE_HKEY(PHK_mp_property_name);
 static DECLARE_HKEY(web_main_redirect);
 static DECLARE_HKEY(_PHK_path);
 static DECLARE_HKEY(ORIG_PATH_INFO);
@@ -174,15 +178,14 @@ ZEND_BEGIN_MODULE_GLOBALS(phk)
 
 /*-- Automap --*/
 
-HashTable mnttab;
-Automap_Mnt **mount_order; /* Array of (Automap_Mnt *)|NULL */
-int mcount;						/* Size of the mount_order table */
+Automap_Mnt **map_array;	/* Array of (Automap_Mnt *)|NULL, index = map ID */
+int map_count;				/* Size of map_array */
 
-zval **failure_handlers;
-int fh_count;					/* Failure handler count */
+zval **automap_failure_handlers;
+int automap_fh_count;					/* Failure handler count */
 
-zval **success_handlers;
-int sh_count;					/* Success handler count */
+zval **automap_success_handlers;
+int automap_sh_count;					/* Success handler count */
 
 /*-- PHK --*/
 
@@ -208,10 +211,12 @@ ZEND_END_MODULE_GLOBALS(phk)
 
 /*---------------------------------------------------------------*/
 
-/* We need a private property here, so that it cannot be accessed nor
-   modified by a malicious PHP script */
+/* We need a private properties here, so that they cannot be accessed nor
+   modified by a malicious PHP script.
+   Private properties are stored as '\0<classname>\0<property>'. */
 
-#define MP_PROPERTY_NAME "\0\0m"
+#define AUTOMAP_MP_PROPERTY_NAME "\0Automap\0m"
+#define PHK_MP_PROPERTY_NAME "\0PHK\0m"
 
 /*============================================================================*/
 #endif /* __PHP_PHK_H */

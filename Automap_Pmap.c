@@ -18,30 +18,31 @@
 
 #include "ext/standard/php_versioning.h"
 
-#define AUTOMAP_LOCK_PTAB() { MutexLock(ptab); }
-#define AUTOMAP_UNLOCK_PTAB() { MutexUnlock(ptab); }
+#define AUTOMAP_LOCK_pmap_array() { MutexLock(pmap_array); }
+#define AUTOMAP_UNLOCK_pmap_array() { MutexUnlock(pmap_array); }
 
 /*---------------------------------------------------------------*/
 
-static Automap_Pmap *Automap_Pmap_get(zval *zmntp, ulong hash TSRMLS_DC)
+static Automap_Pmap *Automap_Pmap_get(zval *zufidp, ulong hash TSRMLS_DC)
 {
 	Automap_Pmap *pmp;
 	int found;
 
-	if (!ZVAL_IS_STRING(zmntp)) {
-		EXCEPTION_ABORT_RET_1(NULL,"Automap_Pmap_get: Map ID should be a string (type=%s)",
-							  zend_zval_type_name(zmntp));
+	if (!ZVAL_IS_STRING(zufidp)) {
+		EXCEPTION_ABORT_RET_1(NULL,"Automap_Pmap_get: UFID should be a string (type=%s)",
+							  zend_zval_type_name(zufidp));
 	}
 
-	if (!hash) hash = ZSTRING_HASH(zmntp);
+	if (!hash) hash = ZSTRING_HASH(zufidp);
 
-	found = (zend_hash_quick_find(&ptab, Z_STRVAL_P(zmntp),
-		Z_STRLEN_P(zmntp) + 1, hash, (void **) &pmp) == SUCCESS);
+	found = (zend_hash_quick_find(&pmap_array, Z_STRVAL_P(zufidp),
+		Z_STRLEN_P(zufidp) + 1, hash, (void **) &pmp) == SUCCESS);
 	return (found ? pmp : NULL);
 }
 
 /*---------------------------------------------------------------*/
 /* Callback only - Used by Automap_Pmap_get_or_create() */
+/* zpp : Map entry as written in the file */
 
 static int Automap_Pmap_create_entry(zval **zpp
 #if PHP_API_VERSION >= 20090626
@@ -54,41 +55,27 @@ static int Automap_Pmap_create_entry(zval **zpp
 #endif
 	)
 	{
-	HashTable *htp;
 	Automap_Pmap_Entry tmp_entry;
-	char *sp, *p, *p2;
-	int len, map_major_version;
-	zval zkey;
+	Automap_Pmap *pmp;
+	char *sp, *p, *p2,*path,*apath;
+	int len,path_len,apath_len;
+	zval zkey, *zbase_path;
 
-	htp=va_arg(va, HashTable *);
-	map_major_version=va_arg(va, int);
-	
+	pmp=va_arg(va, Automap_Pmap *);
+	zbase_path=va_arg(va, zval *);	/* Absolute base path */
+
 	if (!ZVAL_IS_STRING(*zpp)) {
 		EXCEPTION_ABORT_RET_1(ZEND_HASH_APPLY_STOP,"Automap_Pmap_create_entry: Invalid entry (should be a string) %d",Z_TYPE_PP(zpp));
 	}
 	INIT_ZVAL(tmp_entry.zsname);
 	INIT_ZVAL(tmp_entry.zfpath);
-	INIT_ZVAL(zkey);
+	INIT_ZVAL(tmp_entry.zfapath);
 	sp=Z_STRVAL_PP(zpp);
-	
-	switch(map_major_version) {
-		case '1':
-			if ((hash_key->nKeyLength<3)||(Z_STRLEN_PP(zpp)<2)) {
-				EXCEPTION_ABORT_RET(ZEND_HASH_APPLY_STOP,"Automap_Pmap_create_entry: Invalid entry (V1 map)");
-			}
-			tmp_entry.stype=hash_key->arKey[0];
-			p=ut_pduplicate((void *)(&(hash_key->arKey[1])),(len=hash_key->nKeyLength-2)+1);
-			ZVAL_STRINGL(&(tmp_entry.zsname),p,len,0);
-			ZVAL_STRINGL(&zkey,hash_key->arKey,len+1,0);
-			len=Z_STRLEN_PP(zpp)-1;
-			tmp_entry.ftype=sp[0];
-			p=ut_pduplicate(sp+1,len);
-			ZVAL_STRINGL(&(tmp_entry.zfpath),p,len,0);
-			zend_hash_update(htp,Z_STRVAL(zkey),Z_STRLEN(zkey)+1
-				,&tmp_entry,sizeof(tmp_entry),NULL);
-			break;
+	len=0; /* Avoid compile warning */
 
-		default:
+	switch(Z_STRVAL_P(pmp->zversion)[0]) {	/* First char is major version */
+		/* Version 1 is not supported anymore (already filtered out) */
+		case '2':
 			if (Z_STRLEN_PP(zpp)<5) {
 				EXCEPTION_ABORT_RET(ZEND_HASH_APPLY_STOP,"Automap_Pmap_create_entry: Invalid entry (too short)");
 			}
@@ -103,19 +90,32 @@ static int Automap_Pmap_create_entry(zval **zpp
 				}
 			}
 			if (!p2) {
-				EXCEPTION_ABORT_RET(ZEND_HASH_APPLY_STOP,"Automap_Pmap_create_entry: Invalid entry");
+				EXCEPTION_ABORT_RET(ZEND_HASH_APPLY_STOP,"Automap_Pmap_create_entry: Invalid entry (no target)");
 			}
+			/* Symbol name */
 			p=ut_pduplicate(sp+2,len+1);
 			ZVAL_STRINGL(&(tmp_entry.zsname),p,len,0);
-			len=Z_STRLEN_PP(zpp)-len-3;
-			p=ut_pduplicate(p2,len+1);
-			ZVAL_STRINGL(&(tmp_entry.zfpath),p,len,0);
+			/* Target path */
+			path_len=Z_STRLEN_PP(zpp)-len-3;
+			path=ut_pduplicate(p2,path_len+1);
+			ZVAL_STRINGL(&(tmp_entry.zfpath),path,path_len,0);
+			/* Target absolute path */
+			if (IS_ABSOLUTE_PATH(path,path_len)) { /* Target path is already absolute */
+				apath=ut_pduplicate(path,path_len+1);
+				apath_len=path_len;
+			} else {
+				apath_len=Z_STRLEN_P(zbase_path)+path_len;
+				spprintf(&p,apath_len+1,"%s%s",Z_STRVAL_P(zbase_path),path);
+				apath=ut_pduplicate(p,apath_len+1);
+				EFREE(p);
+			}
+			ZVAL_STRINGL(&(tmp_entry.zfapath),apath,apath_len,0);
 
-			Automap_key(tmp_entry.stype, Z_STRVAL(tmp_entry.zsname), Z_STRLEN(tmp_entry.zsname)
-				, &zkey TSRMLS_CC);
+			Automap_key(tmp_entry.stype, Z_STRVAL(tmp_entry.zsname)
+				, Z_STRLEN(tmp_entry.zsname), &zkey TSRMLS_CC);
 
-			zend_hash_update(htp,Z_STRVAL(zkey),Z_STRLEN(zkey)+1
-				,&tmp_entry,sizeof(tmp_entry),NULL);
+			zend_hash_update(Z_ARRVAL_P(pmp->zsymbols),Z_STRVAL(zkey)
+				,Z_STRLEN(zkey)+1,&tmp_entry,sizeof(tmp_entry),NULL);
 
 			zval_dtor(&zkey);
 	}
@@ -124,29 +124,56 @@ static int Automap_Pmap_create_entry(zval **zpp
 }
 	
 /*---------------------------------------------------------------*/
+/* Used for regular files only */
+/* On entry, zapathp is an absolute path */
+
+static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp TSRMLS_DC)
+{
+	zval *zufidp;
+	ulong hash;
+	Automap_Pmap *pmp;
+
+	/* Compute UFID (Unique File ID) */
+
+	Automap_ufid(zapathp, &zufidp TSRMLS_CC);
+	hash=ZSTRING_HASH(zufidp);
+
+	/* Run extended func */
+	
+	pmp=Automap_Pmap_get_or_create_extended(zapathp, NULL, 0, zufidp
+		, ZSTRING_HASH(zufidp), NULL TSRMLS_DC);
+
+	/* Cleanup */
+
+	ut_ezval_ptr_dtor(&zufidp);
+
+	return pmp;
+}
+
+/*---------------------------------------------------------------*/
 /* Note: Separating 'get' and 'create' functions would break atomicity */
 
 #define INIT_AUTOMAP_PMAP_GET_OR_CREATE() \
 	{ \
-	ALLOC_INIT_ZVAL(zversion); \
-	ALLOC_INIT_ZVAL(zbuf); \
-	ALLOC_INIT_ZVAL(zdata); \
-	ALLOC_INIT_ZVAL(zkey); \
+	INIT_ZVAL(zversion); \
+	INIT_ZVAL(zbuf); \
+	INIT_ZVAL(zdata); \
+	INIT_ZVAL(zbase_path); \
 	CLEAR_DATA(tmp_map); \
 	}
 
 #define CLEANUP_AUTOMAP_PMAP_GET_OR_CREATE() \
 	{ \
-	ut_ezval_ptr_dtor(&zversion); \
-	ut_ezval_ptr_dtor(&zbuf); \
-	ut_ezval_ptr_dtor(&zdata); \
-	ut_ezval_ptr_dtor(&zkey); \
+	ut_ezval_dtor(&zversion); \
+	ut_ezval_dtor(&zbuf); \
+	ut_ezval_dtor(&zdata); \
+	if (!zbase_pathp_arg) ut_ezval_dtor(&zbase_path); \
 	}
 
 #define RETURN_FROM_AUTOMAP_PMAP_GET_OR_CREATE(_ret) \
 	{ \
 	CLEANUP_AUTOMAP_PMAP_GET_OR_CREATE(); \
-	AUTOMAP_UNLOCK_PTAB(); \
+	AUTOMAP_UNLOCK_pmap_array(); \
 	return _ret; \
 	}
 
@@ -156,40 +183,59 @@ static int Automap_Pmap_create_entry(zval **zpp
 	RETURN_FROM_AUTOMAP_PMAP_GET_OR_CREATE(NULL); \
 	}
 
-static Automap_Pmap *Automap_Pmap_get_or_create(zval *zpathp, zval *zmntp
-	, ulong hash TSRMLS_DC)
+/* On entry :
+* - zpathp is an absolute path
+* - zufidp is non null
+* - hash is non null
+* - If buf is non null, it contains the map data (don't read from path)
+* - If zbase_pathp_arg is non null, it is the final absolute base
+*       path (with trailing separator)
+* - If zbase_pathp_arg is null, we compute its value from the file path and
+*       content
+*/
+
+static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
+	, char *buf, int buflen, zval *zufidp, ulong hash
+	, zval *zbase_pathp_arg TSRMLS_DC)
 {
 	Automap_Pmap tmp_map, *pmp;
-	zval *zversion, **zpp, *zbuf, *zdata, *zkey;
-	char *buf, tmpc, *p, *p2;
-	unsigned long fsize, len;
+	zval zversion, **zpp, zbuf, zdata, zbase_path;
+	char tmpc, *p, *p2;
+	unsigned long fsize;
 	HashTable *htp;
+	int len;
 
-	DBG_MSG1("Entering Automap_Pmap_get_or_create(%s)",Z_STRVAL_P(zpathp));
+	DBG_MSG1("Entering Automap_Pmap_get_or_create_extended(%s)",Z_STRVAL_P(zpathp));
 
-	AUTOMAP_LOCK_PTAB();
+	AUTOMAP_LOCK_pmap_array();
 
-	if (!hash) hash=ZSTRING_HASH(zmntp);
-
-	pmp=Automap_Pmap_get(zmntp, hash TSRMLS_CC);
+	pmp=Automap_Pmap_get(zufidp, hash TSRMLS_CC);
 	if (pmp) { /* Already exists */
-		AUTOMAP_UNLOCK_PTAB(); \
+		AUTOMAP_UNLOCK_pmap_array(); \
+		DBG_MSG2("Automap_Pmap cache hit (path=%s,ufid=%s)",Z_STRVAL_P(zpathp)
+			,Z_STRVAL_P(zufidp));
 		return pmp; \
 	}
 
+	/* Map is not in memory -> load it */
 	/*-- Slow path --*/
+
+	DBG_MSG1("Automap_Pmap cache miss (path=%s,ufid=%s)",Z_STRVAL_P(zpathp)
+			,Z_STRVAL_P(zufidp));
 
 	INIT_AUTOMAP_PMAP_GET_OR_CREATE();
 
-	ut_file_get_contents(Z_STRVAL_P(zpathp), zbuf TSRMLS_CC);
-	if (EG(exception)) ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
-	buf = Z_STRVAL_P(zbuf);
-	len = Z_STRLEN_P(zbuf);
+	if (!buf) {
+		ut_file_get_contents(Z_STRVAL_P(zpathp), &zbuf TSRMLS_CC);
+		if (EG(exception)) ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
+		buf = Z_STRVAL(zbuf);
+		buflen = Z_STRLEN(zbuf);
+	}
 
-	/* File cannot be smaller than 54 bytes - Secure future memory access */
+	/* File cannot be smaller than 54 bytes - Secure memory access */
 
-	if (len < 54) {
-		THROW_EXCEPTION_1("%s : file is too small", Z_STRVAL_P(zpathp));
+	if (buflen < 54) {
+		THROW_EXCEPTION_2("%s : Short file (size=%l)", Z_STRVAL_P(zpathp),buflen);
 		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	}
 
@@ -240,7 +286,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zpathp, zval *zmntp
 	buf[53] = '\0';
 	fsize = 0;
 	(void) sscanf(&(buf[45]), "%lu", &fsize);
-	if (fsize != len) {
+	if (fsize != buflen) {
 		THROW_EXCEPTION_2("%s : Invalid file size. Should be %lu",
 						  Z_STRVAL_P(zpathp), fsize);
 		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
@@ -249,57 +295,94 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zpathp, zval *zmntp
 
 	/* All checks done, create data struct */
 
-	tmp_map.zmnt=ut_persist_zval(zmntp);
-	tmp_map.mnt_hash=hash;
+	tmp_map.zufid=ut_persist_zval(zufidp);
+	tmp_map.ufid_hash=hash;
 	
 	/* Record minimum version (to be able to display it) */
 
-	ZVAL_STRINGL(zversion, &(buf[16]), 12, 1);
-	ut_zval_cut_at_space(zversion);
-	tmp_map.zmin_version=ut_persist_zval(zversion);
-	ut_ezval_dtor(zversion);
+	ZVAL_STRINGL(&zversion, &(buf[16]), 12, 1);
+	ut_zval_cut_at_space(&zversion);
+	tmp_map.zmin_version=ut_persist_zval(&zversion);
+	ut_ezval_dtor(&zversion);
 
 	/* Get map version */
 
-	ZVAL_STRINGL(zversion, &(buf[30]), 12, 1);
-	ut_zval_cut_at_space(zversion);
-	tmp_map.zversion=ut_persist_zval(zversion);
-	ut_ezval_dtor(zversion);
+	ZVAL_STRINGL(&zversion, &(buf[30]), 12, 1);
+	ut_zval_cut_at_space(&zversion);
+	tmp_map.zversion=ut_persist_zval(&zversion);
+	ut_ezval_dtor(&zversion);
 
 	/* Get the rest as an unserialized array */
 
-	ut_unserialize_zval((unsigned char *)(buf + 53), len - 53, zdata TSRMLS_CC);
+	ut_unserialize_zval((unsigned char *)(buf + 53), buflen - 53, &zdata TSRMLS_CC);
 	if (EG(exception)) ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 
-	if (!ZVAL_IS_ARRAY(zdata)) {
+	if (!ZVAL_IS_ARRAY(&zdata)) {
 		THROW_EXCEPTION_1("%s : Map file should contain an array",Z_STRVAL_P(zpathp));
 		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	}
 
-	/* Get the options array */
+	/* Get options array */
 
-	if (FIND_HKEY(Z_ARRVAL_P(zdata), options, &zpp) != SUCCESS) {
+	if (FIND_HKEY(Z_ARRVAL(zdata), options, &zpp) != SUCCESS) {
 		THROW_EXCEPTION_1("%s : No options array", Z_STRVAL_P(zpathp));
 		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	}
 	if (!ZVAL_IS_ARRAY(*zpp)) {
-		THROW_EXCEPTION_1("%s : Cannot load map - Options should be an array",
+		THROW_EXCEPTION_1("%s : Options should be an array",
 						  Z_STRVAL_P(zpathp));
 		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	}
 	tmp_map.zoptions=ut_persist_zval(*zpp);
 
-	/* Get the symbol table */
+	/* Compute base path */
+	
+	if (zbase_pathp_arg) {
+		/* If base_path arg is provided, use it */
+		ZVAL_STRINGL(&zbase_path,Z_STRVAL_P(zbase_pathp_arg)
+			,Z_STRLEN_P(zbase_pathp_arg),0); /* No copy */
+	} else {
+		if (FIND_HKEY(Z_ARRVAL_P(tmp_map.zoptions), base_path, &zpp) == SUCCESS) {
+			/* base_path option is set */
+			if (!ZVAL_IS_STRING(*zpp)) {
+				THROW_EXCEPTION_1("%s : base_path option must be a string",
+								  Z_STRVAL_P(zpathp));
+				ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
+			}
+			if (IS_ABSOLUTE_PATH(Z_STRVAL_PP(zpp),Z_STRLEN_PP(zpp))) {
+				/* base_path option is an absolute path */
+				p=ut_eduplicate(Z_STRVAL_PP(zpp),Z_STRLEN_PP(zpp)+1);
+				len=Z_STRLEN_PP(zpp);
+			} else {
+				/* base path option is a relative path */
+				spprintf(&p,MAXPATHLEN,"%s/%s/",ut_absolute_dirname(
+					Z_STRVAL_P(zpathp),Z_STRLEN_P(zpathp),&len,0 TSRMLS_CC)
+					,Z_STRVAL_PP(zpp));
+				len+=Z_STRLEN_PP(zpp)+2;
+			}
+			EFREE(p2);
+			p2=p;
+		} else {
+			/* base_path option is not set */
+			p=ut_absolute_dirname(Z_STRVAL_P(zpathp),Z_STRLEN_P(zpathp)
+				,&len,1 TSRMLS_CC);
+		}
+		ZVAL_STRINGL(&zbase_path,p,len,0);
+	}
 
-	if (FIND_HKEY(Z_ARRVAL_P(zdata), map, &zpp) != SUCCESS) {
-		THROW_EXCEPTION_1("%s : Cannot load map - No symbol table", Z_STRVAL_P(zpathp));
+	/* Get symbol table */
+
+	if (FIND_HKEY(Z_ARRVAL(zdata), map, &zpp) != SUCCESS) {
+		THROW_EXCEPTION_1("%s : No symbol table", Z_STRVAL_P(zpathp));
 		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	}
 	if (!ZVAL_IS_ARRAY(*zpp)) {
-		THROW_EXCEPTION_1("%s : Cannot load map - Symbol table should contain an array",
+		THROW_EXCEPTION_1("%s : Symbol table should contain an array",
 						  Z_STRVAL_P(zpathp));
 		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	}
+
+	/* Process symbols */
 
 	htp=(HashTable *)ut_pallocate(NULL,sizeof(HashTable));
 	zend_hash_init(htp,zend_hash_num_elements(Z_ARRVAL_PP(zpp)),NULL
@@ -311,8 +394,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zpathp, zval *zmntp
 		/* PHP 5.3+ requires this */
 		TSRMLS_CC
 #endif
-		,(apply_func_args_t)Automap_Pmap_create_entry, 2, htp
-		, *Z_STRVAL_P(tmp_map.zversion)
+		,(apply_func_args_t)Automap_Pmap_create_entry, 2, &tmp_map, &zbase_path
 #if PHP_API_VERSION < 20090626
 		TSRMLS_CC
 #endif
@@ -321,7 +403,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zpathp, zval *zmntp
 	
 	/* Create slot */
 
-	zend_hash_quick_update(&ptab, Z_STRVAL_P(zmntp), Z_STRLEN_P(zmntp) + 1
+	zend_hash_quick_update(&pmap_array, Z_STRVAL_P(zufidp), Z_STRLEN_P(zufidp) + 1
 		, hash, &tmp_map, sizeof(tmp_map), (void **) &pmp);
 
 	/* Cleanup and return */
@@ -333,7 +415,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zpathp, zval *zmntp
 
 static void Automap_Pmap_dtor(Automap_Pmap *pmp)
 {
-	ut_pzval_ptr_dtor(&(pmp->zmnt));
+	ut_pzval_ptr_dtor(&(pmp->zufid));
 	ut_pzval_ptr_dtor(&(pmp->zmin_version));
 	ut_pzval_ptr_dtor(&(pmp->zversion));
 	ut_pzval_ptr_dtor(&(pmp->zoptions));
@@ -346,10 +428,12 @@ static void Automap_Pmap_Entry_dtor(Automap_Pmap_Entry *pep)
 {
 	ut_pzval_dtor(&(pep->zsname));
 	ut_pzval_dtor(&(pep->zfpath));
+	ut_pzval_dtor(&(pep->zfapath));
 }
 
 /*---------------------------------------------------------------*/
 /* Returns SUCCESS/FAILURE */
+/* Fast path */
 
 static Automap_Pmap_Entry *Automap_Pmap_find_key(Automap_Pmap *pmp
 	, zval *zkey, ulong hash TSRMLS_DC)
@@ -366,8 +450,8 @@ static Automap_Pmap_Entry *Automap_Pmap_find_key(Automap_Pmap *pmp
 
 static int MINIT_Automap_Pmap(TSRMLS_D)
 {
-	MutexSetup(ptab);
-	zend_hash_init(&ptab, 16, NULL,(dtor_func_t) Automap_Pmap_dtor, 1);
+	MutexSetup(pmap_array);
+	zend_hash_init(&pmap_array, 16, NULL,(dtor_func_t) Automap_Pmap_dtor, 1);
 
 	return SUCCESS;
 }
@@ -376,8 +460,8 @@ static int MINIT_Automap_Pmap(TSRMLS_D)
 
 static int MSHUTDOWN_Automap_Pmap(TSRMLS_D)
 {
-	zend_hash_destroy(&ptab);
-	MutexShutdown(ptab);
+	zend_hash_destroy(&pmap_array);
+	MutexShutdown(pmap_array);
 
 	return SUCCESS;
 }

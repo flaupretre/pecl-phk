@@ -54,8 +54,8 @@ static void PHK_Mgr_mnt_dtor(PHK_Mnt * mp)
 
 	if (mp->instance) /* Invalidate object */
 		{
-		(void)zend_hash_del(Z_OBJPROP_P(mp->instance),MP_PROPERTY_NAME
-			,sizeof(MP_PROPERTY_NAME));
+		(void)zend_hash_del(Z_OBJPROP_P(mp->instance),PHK_MP_PROPERTY_NAME
+			,sizeof(PHK_MP_PROPERTY_NAME));
 		}
 
 	ut_ezval_ptr_dtor(&(mp->instance));
@@ -179,7 +179,7 @@ static PHP_METHOD(PHK_Mgr, is_mounted)
 /* }}} */
 /*---------------------------------------------------------------*/
 
-ZEND_DLEXPORT void PHK_Mgr_validate(zval * mnt, ulong hash TSRMLS_DC)
+static void PHK_Mgr_validate(zval * mnt, ulong hash TSRMLS_DC)
 {
 	(void) PHK_Mgr_get_mnt(mnt, hash, 1 TSRMLS_CC);
 }
@@ -202,7 +202,7 @@ static PHP_METHOD(PHK_Mgr, validate)
 /*---------------------------------------------------------------*/
 /* Must accept an invalid mount point without error */
 
-ZEND_DLEXPORT void PHK_Mgr_umount(zval * mnt, ulong hash TSRMLS_DC)
+static void PHK_Mgr_umount(zval * mnt, ulong hash TSRMLS_DC)
 {
 	PHK_Mnt *mp;
 
@@ -271,7 +271,7 @@ static zval *PHK_Mgr_instance_by_mp(PHK_Mnt * mp TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-ZEND_DLEXPORT zval *PHK_Mgr_instance(zval * mnt, ulong hash TSRMLS_DC)
+static zval *PHK_Mgr_instance(zval * mnt, ulong hash TSRMLS_DC)
 {
 	PHK_Mnt *mp;
 
@@ -350,7 +350,7 @@ static PHP_METHOD(PHK_Mgr, proxy)
 /* }}} */
 /*---------------------------------------------------------------*/
 
-ZEND_DLEXPORT void PHK_Mgr_mnt_list(zval * ret TSRMLS_DC)
+static void PHK_Mgr_mnt_list(zval * ret TSRMLS_DC)
 {
 	char *mnt_p;
 	uint mnt_len;
@@ -380,7 +380,7 @@ static PHP_METHOD(PHK_Mgr, mnt_list)
 /* }}} */
 /*---------------------------------------------------------------*/
 
-ZEND_DLEXPORT inline int PHK_Mgr_is_a_phk_uri(zval * path TSRMLS_DC)
+static inline int PHK_Mgr_is_a_phk_uri(zval * path TSRMLS_DC)
 {
 	char *p;
 	
@@ -442,7 +442,7 @@ while ((*_ret_string)=='/') \
 
 /*---------------------------------------------------------------*/
 
-ZEND_DLEXPORT void PHK_Mgr_uri(zval * mnt, zval * path, zval * ret TSRMLS_DC)
+static void PHK_Mgr_uri(zval * mnt, zval * path, zval * ret TSRMLS_DC)
 {
 	PHK_ZSTR_BASE_DECL()
 	char *tpath;
@@ -475,7 +475,7 @@ static PHP_METHOD(PHK_Mgr, uri)
 /* }}} */
 /*---------------------------------------------------------------*/
 
-ZEND_DLEXPORT void PHK_Mgr_command_uri(zval * mnt, zval * command,
+static void PHK_Mgr_command_uri(zval * mnt, zval * command,
 								zval * ret TSRMLS_DC)
 {
 	PHK_ZSTR_BASE_DECL()
@@ -505,7 +505,7 @@ static PHP_METHOD(PHK_Mgr, command_uri)
 /* }}} */
 /*---------------------------------------------------------------*/
 
-ZEND_DLEXPORT void PHK_Mgr_section_uri(zval * mnt, zval * section,
+static void PHK_Mgr_section_uri(zval * mnt, zval * section,
 								zval * ret TSRMLS_DC)
 {
 	PHK_ZSTR_BASE_DECL()
@@ -536,7 +536,7 @@ static PHP_METHOD(PHK_Mgr, section_uri)
 /* }}} */
 /*---------------------------------------------------------------*/
 
-ZEND_DLEXPORT void PHK_Mgr_normalize_uri(zval * uri, zval * ret TSRMLS_DC)
+static void PHK_Mgr_normalize_uri(zval * uri, zval * ret TSRMLS_DC)
 {
 	char *p;
 
@@ -633,7 +633,7 @@ static PHP_METHOD(PHK_Mgr, base_uri)
 /* }}} */
 /*---------------------------------------------------------------*/
 
-ZEND_DLEXPORT void PHK_Mgr_uri_to_mnt(zval * uri, zval * ret TSRMLS_DC)
+static void PHK_Mgr_uri_to_mnt(zval * uri, zval * ret TSRMLS_DC)
 {
 	char *bp, *p;
 	int len;
@@ -669,7 +669,7 @@ static PHP_METHOD(PHK_Mgr, uri_to_mnt)
 /* }}} */
 /*---------------------------------------------------------------*/
 
-ZEND_DLEXPORT void PHK_Mgr_toplevel_path(zval * zpath, zval * ret TSRMLS_DC)
+static void PHK_Mgr_toplevel_path(zval * zpath, zval * ret TSRMLS_DC)
 {
 	zval zmnt;
 	PHK_Mnt *mp;
@@ -722,7 +722,7 @@ static PHP_METHOD(PHK_Mgr, php_version_check)
 /* }}} */
 /*---------------------------------------------------------------*/
 
-ZEND_DLEXPORT void PHK_Mgr_set_cache(zval * zp TSRMLS_DC)
+static void PHK_Mgr_set_cache(zval * zp TSRMLS_DC)
 {
 	if ((Z_TYPE_P(zp) != IS_NULL) && (Z_TYPE_P(zp) != IS_BOOL)) {
 		EXCEPTION_ABORT("set_cache value can be only bool or null");
@@ -749,7 +749,7 @@ static PHP_METHOD(PHK_Mgr, set_cache)
 /* }}} */
 /*---------------------------------------------------------------*/
 
-ZEND_DLEXPORT int PHK_Mgr_cache_enabled(zval * mnt, ulong hash, zval * command,
+static int PHK_Mgr_cache_enabled(zval * mnt, ulong hash, zval * command,
 								 zval * params, zval * path TSRMLS_DC)
 {
 	PHK_Mnt *mp;
@@ -767,7 +767,7 @@ ZEND_DLEXPORT int PHK_Mgr_cache_enabled(zval * mnt, ulong hash, zval * command,
 /*---------------------------------------------------------------*/
 /* In case of error, free mem allocated by compute_mnt() */
 
-ZEND_DLEXPORT void PHK_Mgr_path_to_mnt(zval * path, zval * mnt TSRMLS_DC)
+static void PHK_Mgr_path_to_mnt(zval * path, zval * mnt TSRMLS_DC)
 {
 	zval *tmp_mnt;
 
@@ -918,7 +918,7 @@ static void PHK_Mgr_compute_mnt(zval * path, PHK_Mnt ** parent_mpp,
 	RETURN_FROM_PHK_MGR_MOUNT(NULL); \
 	}
 
-ZEND_DLEXPORT PHK_Mnt *PHK_Mgr_mount(zval * path, long flags TSRMLS_DC)
+static PHK_Mnt *PHK_Mgr_mount(zval * path, long flags TSRMLS_DC)
 {
 	zval *args[5], *mnt, *mtime;
 	PHK_Mnt *mp, *parent_mp;

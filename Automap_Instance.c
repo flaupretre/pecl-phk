@@ -23,7 +23,7 @@ static zval *Automap_instance_by_mp(Automap_Mnt *mp TSRMLS_DC)
 	if (!mp->instance) {
 		mp->instance=ut_new_instance(ZEND_STRL("Automap"), 0, 0, NULL TSRMLS_CC);
 		zend_update_property_long(Z_OBJCE_P(mp->instance),mp->instance
-			,"m",1,(long)(mp->order) TSRMLS_CC);
+			,"m",1,(long)(mp->id) TSRMLS_CC);
 	}
 
 	return mp->instance;
@@ -31,11 +31,11 @@ static zval *Automap_instance_by_mp(Automap_Mnt *mp TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-ZEND_DLEXPORT zval *Automap_instance(zval * mnt, ulong hash TSRMLS_DC)
+static zval *Automap_instance(long id TSRMLS_DC)
 {
 	Automap_Mnt *mp;
 
-	mp = Automap_Mnt_get(mnt, hash, 1 TSRMLS_CC);
+	mp = Automap_Mnt_get(id, 1 TSRMLS_CC);
 	if (EG(exception)) return NULL;
 
 	return Automap_instance_by_mp(mp TSRMLS_CC);
@@ -46,14 +46,15 @@ ZEND_DLEXPORT zval *Automap_instance(zval * mnt, ulong hash TSRMLS_DC)
 
 static PHP_METHOD(Automap, instance)
 {
-	zval *mnt, *instance;
+	long id;
+	zval *instance;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &mnt) == FAILURE)
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "l", &id) == FAILURE)
 		EXCEPTION_ABORT("Cannot parse parameters");
 
-	/*DBG_MSG1("Entering Automap::instance(%s)",Z_STRVAL_P(mnt)); */
+	/*DBG_MSG1("Entering Automap::instance(%l)",id); */
 
-	instance = Automap_instance(mnt, 0 TSRMLS_CC);
+	instance = Automap_instance(id TSRMLS_CC);
 	if (EG(exception)) return;
 
 	RETVAL_BY_REF(instance);
@@ -67,7 +68,8 @@ static PHP_METHOD(Automap, is_valid)
 {
 	zval **_tmp;
 
-	RETVAL_BOOL(FIND_HKEY(Z_OBJPROP_P(getThis()),mp_property_name,&_tmp)==SUCCESS);
+	RETVAL_BOOL(FIND_HKEY(Z_OBJPROP_P(getThis()),Automap_mp_property_name
+		,&_tmp)==SUCCESS);
 }
 
 /*---------------------------------------------------------------*/
@@ -79,13 +81,14 @@ static PHP_METHOD(Automap, is_valid)
 		AUTOMAP_GET_INSTANCE_DATA(_field) \
 
 #define AUTOMAP_GET_PROPERTY_METHOD_END(_field) \
+	DBG_MSG("Exiting Automap::" #_field); \
 	}
 
 /*---------------------------------------------------------------*/
-/* {{{ proto string Automap::mnt() */
+/* {{{ proto string Automap::id() */
 
-AUTOMAP_GET_PROPERTY_METHOD_START(mnt)
-	RETVAL_BY_VAL(mp->map->zmnt);
+AUTOMAP_GET_PROPERTY_METHOD_START(id)
+	RETVAL_LONG(mp->id);
 AUTOMAP_GET_PROPERTY_METHOD_END(mnt)
 
 /* }}} */
@@ -95,14 +98,6 @@ AUTOMAP_GET_PROPERTY_METHOD_END(mnt)
 AUTOMAP_GET_PROPERTY_METHOD_START(path)
 	RETVAL_BY_REF(mp->zpath);
 AUTOMAP_GET_PROPERTY_METHOD_END(path)
-
-/* }}} */
-/*---------------------------------------------------------------*/
-/* {{{ proto string Automap::base_dir() */
-
-AUTOMAP_GET_PROPERTY_METHOD_START(base_dir)
-		RETVAL_BY_REF(mp->zbase);
-AUTOMAP_GET_PROPERTY_METHOD_END(base_dir)
 
 /* }}} */
 /*---------------------------------------------------------------*/
@@ -141,8 +136,7 @@ AUTOMAP_GET_PROPERTY_METHOD_END(min_version)
 static void Automap_Instance_export_entry(Automap_Mnt *mp, Automap_Pmap_Entry *pep
 	, zval *zp TSRMLS_DC)
 {
-	char str[2],*abspath;
-	int len;
+	char str[2];
 
 	array_init(zp);
 	str[1]='\0';
@@ -153,8 +147,7 @@ static void Automap_Instance_export_entry(Automap_Mnt *mp, Automap_Pmap_Entry *p
 	str[0]=pep->ftype;
 	add_assoc_stringl(zp,"ptype",str,1,1);
 	add_assoc_stringl(zp,"rpath",Z_STRVAL(pep->zfpath),Z_STRLEN(pep->zfpath),1);
-	abspath=Automap_Mnt_abs_path(mp,pep,&len TSRMLS_CC);
-	add_assoc_stringl(zp,"path",abspath,len,0);
+	add_assoc_stringl(zp,"path",Z_STRVAL(pep->zfapath),Z_STRLEN(pep->zfapath),1);
 }
 
 /*---------------------------------------------------------------*/
@@ -216,9 +209,9 @@ static PHP_METHOD(Automap, get_symbol)
 /* }}} */
 /*---------------------------------------------------------------*/
 
-static unsigned long Automap_symbol_count(Automap_Mnt *mp TSRMLS_DC)
+static long Automap_symbol_count(Automap_Mnt *mp TSRMLS_DC)
 {
-	return zend_hash_num_elements(Z_ARRVAL_P(mp->map->zsymbols));
+	return (long)zend_hash_num_elements(Z_ARRVAL_P(mp->map->zsymbols));
 }
 
 /*---------------------------------------------------------------*/
@@ -256,103 +249,30 @@ static PHP_METHOD(Automap, option)
 
 /* }}} */
 /*---------------------------------------------------------------*/
-/* {{{ proto string Automap::check() */
-/* Proxy to Automap_Tools::check() */
-
-static PHP_METHOD(Automap, check)
-{
-	zval *this;
-
-	this=getThis();
-	Z_ADDREF_P(this);
-	ut_call_user_function(NULL,ZEND_STRL("Automap_Tools::check"),return_value
-		,1,&this TSRMLS_CC);
-	Z_DELREF_P(this);
-}
-
-/* }}} */
-/*---------------------------------------------------------------*/
 /* {{{ proto string Automap::show() */
-/* Proxy to Automap_Tools::show() */
+/* Proxy to Automap_Display::show() */
 
 static PHP_METHOD(Automap, show)
 {
-	zval *args[2];
+	zval *args[3];
 
-	args[1]=NULL;
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "|z", &(args[1])) ==
-		FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
+	args[1]=args[2]=NULL;
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "|z|z"
+		, &(args[1]), &(args[2]))==FAILURE)
+			EXCEPTION_ABORT("Cannot parse parameters");
+
 	args[0]=getThis();
 	Z_ADDREF_P(args[0]);
-	ut_call_user_function(NULL,ZEND_STRL("Automap_Tools::show"),return_value
-		,(args[1] ? 2 : 1), args TSRMLS_CC);
-	Z_DELREF_P(args[0]);
-}
-
-/* }}} */
-/*---------------------------------------------------------------*/
-/* {{{ proto string Automap::show_text() */
-/* Proxy to Automap_Tools::show_text() */
-
-static PHP_METHOD(Automap, show_text)
-{
-	zval *args[2];
-
-	args[1]=NULL;
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "|z", &(args[1])) ==
-		FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
-	args[0]=getThis();
-	Z_ADDREF_P(args[0]);
-	ut_call_user_function(NULL,ZEND_STRL("Automap_Tools::show_text"),return_value
-		,(args[1] ? 2 : 1), args TSRMLS_CC);
-	Z_DELREF_P(args[0]);
-}
-
-/* }}} */
-/*---------------------------------------------------------------*/
-/* {{{ proto string Automap::show_html() */
-/* Proxy to Automap_Tools::show_html() */
-
-static PHP_METHOD(Automap, show_html)
-{
-	zval *args[2];
-
-	args[1]=NULL;
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "|z", &(args[1])) ==
-		FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
-	args[0]=getThis();
-	Z_ADDREF_P(args[0]);
-	ut_call_user_function(NULL,ZEND_STRL("Automap_Tools::show_html"),return_value
-		,(args[1] ? 2 : 1), args TSRMLS_CC);
-	Z_DELREF_P(args[0]);
-}
-
-/* }}} */
-/*---------------------------------------------------------------*/
-/* {{{ proto string Automap::show() */
-/* Proxy to Automap_Tools::export() */
-
-static PHP_METHOD(Automap, export)
-{
-	zval *args[2];
-
-	args[1]=NULL;
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "|z", &(args[1])) ==
-		FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
-	args[0]=getThis();
-	Z_ADDREF_P(args[0]);
-	ut_call_user_function(NULL,ZEND_STRL("Automap_Tools::export"),return_value
-		,(args[1] ? 2 : 1), args TSRMLS_CC);
+	ut_call_user_function(NULL,ZEND_STRL("Automap_Display::show"),return_value
+		,(args[2] ? 3 : (args[1] ? 2 : 1)), args TSRMLS_CC);
 	Z_DELREF_P(args[0]);
 }
 
 /* }}} */
 /*---------------------------------------------------------------*/
 
-ZEND_BEGIN_ARG_INFO_EX(Automap_mount_arginfo, 0, 1, 1)
+ZEND_BEGIN_ARG_INFO_EX(Automap_load_arginfo, 0, 0, 1)
 ZEND_ARG_INFO(0, path)
-ZEND_ARG_INFO(0, base_dir)
-ZEND_ARG_INFO(0, mnt)
 ZEND_ARG_INFO(0, flags)
 ZEND_END_ARG_INFO()
 
@@ -361,24 +281,23 @@ ZEND_ARG_INFO(0, symbol)
 ZEND_ARG_INFO(0, type)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(Automap_show_arginfo, 0, 0, 0)
+ZEND_ARG_INFO(0, format)
+ZEND_ARG_INFO(0, subfile_to_url_function)
+ZEND_END_ARG_INFO()
+
 static zend_function_entry Automap_functions[] = {
-	PHP_ME(Automap, is_mounted, UT_1arg_arginfo,
+	PHP_ME(Automap, is_active, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, validate, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, umount, UT_1arg_arginfo,
-		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_MALIAS(Automap, unload, umount, UT_1arg_arginfo,
+	PHP_ME(Automap, unload, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, instance, UT_1arg_ref_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, mnt_list, UT_noarg_arginfo,
+	PHP_ME(Automap, active_ids, UT_noarg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, path_id, UT_1arg_arginfo,
-		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, mount, Automap_mount_arginfo,
-		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_MALIAS(Automap, load, mount, Automap_mount_arginfo,
+	PHP_ME(Automap, load, Automap_load_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, register_failure_handler, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
@@ -410,9 +329,12 @@ static zend_function_entry Automap_functions[] = {
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, min_map_version, UT_noarg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, mnt, UT_noarg_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Automap, using_accelerator, UT_noarg_arginfo,
+		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	PHP_ME(Automap, accel_techinfo, UT_noarg_arginfo,
+		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	PHP_ME(Automap, id, UT_noarg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, path, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, base_dir, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, flags, UT_noarg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, symbols, UT_noarg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, options, UT_noarg_arginfo, ZEND_ACC_PUBLIC)
@@ -422,16 +344,7 @@ static zend_function_entry Automap_functions[] = {
 	PHP_ME(Automap, symbol_count, UT_noarg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, option, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, is_valid, UT_noarg_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, using_accelerator, UT_noarg_arginfo,
-		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-	PHP_ME(Automap, accel_techinfo, UT_noarg_arginfo,
-		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-	PHP_ME(Automap, check, UT_noarg_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, show, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, show_text, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, show_html, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
-	PHP_MALIAS(Automap, html_show, show_html, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, export, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Automap, show, Automap_show_arginfo, ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL, 0, 0}
 };
 
@@ -443,9 +356,12 @@ static void Automap_Instance_set_constants(zend_class_entry * ce)
 	UT_DECLARE_CHAR_CONSTANT(AUTOMAP_T_CONSTANT,"T_CONSTANT");
 	UT_DECLARE_CHAR_CONSTANT(AUTOMAP_T_CLASS,"T_CLASS");
 	UT_DECLARE_CHAR_CONSTANT(AUTOMAP_T_EXTENSION,"T_EXTENSION");
+
 	UT_DECLARE_CHAR_CONSTANT(AUTOMAP_F_SCRIPT,"F_SCRIPT");
 	UT_DECLARE_CHAR_CONSTANT(AUTOMAP_F_EXTENSION,"F_EXTENSION");
 	UT_DECLARE_CHAR_CONSTANT(AUTOMAP_F_PACKAGE,"F_PACKAGE");
+
+	UT_DECLARE_LONG_CONSTANT(AUTOMAP_FLAG_NO_AUTOLOAD,"NO_AUTOLOAD");
 
 	UT_DECLARE_STRING_CONSTANT(AUTOMAP_MAGIC,"MAGIC");
 }

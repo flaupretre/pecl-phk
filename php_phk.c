@@ -65,7 +65,7 @@ static PHP_MINFO_FUNCTION(phk)
 
 	sprintf(buf,"%d",zend_hash_num_elements(&persistent_mtab));
 	php_info_print_table_row(2, "Persistent package count",buf);
-	sprintf(buf,"%d",zend_hash_num_elements(&ptab));
+	sprintf(buf,"%d",zend_hash_num_elements(&pmap_array));
 	php_info_print_table_row(2, "Persistent map count",buf);
 	}
 #endif
@@ -114,6 +114,7 @@ static void build_constant_values()
 	INIT_HKEY(map);
 	INIT_HKEY(options);
 	INIT_HKEY(automap);
+	INIT_HKEY(base_path);
 
 	INIT_HKEY(no_cache);
 	INIT_HKEY(no_opcode_cache);
@@ -127,7 +128,8 @@ static void build_constant_values()
 	INIT_HKEY(max_php_version);
 	INIT_HKEY(mime_types);
 	INIT_HKEY(web_run_script);
-	INIT_HKEY_VALUE(mp_property_name,MP_PROPERTY_NAME);
+	INIT_HKEY_VALUE(Automap_mp_property_name,AUTOMAP_MP_PROPERTY_NAME);
+	INIT_HKEY_VALUE(PHK_mp_property_name,PHK_MP_PROPERTY_NAME);
 	INIT_HKEY(web_main_redirect);
 	INIT_HKEY(_PHK_path);
 	INIT_HKEY(ORIG_PATH_INFO);

@@ -26,15 +26,16 @@
 /*---------------------------------------------------------------*/
 
 typedef struct {				/* Persistent */
-	char stype;
-	zval zsname;
-	char ftype;
-	zval zfpath;
+	char stype;					/* Symbol type */
+	zval zsname;				/* Symbol name (case sensitive) */
+	char ftype;					/* Target type */
+	zval zfpath;				/* Target path (as in map) */
+	zval zfapath;				/* Absolute target path */
 } Automap_Pmap_Entry;
 
 typedef struct {				/* Persistent */
-	zval *zmnt;					/* (String zval *) */
-	ulong mnt_hash;
+	zval *zufid;				/* (String zval *) */
+	ulong ufid_hash;
 	zval *zmin_version;			/* Map requires at least this runtime version (String) */
 	zval *zversion;				/* Map was created with this creator version (String) */
 	zval *zoptions;				/* Array */
@@ -44,13 +45,13 @@ typedef struct {				/* Persistent */
 /*---------------------------------------------------------------*/
 /* Persistent data */
 
-static HashTable ptab;
+static HashTable pmap_array;	/* Key=UFID, Value=(Automap_ptab *) */
 
-StaticMutexDeclare(ptab);
+StaticMutexDeclare(pmap_array);
 
 /*============================================================================*/
 
-static Automap_Pmap *Automap_Pmap_get(zval *zmntp, ulong hash TSRMLS_DC);
+static Automap_Pmap *Automap_Pmap_get(zval *zufidp, ulong hash TSRMLS_DC);
 
 static int Automap_Pmap_create_entry(zval **zpp
 #if PHP_API_VERSION >= 20090626
@@ -63,10 +64,12 @@ static int Automap_Pmap_create_entry(zval **zpp
 #endif
 	);
 
-static Automap_Pmap *Automap_Pmap_get_or_create(zval *zpathp, zval *zmntp
-	, ulong hash TSRMLS_DC);
+static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp TSRMLS_DC);
+static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
+	, char *buf, int buflen, zval *zufidp, ulong hash
+	, zval *zbase_pathp_arg TSRMLS_DC);
 static void Automap_Pmap_dtor(Automap_Pmap *pmp);
-static void Automap_Pmap_Entry_dtor(Automap_Pmap_Entry *pmep);
+static void Automap_Pmap_Entry_dtor(Automap_Pmap_Entry *pep);
 static Automap_Pmap_Entry *Automap_Pmap_find_key(Automap_Pmap *pmp
 	, zval *zkey, ulong hash TSRMLS_DC);
 

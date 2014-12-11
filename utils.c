@@ -166,6 +166,8 @@ return ptr;
 #define PEALLOCATE(ptr, size, persistent)	ptr=ut_allocate(ptr, size, persistent)
 #define EALLOCATE(ptr, size)	PEALLOCATE(ptr, size, 0)
 #define PALLOCATE(ptr, size)	PEALLOCATE(ptr, size, 1)
+#define EFREE(ptr)				EALLOCATE(ptr, 0)
+#define PFREE(ptr)				PALLOCATE(ptr, 0)
 
 /*---------------------------------------------------------------*/
 
@@ -213,7 +215,7 @@ UT_SYMBOL void ut_dbg_print_time()
 	time_t sec;
 
 	(void)gettimeofday(&tp,&tz);
-	sec=tp.tv_sec-base_tp.tv_sec;
+	sec=tp.tv_sec-_ut_base_tp.tv_sec;
 	if (ut_is_web()) php_printf("<br>");
 	php_printf("<");
 	if (sec) php_printf("%ld/",sec);
@@ -374,7 +376,7 @@ UT_SYMBOL zval *ut_new_instance(char *class_name, int class_name_len,
 /* PHP 5.4+: additional argument to zend_lookup_class_ex */
 							, NULL
 #endif
-							, 0, &ce TSRMLS_CC) == FAILURE) {
+							, 1, &ce TSRMLS_CC) == FAILURE) {
 		EXCEPTION_ABORT_RET_1(NULL,"%s: class does not exist",class_name);
 	}
 
@@ -556,7 +558,7 @@ UT_SYMBOL void ut_load_extension(char *name, int len TSRMLS_DC)
 
 	if (ut_extension_loaded(name, len TSRMLS_CC)) return;
 
-	spprintf(&p,1024,_UT_LE_PREFIX "%s." PHP_SHLIB_SUFFIX,name);
+	spprintf(&p,MAXPATHLEN,_UT_LE_PREFIX "%s." PHP_SHLIB_SUFFIX,name);
 	MAKE_STD_ZVAL(zp);
 	ZVAL_STRING(zp,p,0);
 
@@ -597,11 +599,11 @@ UT_SYMBOL void ut_require(char *string, zval * ret TSRMLS_DC)
 {
 	char *p;
 
-	spprintf(&p, 1024, "require '%s';", string);
+	spprintf(&p, MAXPATHLEN+12, "require '%s';", string);
 
 	zend_eval_string(p, ret, "eval" TSRMLS_CC);
 
-	EALLOCATE(p,0);
+	EFREE(p);
 }
 
 /*---------------------------------------------------------------*/
@@ -747,7 +749,7 @@ UT_SYMBOL void ut_http_301_redirect(char *path, int must_free TSRMLS_DC)
 
 	ut_header(301, "HTTP/1.1 301 Moved Permanently" TSRMLS_CC);
 
-	if (must_free) EALLOCATE(path,0);
+	if (must_free) EFREE(path);
 	ut_exit(0 TSRMLS_CC);
 }
 
@@ -891,7 +893,7 @@ UT_SYMBOL void ut_repeat_printf(char c, int count TSRMLS_DC)
 	p=ut_eallocate(NULL,count);
 	memset(p,c,count);
 	PHPWRITE(p,count);
-	EALLOCATE(p,0);
+	EFREE(p);
 }
 
 /*---------------------------------------------------------------*/
@@ -909,7 +911,7 @@ UT_SYMBOL void ut_printf_pad_right(char *str, int len, int size TSRMLS_DC)
 	memset(p,' ',size);
 	memmove(p,str,len);
 	PHPWRITE(p,size);
-	EALLOCATE(p,0);
+	EFREE(p);
 }
 
 /*---------------------------------------------------------------*/
@@ -929,7 +931,7 @@ UT_SYMBOL void ut_printf_pad_both(char *str, int len, int size TSRMLS_DC)
 	pad=(size-len)/2;
 	memmove(p+pad,str,len);
 	PHPWRITE(p,size);
-	EALLOCATE(p,0);
+	EFREE(p);
 }
 
 /*---------------------------------------------------------------*/
@@ -941,11 +943,12 @@ UT_SYMBOL char *ut_absolute_dirname(char *path, int len, int *reslen, int separ 
 
 	dir=ut_dirname(path,len,&dlen TSRMLS_CC);
 	res=ut_mk_absolute_path(dir,dlen,reslen,separ TSRMLS_CC);
-	EALLOCATE(dir,0);
+	EFREE(dir);
 	return res;
 }
 
 /*---------------------------------------------------------------*/
+/* Return newly-allocated dirname of a given path */
 
 UT_SYMBOL char *ut_dirname(char *path, int len, int *reslen TSRMLS_DC)
 {
@@ -976,12 +979,13 @@ UT_SYMBOL int ut_is_uri(char *path, int len TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
-/* Return an absolute path with a trailing separator or not*/
+/* Return a newly-allocated absolute path with a trailing separator or not*/
+/* A URI is considered as an absolute path */
 
 UT_SYMBOL char *ut_mk_absolute_path(char *path, int len, int *reslen
 	, int separ TSRMLS_DC)
 {
-	char buf[1024];
+	char buf[MAXPATHLEN];
 	char *resp,*p;
 	size_t clen;
 	int dummy_reslen;

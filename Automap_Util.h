@@ -22,8 +22,7 @@
 /*============================================================================*/
 
 static PHP_METHOD(Automap, min_map_version);
-static void Automap_path_id(zval * path, zval **id_zp TSRMLS_DC);
-static PHP_METHOD(Automap, path_id);
+static void Automap_ufid(zval *path, zval **zufidpp TSRMLS_DC);
 static int Automap_symbol_is_defined(char type, char *symbol
 	, unsigned int slen TSRMLS_DC);
 static PHP_METHOD(Automap, using_accelerator);
