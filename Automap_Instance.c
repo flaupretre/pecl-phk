@@ -289,8 +289,6 @@ ZEND_END_ARG_INFO()
 static zend_function_entry Automap_functions[] = {
 	PHP_ME(Automap, is_active, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, validate, UT_1arg_arginfo,
-		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, unload, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, instance, UT_1arg_ref_arginfo,

@@ -75,27 +75,6 @@ static PHP_METHOD(Automap, is_active)
 /* }}} */
 /*---------------------------------------------------------------*/
 
-static void Automap_Mnt_validate(long id TSRMLS_DC)
-{
-	(void) Automap_Mnt_get(id, 1 TSRMLS_CC);
-}
-
-/*---------------------------------------------------------------*/
-/* {{{ proto void Automap::validate(integer id) */
-
-static PHP_METHOD(Automap, validate)
-{
-	long id;
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "l", &id) ==
-		FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
-
-	(void) Automap_Mnt_validate(id TSRMLS_CC);
-}
-
-/* }}} */
-/*---------------------------------------------------------------*/
-
 static void Automap_Mnt_array_add(Automap_Mnt *mp TSRMLS_DC)
 {
 	mp->id=PHK_G(map_count);
