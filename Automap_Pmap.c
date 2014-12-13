@@ -262,7 +262,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 	tmpc = *p2;
 	*p2 = '\0';
 	ut_cut_at_space(p);
-	if (php_version_compare(p, AUTOMAP_API) > 0) {
+	if (php_version_compare(p, AUTOMAP_VERSION) > 0) {
 		THROW_EXCEPTION_2
 			("%s: Cannot understand this map. Requires at least Automap version %s",
 			 Z_STRVAL_P(zpathp), p);

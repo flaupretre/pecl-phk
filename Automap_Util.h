@@ -21,7 +21,6 @@
 
 /*============================================================================*/
 
-static PHP_METHOD(Automap, min_map_version);
 static void Automap_ufid(zval *path, zval **zufidpp TSRMLS_DC);
 static int Automap_symbol_is_defined(char type, char *symbol
 	, unsigned int slen TSRMLS_DC);

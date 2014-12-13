@@ -17,13 +17,6 @@
 */
 
 /*---------------------------------------------------------------*/
-
-static PHP_METHOD(Automap, min_map_version)
-{
-	RETVAL_STRING(AUTOMAP_MIN_MAP_VERSION,1);
-}
-
-/*---------------------------------------------------------------*/
 /* In case of error, free mem allocated by ut_path_unique_id() */
 
 static void Automap_ufid(zval *path, zval **zufidpp TSRMLS_DC)

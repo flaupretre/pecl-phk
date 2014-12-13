@@ -111,7 +111,7 @@
 
 /* This version is compared to the minimum version required by the maps */
 
-#define AUTOMAP_API "3.0.0"
+#define AUTOMAP_VERSION "3.0.0"
 
 /* We cannot read versions older than this */
 

@@ -325,8 +325,6 @@ static zend_function_entry Automap_functions[] = {
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, require_extension, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, min_map_version, UT_noarg_arginfo,
-		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, using_accelerator, UT_noarg_arginfo,
 		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	PHP_ME(Automap, accel_techinfo, UT_noarg_arginfo,
@@ -350,6 +348,10 @@ static zend_function_entry Automap_functions[] = {
 
 static void Automap_Instance_set_constants(zend_class_entry * ce)
 {
+	UT_DECLARE_STRING_CONSTANT(AUTOMAP_VERSION,"VERSION");
+	UT_DECLARE_STRING_CONSTANT(AUTOMAP_MIN_MAP_VERSION,"MIN_MAP_VERSION");
+	UT_DECLARE_STRING_CONSTANT(AUTOMAP_MAGIC,"MAGIC");
+
 	UT_DECLARE_CHAR_CONSTANT(AUTOMAP_T_FUNCTION,"T_FUNCTION");
 	UT_DECLARE_CHAR_CONSTANT(AUTOMAP_T_CONSTANT,"T_CONSTANT");
 	UT_DECLARE_CHAR_CONSTANT(AUTOMAP_T_CLASS,"T_CLASS");
@@ -361,7 +363,6 @@ static void Automap_Instance_set_constants(zend_class_entry * ce)
 
 	UT_DECLARE_LONG_CONSTANT(AUTOMAP_FLAG_NO_AUTOLOAD,"NO_AUTOLOAD");
 
-	UT_DECLARE_STRING_CONSTANT(AUTOMAP_MAGIC,"MAGIC");
 }
 
 /*===============================================================*/
