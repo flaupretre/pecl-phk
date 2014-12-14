@@ -882,6 +882,19 @@ static void PHK_Mgr_compute_mnt(zval * path, PHK_Mnt ** parent_mpp,
 }
 
 /*---------------------------------------------------------------*/
+/* Mount a package and return its map ID */
+/* Shortcut used when loading a package during Automap symbol resolution */
+
+static long PHK_Mgr_mount_from_Automap(zval * path, long flags TSRMLS_DC)
+{
+	PHK_Mnt *mp;
+	
+	mp=PHK_Mgr_mount(path, flags TSRMLS_CC);
+	if (EG(exception)) return 0;
+	return mp->automap_id;
+}
+
+/*---------------------------------------------------------------*/
 
 #define INIT_PHK_MGR_MOUNT() \
 	{ \

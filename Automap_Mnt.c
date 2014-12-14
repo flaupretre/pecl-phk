@@ -57,9 +57,9 @@ static Automap_Mnt *Automap_Mnt_get(long id, int exception TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
-/* {{{ proto boolean Automap::is_active(integer id) */
+/* {{{ proto boolean Automap::id_is_active(integer id) */
 
-static PHP_METHOD(Automap, is_active)
+static PHP_METHOD(Automap, id_is_active)
 {
 	long id;
 	int retval;
@@ -260,54 +260,39 @@ static int Automap_Mnt_resolve_key(Automap_Mnt *mp, zval *zkey, ulong hash TSRML
 		return FAILURE;
 	}
 
-	ftype=pep->ftype;
+	switch(ftype=pep->ftype) {
+		case AUTOMAP_F_EXTENSION:
+			ut_load_extension_file(&(pep->zfpath) TSRMLS_CC);
+			if (EG(exception)) RETURN_AUTOMAP_MNT_RESOLVE_KEY(FAILURE);
+			Automap_call_success_handlers(mp,pep TSRMLS_CC);
+			RETURN_AUTOMAP_MNT_RESOLVE_KEY(SUCCESS);
+			break;
 
-	if (ftype == AUTOMAP_F_EXTENSION) {
-		ut_load_extension_file(&(pep->zfpath) TSRMLS_CC);
-		if (EG(exception)) RETURN_AUTOMAP_MNT_RESOLVE_KEY(FAILURE);
-		Automap_call_success_handlers(mp,pep TSRMLS_CC);
-		RETURN_AUTOMAP_MNT_RESOLVE_KEY(SUCCESS);
-	}
+		case AUTOMAP_F_SCRIPT:
+			/* Compute "require '<absolute path>';" */
+			spprintf(&req_str,1024,"require '%s';",Z_STRVAL(pep->zfapath));
+			DBG_MSG1("eval : %s",req_str);
+			zend_eval_string(req_str,NULL,req_str TSRMLS_CC);
+			Automap_call_success_handlers(mp,pep TSRMLS_CC);
+			RETURN_AUTOMAP_MNT_RESOLVE_KEY(SUCCESS);
+			break;
 
-	/* Compute "require '<absolute path>';" */
+		case AUTOMAP_F_PACKAGE:	/* Symbol is in a package */
+			id=PHK_Mgr_mount_from_Automap(&(pep->zfapath),0 TSRMLS_CC);
+			if (!id) {
+				THROW_EXCEPTION_1("%s : Package inclusion should load a map"
+					,Z_STRVAL(pep->zfapath));
+				RETURN_AUTOMAP_MNT_RESOLVE_KEY(FAILURE);
+			}
+			RETURN_AUTOMAP_MNT_RESOLVE_KEY(
+				Automap_Mnt_resolve_key(PHK_G(map_array)[id], zkey
+					, hash TSRMLS_CC));
+			break;
 
-	spprintf(&req_str,1024,"require '%s';",Z_STRVAL(pep->zfapath));
-
-	if (ftype == AUTOMAP_F_SCRIPT) {
-		DBG_MSG1("eval : %s",req_str);
-		zend_eval_string(req_str,NULL,req_str TSRMLS_CC);
-		Automap_call_success_handlers(mp,pep TSRMLS_CC);
-		RETURN_AUTOMAP_MNT_RESOLVE_KEY(SUCCESS);
-	}
-
-	if (ftype == AUTOMAP_F_PACKAGE) { /* Symbol is in a package */
-
-		/* Remove E_NOTICE messages if the test script is a package - workaround */
-		/* to PHP bug #39903 ('__COMPILER_HALT_OFFSET__ already defined') */
-
-		old_error_reporting = EG(error_reporting);
-		EG(error_reporting) &= ~E_NOTICE;
-
-		id=PHK_G(map_count);
-		zend_eval_string(req_str,NULL,req_str TSRMLS_CC);
-
-		EG(error_reporting) = old_error_reporting;
-
-		/* Check that package inclusion caused a map load */
-
-		if (PHK_G(map_count) != (id + 1)) {
-			THROW_EXCEPTION_1("%s : Package inclusion should load a map"
-				,Z_STRVAL(pep->zfapath));
+		default:	/* Unknown target type (never happens in a valid map */
+			THROW_EXCEPTION_1("<%c>: Unknown target type",ftype);
 			RETURN_AUTOMAP_MNT_RESOLVE_KEY(FAILURE);
-		}
-
-		RETURN_AUTOMAP_MNT_RESOLVE_KEY(
-			Automap_Mnt_resolve_key(PHK_G(map_array)[id], zkey, hash TSRMLS_CC));
 	}
-
-	/* Unknown target type (never happens in a valid map */
-	THROW_EXCEPTION_1("<%c>: Unknown target type",ftype);
-	RETURN_AUTOMAP_MNT_RESOLVE_KEY(FAILURE); 
 }
 
 /*===============================================================*/

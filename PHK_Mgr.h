@@ -175,6 +175,7 @@ static void PHK_Mgr_path_to_mnt(zval * path, zval * mnt TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, path_to_mnt);
 static void PHK_Mgr_compute_mnt(zval * path, PHK_Mnt ** parent_mpp,
 								zval ** mnt, zval ** mtime TSRMLS_DC);
+static long PHK_Mgr_mount_from_Automap(zval * path, long flags TSRMLS_DC);
 static PHK_Mnt *PHK_Mgr_mount(zval * path, long flags TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, mount);
 static PHK_Pdata *PHK_Mgr_get_pdata(zval * mnt, ulong hash TSRMLS_DC);
