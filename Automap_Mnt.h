@@ -40,7 +40,7 @@ typedef struct _Automap_Mnt {	/* Per request */
 static void Automap_Mnt_dtor(Automap_Mnt *mp);
 static void Automap_Mnt_remove(Automap_Mnt *mp TSRMLS_DC);
 static Automap_Mnt *Automap_Mnt_get(long id, int exception TSRMLS_DC);
-static PHP_METHOD(Automap, is_active);
+static PHP_METHOD(Automap, id_is_active);
 static Automap_Mnt *Automap_Mnt_load(zval *zpathp, long flags TSRMLS_DC);
 static PHP_METHOD(Automap, load);
 static void Automap_unload(long id TSRMLS_DC);

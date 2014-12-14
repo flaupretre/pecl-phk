@@ -287,7 +287,7 @@ ZEND_ARG_INFO(0, subfile_to_url_function)
 ZEND_END_ARG_INFO()
 
 static zend_function_entry Automap_functions[] = {
-	PHP_ME(Automap, is_active, UT_1arg_arginfo,
+	PHP_ME(Automap, id_is_active, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, unload, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
