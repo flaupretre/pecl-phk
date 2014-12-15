@@ -101,7 +101,7 @@ static void PHK_init(PHK_Mnt * mp TSRMLS_DC)
 
 	if (mp->automap_uri) {	/* Load map */
 		automap_mp=Automap_Mnt_load_extended(mp->automap_uri,mp->mnt,mp->hash
-			,mp->base_uri TSRMLS_CC);
+			,mp->base_uri, AUTOMAP_FLAG_NO_CRC_CHECK TSRMLS_CC);
 		if (EG(exception)) return;
 		mp->automap_id=automap_mp->id;
 	}

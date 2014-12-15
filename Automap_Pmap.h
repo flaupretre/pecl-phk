@@ -65,10 +65,11 @@ static int Automap_Pmap_create_entry(zval **zpp
 #endif
 	);
 
-static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp TSRMLS_DC);
+static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp
+	, long flags TSRMLS_DC);
 static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 	, char *buf, int buflen, zval *zufidp, ulong hash
-	, zval *zbase_pathp_arg TSRMLS_DC);
+	, zval *zbase_pathp_arg, long flags TSRMLS_DC);
 static void Automap_Pmap_dtor(Automap_Pmap *pmp);
 static void Automap_Pmap_Entry_dtor(Automap_Pmap_Entry *pep);
 static Automap_Pmap_Entry *Automap_Pmap_find_key(Automap_Pmap *pmp

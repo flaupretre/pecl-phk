@@ -136,7 +136,8 @@ static int Automap_Pmap_create_entry(zval **zpp
 /* Used for regular files only */
 /* On entry, zapathp is an absolute path */
 
-static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp TSRMLS_DC)
+static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp
+	, long flags TSRMLS_DC)
 {
 	zval *zufidp;
 	ulong hash;
@@ -150,7 +151,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp TSRMLS_DC)
 	/* Run extended func */
 	
 	pmp=Automap_Pmap_get_or_create_extended(zapathp, NULL, 0, zufidp
-		, ZSTRING_HASH(zufidp), NULL TSRMLS_DC);
+		, ZSTRING_HASH(zufidp), NULL, flags TSRMLS_DC);
 
 	/* Cleanup */
 
@@ -201,11 +202,13 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp TSRMLS_DC)
 *       path (with trailing separator)
 * - If zbase_pathp_arg is null, we compute its value from the file path and
 *       content
+* - pmap_flags:
+*       AUTOMAP_PMAP_NO_CRC_CHECK: DOn't check CRC
 */
 
 static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 	, char *buf, int buflen, zval *zufidp, ulong hash
-	, zval *zbase_pathp_arg TSRMLS_DC)
+	, zval *zbase_pathp_arg, long flags TSRMLS_DC)
 {
 	Automap_Pmap tmp_map, *pmp;
 	zval zversion, **zpp, zbuf, zdata, zbase_path;
@@ -306,14 +309,16 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 
 	/* Check CRC */
 
-	memmove(file_crc,&buf[53],8);
-	memmove(&buf[53],"00000000",8);
-	ut_compute_crc32((unsigned char *)buf,(size_t)buflen,crc);
-	if (memcmp(file_crc,crc,8)) {
-		THROW_EXCEPTION("CRC error");
-		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
+	if (!(flags & AUTOMAP_FLAG_NO_CRC_CHECK)) {
+		memmove(file_crc,&buf[53],8);
+		memmove(&buf[53],"00000000",8);
+		ut_compute_crc32((unsigned char *)buf,(size_t)buflen,crc);
+		if (memcmp(file_crc,crc,8)) {
+			THROW_EXCEPTION("CRC error");
+			ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
+		}
 	}
-	
+
 	/* All checks done, create data struct */
 
 	tmp_map.zufid=ut_persist_zval(zufidp);
