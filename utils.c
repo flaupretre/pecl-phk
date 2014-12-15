@@ -49,6 +49,8 @@
 #include "php_streams.h"
 #include "TSRM/tsrm_virtual_cwd.h"
 #include "ext/standard/php_string.h"
+#include "ext/hash/php_hash.h"
+#include "ext/hash/php_hash_crc32.h"
 
 #include "utils.h"
 
@@ -1107,6 +1109,23 @@ UT_SYMBOL void ut_path_unique_id(char prefix, zval * path, zval ** mnt
 
 	if (mtp) (*mtp)=mtime;
 }	
+
+/*---------------------------------------------------------------*/
+/* Fills output with an 8-char lowercase hex string + trailing \0 */
+/* The exact PHP equivalent of this is '$output=hash('crc32',$input)' */
+
+UT_SYMBOL void ut_compute_crc32(const unsigned char *input, size_t input_len
+	, char *output TSRMLS_DC)
+{
+	unsigned char crc[4];
+	PHP_CRC32_CTX ctx;
+
+	PHP_CRC32Init(&ctx);
+	PHP_CRC32Update(&ctx, input, input_len);
+	PHP_CRC32Final(crc, &ctx);
+	php_hash_bin2hex(output, crc, 4);
+	output[8]='\0';
+}
 
 /*---------------------------------------------------------------*/
 

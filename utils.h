@@ -472,6 +472,8 @@ UT_SYMBOL char *ut_mk_absolute_path(char *path, int len, int *reslen
 UT_SYMBOL int ut_cut_at_space(char *p);
 UT_SYMBOL void ut_path_unique_id(char prefix, zval * path, zval ** mnt
 	, time_t *mtp  TSRMLS_DC);
+UT_SYMBOL void ut_compute_crc32(const unsigned char *input, size_t input_len
+	, char *output TSRMLS_DC);
 
 UT_SYMBOL int MINIT_utils(TSRMLS_D);
 UT_SYMBOL int MSHUTDOWN_utils(TSRMLS_D);

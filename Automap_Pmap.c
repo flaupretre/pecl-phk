@@ -209,7 +209,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 {
 	Automap_Pmap tmp_map, *pmp;
 	zval zversion, **zpp, zbuf, zdata, zbase_path;
-	char tmpc, *p, *p2;
+	char tmpc, *p, *p2, crc[9], file_crc[8];
 	unsigned long fsize;
 	HashTable *htp;
 	int len;
@@ -241,9 +241,9 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 		buflen = Z_STRLEN(zbuf);
 	}
 
-	/* File cannot be smaller than 54 bytes - Secure memory access */
+	/* File cannot be smaller than 62 bytes - Secure memory access */
 
-	if (buflen < 54) {
+	if (buflen < 62) {
 		THROW_EXCEPTION_2("%s : Short file (size=%l)", Z_STRVAL_P(zpathp),buflen);
 		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	}
@@ -261,13 +261,14 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 	p2=p+12;
 	tmpc = *p2;
 	*p2 = '\0';
-	ut_cut_at_space(p);
+	len=ut_cut_at_space(p);
 	if (php_version_compare(p, AUTOMAP_VERSION) > 0) {
 		THROW_EXCEPTION_2
 			("%s: Cannot understand this map. Requires at least Automap version %s",
 			 Z_STRVAL_P(zpathp), p);
 		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	}
+	p[len]=' ';
 	*p2 = tmpc;
 
 	/* Check version against MIN_MAP_VERSION */
@@ -276,7 +277,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 	p2=p+12;
 	tmpc=*p2;
 	*p2 = '\0';
-	ut_cut_at_space(p);
+	len=ut_cut_at_space(p);
 	if (!(*p)) {
 		THROW_EXCEPTION_1("%s: Invalid empty map version",Z_STRVAL_P(zpathp));
 		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
@@ -287,6 +288,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 			, Z_STRVAL_P(zpathp),&(buf[30]),AUTOMAP_MIN_MAP_VERSION);
 		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	}
+	p[len]=' ';
 	*p2 = tmpc;
 
 	/* Check file size */
@@ -302,6 +304,16 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 	}
 	buf[53] = tmpc;
 
+	/* Check CRC */
+
+	memmove(file_crc,&buf[53],8);
+	memmove(&buf[53],"00000000",8);
+	ut_compute_crc32((unsigned char *)buf,(size_t)buflen,crc);
+	if (memcmp(file_crc,crc,8)) {
+		THROW_EXCEPTION("CRC error");
+		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
+	}
+	
 	/* All checks done, create data struct */
 
 	tmp_map.zufid=ut_persist_zval(zufidp);
@@ -324,7 +336,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 
 	/* Get the rest as an unserialized array */
 
-	ut_unserialize_zval((unsigned char *)(buf + 53), buflen - 53, &zdata TSRMLS_CC);
+	ut_unserialize_zval((unsigned char *)(buf + 61), buflen - 61, &zdata TSRMLS_CC);
 	if (EG(exception)) ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 
 	if (!ZVAL_IS_ARRAY(&zdata)) {

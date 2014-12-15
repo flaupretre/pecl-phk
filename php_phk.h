@@ -115,7 +115,7 @@
 
 /* We cannot read versions older than this */
 
-#define AUTOMAP_MIN_MAP_VERSION "2.0.0"
+#define AUTOMAP_MIN_MAP_VERSION "3.0.0"
 
 #define PHK_ACCEL_VERSION "2.1.0"
 
