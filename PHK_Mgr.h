@@ -51,6 +51,8 @@ typedef struct {
 	zval *web_access;			/* String|Array zval or null */
 	zval *min_php_version;		/* String zval or null */
 	zval *max_php_version;		/* String zval or null */
+	Automap_Pmap *pmap;			/* Allows faster map load. Null if no map or not
+								   loaded yet */
 
 	/* Pre-computed constant values */
 

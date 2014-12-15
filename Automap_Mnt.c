@@ -89,21 +89,21 @@ static void Automap_Mnt_array_add(Automap_Mnt *mp TSRMLS_DC)
 * - zufidp is the unique file identifier for zpathp
 * - hash is the hashcode of zufidp
 * - zbasep is the base path to use
+* - If non null, pmp points to the Pmap to use (used by PHK to speed up loading)
 */
 
 static Automap_Mnt *Automap_Mnt_load_extended(zval *zpathp, zval *zufidp
-	, ulong hash, zval *zbasep, long flags TSRMLS_DC)
+	, ulong hash, zval *zbasep, Automap_Pmap *pmp, long flags TSRMLS_DC)
 {
 	Automap_Mnt *mp;
-	Automap_Pmap *pmp;
 
 	DBG_MSG("Starting Automap_Mnt_load_extended");
 
 	mp=NULL;
-	pmp=NULL;
 
-	if (!(pmp=Automap_Pmap_get_or_create_extended(zpathp, NULL, 0, zufidp
-		, hash, zbasep, flags TSRMLS_CC))) return NULL;
+	if (!pmp) pmp=Automap_Pmap_get_or_create_extended(zpathp, NULL, 0, zufidp
+		, hash, zbasep, flags TSRMLS_CC);
+	if (!pmp) return NULL;
 
 	/* Allocate and fill Automap_Mnt slot */
 

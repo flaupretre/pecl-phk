@@ -101,9 +101,11 @@ static void PHK_init(PHK_Mnt * mp TSRMLS_DC)
 
 	if (mp->automap_uri) {	/* Load map */
 		automap_mp=Automap_Mnt_load_extended(mp->automap_uri,mp->mnt,mp->hash
-			,mp->base_uri, AUTOMAP_FLAG_NO_CRC_CHECK TSRMLS_CC);
+			,mp->base_uri, mp->pdata->pmap, AUTOMAP_FLAG_NO_CRC_CHECK TSRMLS_CC);
 		if (EG(exception)) return;
 		mp->automap_id=automap_mp->id;
+		/* Cache a pointer to the Pmap struct so that load is faster next time */
+		if (! mp->pdata->pmap) mp->pdata->pmap=automap_mp->map;
 	}
 
 	if (mp->mount_script_uri

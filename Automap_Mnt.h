@@ -44,7 +44,7 @@ static Automap_Mnt *Automap_Mnt_get(long id, int exception TSRMLS_DC);
 static PHP_METHOD(Automap, id_is_active);
 static void Automap_Mnt_array_add(Automap_Mnt *mp TSRMLS_DC);
 static Automap_Mnt *Automap_Mnt_load_extended(zval *zpathp, zval *zufidp
-	, ulong hash, zval *zbasep, long flags TSRMLS_DC);
+	, ulong hash, zval *zbasep, Automap_Pmap *pmp, long flags TSRMLS_DC);
 static Automap_Mnt *Automap_Mnt_load(zval *zpathp, long flags TSRMLS_DC);
 static PHP_METHOD(Automap, load);
 static void Automap_unload(long id TSRMLS_DC);

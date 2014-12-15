@@ -1363,8 +1363,8 @@ static void PHK_Mgr_Persistent_Data_dtor(PHK_Pdata * entry)
 {
 	ut_pzval_ptr_dtor(&(entry->min_version));
 	/* TODO: Why do these two lines cause free() errors ? */
-	/*ut_pzval_ptr_dtor(&(entry->options));*/
-	/*ut_pzval_ptr_dtor(&(entry->build_info));*/
+	ut_pzval_ptr_dtor(&(entry->options));
+	ut_pzval_ptr_dtor(&(entry->build_info));
 
 	ut_pzval_ptr_dtor(&(entry->mime_types));
 	ut_pzval_ptr_dtor(&(entry->web_run_script));
