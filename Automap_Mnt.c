@@ -114,7 +114,8 @@ static Automap_Mnt *Automap_Mnt_load_extended(zval *zpathp, zval *zufidp
 
 	ALLOC_INIT_ZVAL(mp->zpath);
 	ZVAL_STRINGL(mp->zpath,Z_STRVAL_P(zpathp),Z_STRLEN_P(zpathp),1);
-
+	mp->flags=flags;
+	
 	Automap_Mnt_array_add(mp);
 	return mp;
 }
