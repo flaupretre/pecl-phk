@@ -30,7 +30,7 @@
  </stability>
  <license uri="http://www.php.net/license">PHP License</license>
  <notes>
-Tested with PHP versions 5.1.0 to 5.4.3
+Tested with PHP versions 5.1.2 to 5.6.3
  </notes>
  <contents>
   <dir baseinstalldir="/" name="/">
@@ -76,7 +76,7 @@ Tested with PHP versions 5.1.0 to 5.4.3
  <dependencies>
   <required>
    <php>
-    <min>5.1.0</min>
+    <min>5.1.2</min>
    </php>
    <pearinstaller>
     <min>1.4.0b1</min>
