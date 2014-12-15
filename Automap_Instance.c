@@ -17,6 +17,13 @@
 */
 
 /*---------------------------------------------------------------*/
+/* {{{ proto string Automap::__construct() */
+/* This private method is never called. It exists only to prevent instanciation
+* from user code using a 'new Automap' directive */
+
+static PHP_METHOD(Automap, __construct) {}
+
+/*---------------------------------------------------------------*/
 
 static zval *Automap_instance_by_mp(Automap_Mnt *mp TSRMLS_DC)
 {
@@ -287,6 +294,7 @@ ZEND_ARG_INFO(0, subfile_to_url_function)
 ZEND_END_ARG_INFO()
 
 static zend_function_entry Automap_functions[] = {
+	PHP_ME(Automap, __construct, UT_noarg_arginfo, ZEND_ACC_PRIVATE)
 	PHP_ME(Automap, id_is_active, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, unload, UT_1arg_arginfo,
