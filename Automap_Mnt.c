@@ -65,7 +65,7 @@ static PHP_METHOD(Automap, id_is_active)
 	int retval;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "l", &id) ==
-		FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
+		FAILURE) EXCEPTION_ABORT("Invalid map ID");
 
 	retval = (Automap_Mnt_get(id, 0 TSRMLS_CC) != NULL);
 
@@ -205,7 +205,7 @@ static PHP_METHOD(Automap, unload)
 	long id;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "l", &id) ==
-		FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
+		FAILURE) EXCEPTION_ABORT("Invalid map ID");
 
 	Automap_unload(id TSRMLS_CC);
 }
@@ -247,7 +247,7 @@ static PHP_METHOD(Automap, active_ids)
 static int Automap_Mnt_resolve_key(Automap_Mnt *mp, zval *zkey, ulong hash TSRMLS_DC)
 {
 	char ftype,*req_str;
-	int old_error_reporting,id;
+	int id;
 	Automap_Pmap *pmp;
 	Automap_Pmap_Entry *pep;
 	
