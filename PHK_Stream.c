@@ -307,7 +307,7 @@ static int PHK_Stream_seek(php_stream * stream, off_t offset, int whence,
 	return -1; \
 	}
 
-static int do_stat(php_stream_wrapper * wrapper, char *uri,
+static int do_stat(php_stream_wrapper * wrapper, const char *uri,
 	PHK_STREAM_DATA * dp, php_stream_statbuf * ssb TSRMLS_DC)
 {
 	zval *z_key, *z_cache, *z_tmp, *z_tmp_a, *z_ssb, *args[8], *z_uri, *z_mode,
@@ -551,7 +551,7 @@ static php_stream_ops phk_dirops = {
 	}
 
 static php_stream *PHK_Stream_generic_open(int dir
-	, php_stream_wrapper * wrapper, char *uri, char *mode, int options
+	, php_stream_wrapper * wrapper, const char *uri, const char *mode, int options
 	, char **opened_path, php_stream_context *context STREAMS_DC TSRMLS_DC)
 {
 	PHK_STREAM_DATA *dp = NULL;
@@ -637,7 +637,7 @@ static php_stream *PHK_Stream_generic_open(int dir
 /*--------------------*/
 
 static php_stream *PHK_Stream_openfile(php_stream_wrapper * wrapper,
-	char *uri, char *mode, int options, char **opened_path,
+	const char *uri, const char *mode, int options, char **opened_path,
 	php_stream_context *context STREAMS_DC TSRMLS_DC)
 {
 	return PHK_Stream_generic_open(0, wrapper, uri, mode, options,
@@ -646,7 +646,7 @@ static php_stream *PHK_Stream_openfile(php_stream_wrapper * wrapper,
 
 /*---------------------------------------------------------------*/
 
-static int PHK_Stream_url_stat(php_stream_wrapper *wrapper, char *uri,
+static int PHK_Stream_url_stat(php_stream_wrapper *wrapper, const char *uri,
 	int flags, php_stream_statbuf * ssb, php_stream_context * context TSRMLS_DC)
 {
 	PHK_STREAM_DATA *dp;
@@ -662,7 +662,7 @@ static int PHK_Stream_url_stat(php_stream_wrapper *wrapper, char *uri,
 /*--------------------*/
 
 static php_stream *PHK_Stream_opendir(php_stream_wrapper * wrapper
-	,char *uri, char *mode, int options, char **opened_path
+	,const char *uri, const char *mode, int options, char **opened_path
 	, php_stream_context *context STREAMS_DC TSRMLS_DC)
 {
 	return PHK_Stream_generic_open(1, wrapper, uri, mode, options,
@@ -860,8 +860,7 @@ static php_stream_wrapper_ops phk_stream_wops = {
 static php_stream_wrapper php_stream_phk_wrapper = {
 	&phk_stream_wops,
 	NULL,
-	0,							/* is_url */
-	0, NULL
+	0							/* is_url */
 };
 
 /*---------------------------------------------------------------*/

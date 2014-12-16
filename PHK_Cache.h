@@ -60,7 +60,7 @@ static int PHK_Cache_cache_present(TSRMLS_D);
 static PHP_METHOD(PHK_Cache, cache_present);
 static char *PHK_Cache_cache_name(TSRMLS_D);
 static PHP_METHOD(PHK_Cache, cache_name);
-static void PHK_Cache_cache_id(char *prefix, int prefix_len, char *key,
+static void PHK_Cache_cache_id(const char *prefix, int prefix_len, const char *key,
 							   int key_len, zval * z_ret_p TSRMLS_DC);
 static PHP_METHOD(PHK_Cache, cache_id);
 static PHP_METHOD(PHK_Cache, set_maxsize);

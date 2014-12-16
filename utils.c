@@ -47,7 +47,13 @@
 #include "ext/standard/html.h"
 #include "SAPI.h"
 #include "php_streams.h"
+
+#if ZEND_EXTENSION_API_NO >= PHP_5_5_X_API_NO
+#include "zend_virtual_cwd.h"
+#else
 #include "TSRM/tsrm_virtual_cwd.h"
+#endif
+
 #include "ext/standard/php_string.h"
 #include "ext/hash/php_hash.h"
 #include "ext/hash/php_hash_crc32.h"
@@ -257,7 +263,7 @@ UT_SYMBOL void ut_decref(zval *zp)
 UT_SYMBOL void ut_pezval_dtor(zval *zp, int persistent)
 {
 	if (persistent) {
-		switch (Z_TYPE_P(zp) & ~IS_CONSTANT_INDEX) {
+		switch (Z_TYPE_P(zp) & IS_CONSTANT_TYPE_MASK) {
 		  case IS_STRING:
 		  case IS_CONSTANT:
 			  pefree(Z_STRVAL_P(zp), persistent);

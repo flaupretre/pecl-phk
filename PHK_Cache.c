@@ -101,7 +101,7 @@ static PHP_METHOD(PHK_Cache, cache_name)
 
 /*-- C API ----*/
 
-static void PHK_Cache_cache_id(char *prefix, int prefix_len, char *key,
+static void PHK_Cache_cache_id(const char *prefix, int prefix_len, const char *key,
 	int key_len, zval * z_ret_p TSRMLS_DC)
 {
 	char *p;
