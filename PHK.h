@@ -45,6 +45,8 @@ static mime_entry mime_init[] = {
 	{"css", "text/css"},
 	{"php", "application/x-httpd-php"},
 	{"phk", "application/x-httpd-php"},
+	{"inc", "application/x-httpd-php"},
+	{"hh",  "application/x-httpd-php"},
 	{"pdf", "application/pdf"},
 	{"js", "application/x-javascript"},
 	{"swf", "application/x-shockwave-flash"},
