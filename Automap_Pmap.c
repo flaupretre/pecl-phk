@@ -146,6 +146,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp
 	/* Compute UFID (Unique File ID) */
 
 	Automap_ufid(zapathp, &zufidp TSRMLS_CC);
+	if (EG(exception)) return NULL;
 	hash=ZSTRING_HASH(zufidp);
 
 	/* Run extended func */
