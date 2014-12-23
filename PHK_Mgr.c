@@ -1131,7 +1131,7 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 
 	/* Check min_version */
 
-	if (php_version_compare(Z_STRVAL_P(min_version), PHK_ACCEL_MIN_VERSION) > 0) {
+	if (php_version_compare(Z_STRVAL_P(min_version), PHK_ACCEL_VERSION) > 0) {
 		THROW_EXCEPTION_1("Cannot understand this format. Requires version %s",
 							  Z_STRVAL_P(min_version));
 		ABORT_PHK_GET_OR_CREATE_PERSISTENT_DATA();

@@ -122,9 +122,9 @@
 
 #define AUTOMAP_MIN_MAP_VERSION "3.0.0"
 
-#define PHK_ACCEL_VERSION "2.1.0"
+/* Version to compare to package's required runtime version */
 
-#define PHK_ACCEL_MIN_VERSION "2.1.0"
+#define PHK_ACCEL_VERSION "3.0.0"
 
 #define PHP_PHK_EXTNAME "phk"
 
