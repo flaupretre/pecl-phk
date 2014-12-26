@@ -25,9 +25,9 @@
 
 /*----- Mount flags --------*/
 
-#define PHK_F_CRC_CHECK			4
-#define PHK_F_NO_MOUNT_SCRIPT	8
-#define PHK_F_CREATOR			16
+#define PHK_FLAG_CRC_CHECK			16
+#define PHK_FLAG_NO_MOUNT_SCRIPT	32
+#define PHK_FLAG_IS_CREATOR			64
 
 /*============================================================================*/
 

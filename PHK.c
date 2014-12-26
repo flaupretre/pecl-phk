@@ -100,8 +100,10 @@ static void PHK_init(PHK_Mnt * mp TSRMLS_DC)
 	}
 
 	if (mp->automap_uri) {	/* Load map */
+		/* Transmit mount flags to Automap::load() */
 		automap_mp=Automap_Mnt_load_extended(mp->automap_uri,mp->mnt,mp->hash
-			,mp->base_uri, mp->pdata->pmap, AUTOMAP_FLAG_NO_CRC_CHECK TSRMLS_CC);
+			,mp->base_uri, mp->pdata->pmap
+			, Z_LVAL_P(mp->flags) | AUTOMAP_FLAG_NO_CRC_CHECK TSRMLS_CC);
 		if (EG(exception)) return;
 		mp->automap_id=automap_mp->id;
 		/* Cache a pointer to the Pmap struct so that load is faster next time */
@@ -109,7 +111,7 @@ static void PHK_init(PHK_Mnt * mp TSRMLS_DC)
 	}
 
 	if (mp->mount_script_uri
-		&& (!(Z_LVAL_P(mp->flags) & PHK_F_NO_MOUNT_SCRIPT))) {
+		&& (!(Z_LVAL_P(mp->flags) & PHK_FLAG_NO_MOUNT_SCRIPT))) {
 		ut_require(Z_STRVAL_P(mp->mount_script_uri), NULL TSRMLS_CC);
 		if (EG(exception)) return;
 	}
@@ -189,7 +191,7 @@ static PHP_METHOD(PHK, data_is_package)
 static int PHK_cache_enabled(PHK_Mnt * mp, zval * command,
 							 zval * params, zval * path TSRMLS_DC)
 {
-	if (mp->no_cache || (Z_LVAL_P(mp->flags) & PHK_F_CREATOR)
+	if (mp->no_cache || (Z_LVAL_P(mp->flags) & PHK_FLAG_IS_CREATOR)
 		|| (!PHK_Cache_cache_present(TSRMLS_C))) return 0;
 
 	if (!ZVAL_IS_NULL(mp->caching)) return Z_BVAL_P(mp->caching);
@@ -204,7 +206,7 @@ static void PHK_umount(PHK_Mnt * mp TSRMLS_DC)
 	if (mp->plugin) ut_ezval_ptr_dtor(&(mp->plugin));
 
 	if (mp->umount_script_uri
-		&& (!(Z_LVAL_P(mp->flags) & PHK_F_NO_MOUNT_SCRIPT))) {
+		&& (!(Z_LVAL_P(mp->flags) & PHK_FLAG_NO_MOUNT_SCRIPT))) {
 		ut_require(Z_STRVAL_P(mp->umount_script_uri), NULL TSRMLS_CC);
 		/* Don't catch exception here. Umount automap first */
 	}
@@ -1050,9 +1052,9 @@ static void set_constants(zend_class_entry * ce)
 {
 	UT_DECLARE_STRING_CONSTANT(PHP_PHK_VERSION,"VERSION");
 
-	UT_DECLARE_LONG_CONSTANT(PHK_F_CRC_CHECK,"F_CRC_CHECK");
-	UT_DECLARE_LONG_CONSTANT(PHK_F_NO_MOUNT_SCRIPT,"F_NO_MOUNT_SCRIPT");
-	UT_DECLARE_LONG_CONSTANT(PHK_F_CREATOR,"F_CREATOR");
+	UT_DECLARE_LONG_CONSTANT(PHK_FLAG_CRC_CHECK,"CRC_CHECK");
+	UT_DECLARE_LONG_CONSTANT(PHK_FLAG_NO_MOUNT_SCRIPT,"NO_MOUNT_SCRIPT");
+	UT_DECLARE_LONG_CONSTANT(PHK_FLAG_IS_CREATOR,"IS_CREATOR");
 }
 
 /*---------------------------------------------------------------*/

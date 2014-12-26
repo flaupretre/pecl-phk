@@ -945,7 +945,7 @@ static PHK_Mnt *PHK_Mgr_mount(zval * path, long flags TSRMLS_DC)
 
 	if (!ZVAL_IS_STRING(path)) convert_to_string(path);
 
-	if (flags & PHK_F_CREATOR) {
+	if (flags & PHK_FLAG_IS_CREATOR) {
 		spprintf(&p, 32, "_tmp_mnt_%d", tmp_mnt_num++);
 		MAKE_STD_ZVAL(mnt);
 		ZVAL_STRING(mnt, p, 0);
