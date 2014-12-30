@@ -36,11 +36,8 @@ typedef struct {				/* Persistent */
 typedef struct {				/* Persistent */
 	zval *zufid;				/* (String zval *) */
 	ulong ufid_hash;
-	zval *zmin_version;			/* Map requires at least this runtime version (String) */
-	zval *zversion;				/* Map was created with this creator version (String) */
-	char map_major_version;
-	zval *zoptions;				/* Array */
 	zval *zsymbols;				/* Array of Automap_Pmap_Entry structures */
+	zval *zbase_path;			/* Absolute base path */
 } Automap_Pmap;
 
 /*---------------------------------------------------------------*/
@@ -74,6 +71,7 @@ static void Automap_Pmap_dtor(Automap_Pmap *pmp);
 static void Automap_Pmap_Entry_dtor(Automap_Pmap_Entry *pep);
 static Automap_Pmap_Entry *Automap_Pmap_find_key(Automap_Pmap *pmp
 	, zval *zkey, ulong hash TSRMLS_DC);
+static void Automap_Pmap_export_entry(Automap_Pmap_Entry *pep, zval *zp TSRMLS_DC);
 
 static int MINIT_Automap_Pmap(TSRMLS_D);
 static int MSHUTDOWN_Automap_Pmap(TSRMLS_D);

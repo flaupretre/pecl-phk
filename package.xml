@@ -44,8 +44,8 @@ Tested with PHP versions 5.1.2 to 5.6.3
    <file name="LICENSE" role="doc"/>
    <file name="Automap_Handlers.c" role="src" />
    <file name="Automap_Handlers.h" role="src" />
-   <file name="Automap_Instance.c" role="src" />
-   <file name="Automap_Instance.h" role="src" />
+   <file name="Automap_Class.c" role="src" />
+   <file name="Automap_Class.h" role="src" />
    <file name="Automap_Key.c" role="src" />
    <file name="Automap_Key.h" role="src" />
    <file name="Automap_Loader.c" role="src" />

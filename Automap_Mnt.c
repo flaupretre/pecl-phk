@@ -24,12 +24,7 @@ static void Automap_Mnt_dtor(Automap_Mnt *mp)
 {
 	TSRMLS_FETCH();
 
-	if (mp->instance) {
-		(void)zend_hash_del(Z_OBJPROP_P(mp->instance),AUTOMAP_MP_PROPERTY_NAME
-			,sizeof(AUTOMAP_MP_PROPERTY_NAME)); /* Invalidate object */
-	}
-
-	ut_ezval_ptr_dtor(&(mp->instance));
+	ut_ezval_ptr_dtor(&(mp->map_object));
 	ut_ezval_ptr_dtor(&(mp->zpath));
 }
 
@@ -61,13 +56,14 @@ static Automap_Mnt *Automap_Mnt_get(long id, int exception TSRMLS_DC)
 
 static PHP_METHOD(Automap, id_is_active)
 {
-	long id;
+	zval *zid;
 	int retval;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "l", &id) ==
-		FAILURE) EXCEPTION_ABORT("Invalid map ID");
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &zid) ==
+		FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
+	convert_to_long(zid);
 
-	retval = (Automap_Mnt_get(id, 0 TSRMLS_CC) != NULL);
+	retval = (Automap_Mnt_get(Z_LVAL_P(zid), 0 TSRMLS_CC) != NULL);
 
 	RETVAL_BOOL(retval);
 }
@@ -193,7 +189,7 @@ static void Automap_unload(long id TSRMLS_DC)
 {
 	Automap_Mnt *mp;
 
-	if (!(mp=Automap_Mnt_get(id, 0 TSRMLS_CC))) return;
+	if (!(mp=Automap_Mnt_get(id, 1 TSRMLS_CC))) return;
 
 	Automap_Mnt_remove(mp TSRMLS_CC);
 }
@@ -203,12 +199,13 @@ static void Automap_unload(long id TSRMLS_DC)
 
 static PHP_METHOD(Automap, unload)
 {
-	long id;
+	zval *zid;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "l", &id) ==
-		FAILURE) EXCEPTION_ABORT("Invalid map ID");
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &zid) ==
+		FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
+	convert_to_long(zid);
 
-	Automap_unload(id TSRMLS_CC);
+	Automap_unload(Z_LVAL_P(zid) TSRMLS_CC);
 }
 
 /* }}} */

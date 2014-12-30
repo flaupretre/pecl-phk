@@ -81,19 +81,21 @@ static PHP_METHOD(Automap, register_success_handler)
 /* }}} */
 /*---------------------------------------------------------------*/
 /* Success handler receives 2 args : An export of the successful entry, and
-*  the map object where the symbol was found. */
+*  the load ID of the map where the symbol was found. */
 
 static void Automap_call_success_handlers(Automap_Mnt *mp
 	,Automap_Pmap_Entry *pep TSRMLS_DC)
 {
-	zval *args[2],*entry_zp;
+	zval *args[2],*entry_zp,*id_zp;
 	int i;
 
 	if (PHK_G(automap_sh_count)) {
 		ALLOC_INIT_ZVAL(entry_zp);
-		Automap_Instance_export_entry(mp,pep,entry_zp TSRMLS_CC);
+		Automap_Pmap_export_entry(pep,entry_zp TSRMLS_CC);
 		args[0]=entry_zp;
-		args[1]=Automap_instance_by_mp(mp);
+		ALLOC_INIT_ZVAL(id_zp);
+		ZVAL_LONG(id_zp,mp->id);
+		args[1]=id_zp;
 		for (i=0;i<PHK_G(automap_sh_count);i++) {
 			DBG_MSG1("Calling success handler #%d",i);
 			ut_call_user_function_void(NULL
@@ -102,6 +104,7 @@ static void Automap_call_success_handlers(Automap_Mnt *mp
 				,2,args TSRMLS_CC);
 		}
 		ut_ezval_ptr_dtor(&entry_zp);
+		ut_ezval_ptr_dtor(&id_zp);
 	}
 }
 
