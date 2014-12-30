@@ -58,11 +58,13 @@ static int Automap_Pmap_create_entry(zval **zpp
 	Automap_Pmap_Entry tmp_entry;
 	Automap_Pmap *pmp;
 	char *sp, *p, *p2,*path,*apath;
+	unsigned long map_major_version;
 	int len,path_len,apath_len;
 	zval zkey, *zbase_path;
 
 	pmp=va_arg(va, Automap_Pmap *);
 	zbase_path=va_arg(va, zval *);	/* Absolute base path */
+	map_major_version=va_arg(va, unsigned long);
 
 	if (!ZVAL_IS_STRING(*zpp)) {
 		EXCEPTION_ABORT_RET_1(ZEND_HASH_APPLY_STOP,"Automap_Pmap_create_entry: Invalid entry (should be a string) %d",Z_TYPE_PP(zpp));
@@ -73,10 +75,10 @@ static int Automap_Pmap_create_entry(zval **zpp
 	sp=Z_STRVAL_PP(zpp);
 	len=0; /* Avoid compile warning */
 
-	switch(pmp->map_major_version) {
+	switch(map_major_version) {
 		/* Version 1 is not supported anymore */
-		case '2':
-		case '3':
+		case 2:
+		case 3:
 			if (Z_STRLEN_PP(zpp)<5) {
 				EXCEPTION_ABORT_RET_1(ZEND_HASH_APPLY_STOP
 					,"Invalid value string: <%s>",Z_STRVAL_PP(zpp));
@@ -125,8 +127,8 @@ static int Automap_Pmap_create_entry(zval **zpp
 
 		default:
 			EXCEPTION_ABORT_RET_1(ZEND_HASH_APPLY_STOP
-				,"Cannot understand this map version (%c)"
-				,pmp->map_major_version);
+				,"Cannot understand this map version (%d)"
+				,map_major_version);
 	}
 
 	return ZEND_HASH_APPLY_KEEP;
@@ -166,7 +168,6 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp
 
 #define INIT_AUTOMAP_PMAP_GET_OR_CREATE() \
 	{ \
-	INIT_ZVAL(zversion); \
 	INIT_ZVAL(zbuf); \
 	INIT_ZVAL(zdata); \
 	INIT_ZVAL(zbase_path); \
@@ -175,7 +176,6 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp
 
 #define CLEANUP_AUTOMAP_PMAP_GET_OR_CREATE() \
 	{ \
-	ut_ezval_dtor(&zversion); \
 	ut_ezval_dtor(&zbuf); \
 	ut_ezval_dtor(&zdata); \
 	if (!zbase_pathp_arg) ut_ezval_dtor(&zbase_path); \
@@ -212,9 +212,9 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 	, zval *zbase_pathp_arg, long flags TSRMLS_DC)
 {
 	Automap_Pmap tmp_map, *pmp;
-	zval zversion, **zpp, zbuf, zdata, zbase_path;
+	zval **zpp, zbuf, zdata, zbase_path, *options_zp;
 	char tmpc, *p, *p2, crc[9], file_crc[8];
-	unsigned long fsize;
+	unsigned long fsize, map_major_version;
 	HashTable *htp;
 	int len;
 
@@ -230,7 +230,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 		return pmp; \
 	}
 
-	/* Map is not in memory -> load it */
+	/* Map is not in Pmap cache -> load it */
 	/*-- Slow path --*/
 
 	DBG_MSG2("Automap_Pmap cache miss (path=%s,ufid=%s)",Z_STRVAL_P(zpathp)
@@ -245,7 +245,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 		buflen = Z_STRLEN(zbuf);
 	}
 
-	/* File cannot be smaller than 62 bytes - Secure memory access */
+	/* File cannot be smaller than 62 bytes - Secure future memory access */
 
 	if (buflen < 62) {
 		THROW_EXCEPTION_2("%s : Short file (size=%l)", Z_STRVAL_P(zpathp),buflen);
@@ -278,6 +278,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 	/* Check version against MIN_MAP_VERSION */
 
 	p=&(buf[30]);
+	map_major_version=(unsigned long)((*p)-'0');
 	p2=p+12;
 	tmpc=*p2;
 	*p2 = '\0';
@@ -325,21 +326,6 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 	tmp_map.zufid=ut_persist_zval(zufidp);
 	tmp_map.ufid_hash=hash;
 	
-	/* Record minimum version (to be able to display it) */
-
-	ZVAL_STRINGL(&zversion, &(buf[16]), 12, 1);
-	ut_zval_cut_at_space(&zversion);
-	tmp_map.zmin_version=ut_persist_zval(&zversion);
-	ut_ezval_dtor(&zversion);
-
-	/* Get map version */
-
-	ZVAL_STRINGL(&zversion, &(buf[30]), 12, 1);
-	ut_zval_cut_at_space(&zversion);
-	tmp_map.zversion=ut_persist_zval(&zversion);
-	tmp_map.map_major_version=Z_STRVAL(zversion)[0];
-	ut_ezval_dtor(&zversion);
-
 	/* Get the rest as an unserialized array */
 
 	ut_unserialize_zval((unsigned char *)(buf + 61), buflen - 61, &zdata TSRMLS_CC);
@@ -361,7 +347,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 						  Z_STRVAL_P(zpathp));
 		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	}
-	tmp_map.zoptions=ut_persist_zval(*zpp);
+	options_zp=(*zpp);
 
 	/* Compute base path */
 	
@@ -370,7 +356,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 		ZVAL_STRINGL(&zbase_path,Z_STRVAL_P(zbase_pathp_arg)
 			,Z_STRLEN_P(zbase_pathp_arg),0); /* No copy */
 	} else {
-		if (FIND_HKEY(Z_ARRVAL_P(tmp_map.zoptions), base_path, &zpp) == SUCCESS) {
+		if (FIND_HKEY(Z_ARRVAL_P(options_zp), base_path, &zpp) == SUCCESS) {
 			/* base_path option is set */
 			if (!ZVAL_IS_STRING(*zpp)) {
 				THROW_EXCEPTION_1("%s : base_path option must be a string",
@@ -397,6 +383,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 		}
 		ZVAL_STRINGL(&zbase_path,p,len,0);
 	}
+	tmp_map.zbase_path=ut_persist_zval(&zbase_path);
 
 	/* Get symbol table */
 
@@ -423,6 +410,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 		TSRMLS_CC
 #endif
 		,(apply_func_args_t)Automap_Pmap_create_entry, 2, &tmp_map, &zbase_path
+			,map_major_version
 #if PHP_API_VERSION < 20090626
 		TSRMLS_CC
 #endif
@@ -444,9 +432,6 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 static void Automap_Pmap_dtor(Automap_Pmap *pmp)
 {
 	ut_pzval_ptr_dtor(&(pmp->zufid));
-	ut_pzval_ptr_dtor(&(pmp->zmin_version));
-	ut_pzval_ptr_dtor(&(pmp->zversion));
-	ut_pzval_ptr_dtor(&(pmp->zoptions));
 	ut_pzval_ptr_dtor(&(pmp->zsymbols));
 }
 
@@ -472,6 +457,24 @@ static Automap_Pmap_Entry *Automap_Pmap_find_key(Automap_Pmap *pmp
 	zend_hash_quick_find(Z_ARRVAL_P(pmp->zsymbols),Z_STRVAL_P(zkey)
 		,Z_STRLEN_P(zkey)+1,hash,(void **)(&pep));
 	return pep;
+}
+
+/*---------------------------------------------------------------*/
+
+static void Automap_Pmap_export_entry(Automap_Pmap_Entry *pep, zval *zp TSRMLS_DC)
+{
+	char str[2];
+
+	array_init(zp);
+	str[1]='\0';
+
+	str[0]=pep->stype;
+	add_assoc_stringl(zp,"stype",str,1,1);
+	add_assoc_stringl(zp,"symbol",Z_STRVAL(pep->zsname),Z_STRLEN(pep->zsname),1);
+	str[0]=pep->ftype;
+	add_assoc_stringl(zp,"ptype",str,1,1);
+	add_assoc_stringl(zp,"rpath",Z_STRVAL(pep->zfpath),Z_STRLEN(pep->zfpath),1);
+	add_assoc_stringl(zp,"path",Z_STRVAL(pep->zfapath),Z_STRLEN(pep->zfapath),1);
 }
 
 /*===============================================================*/

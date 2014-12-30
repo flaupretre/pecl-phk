@@ -25,7 +25,7 @@
 
 typedef struct _Automap_Mnt {	/* Per request */
 	Automap_Pmap *map;			/* Persistent map */
-	zval *instance;				/* Automap object (NULL until created) */
+	zval *map_object;			/* Automap_Map instance (NULL until created) */
 	zval *zpath;				/* Map file absolute path (String zval) */
 	ulong flags;				/* Load flags */
 	long id;					/* Map ID (index in map_array) */

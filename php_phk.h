@@ -16,7 +16,7 @@
   +----------------------------------------------------------------------+
 */
 
-/* Uncomment to see debug messages */
+/* Uncomment to display debug messages */
 /* #define PHK_DEBUG */
 
 #ifndef __PHP_PHK_H
@@ -92,7 +92,7 @@
 #include "utils.h"
 
 #include "Automap_Handlers.h"
-#include "Automap_Instance.h"
+#include "Automap_Class.h"
 #include "Automap_Key.h"
 #include "Automap_Loader.h"
 #include "Automap_Pmap.h"
@@ -147,7 +147,6 @@ static DECLARE_CZVAL(Automap__autoload_hook);
 static DECLARE_HKEY(map);
 static DECLARE_HKEY(options);
 static DECLARE_HKEY(automap);
-static DECLARE_HKEY(Automap_mp_property_name);
 static DECLARE_HKEY(base_path);
 
 static DECLARE_HKEY(no_cache);
@@ -216,11 +215,10 @@ ZEND_END_MODULE_GLOBALS(phk)
 
 /*---------------------------------------------------------------*/
 
-/* We need a private properties here, so that they cannot be accessed nor
+/* We need private properties here, so that they cannot be accessed nor
    modified by a malicious PHP script.
    Private properties are stored as '\0<classname>\0<property>'. */
 
-#define AUTOMAP_MP_PROPERTY_NAME "\0Automap\0m"
 #define PHK_MP_PROPERTY_NAME "\0PHK\0m"
 
 /*============================================================================*/
