@@ -798,45 +798,43 @@ static void PHK_Stream_parse_uri(zval * uri, zval * z_command
 }
 
 /*--------------------*/
-/* A PHK URI is opcode-cacheable if :
+/* A PHK URI is cacheable if :
 	- it corresponds to a currently mounted package,
 	- and it does not contain any '?' character,
 	- and the corresponding package does not set the 'no_opcode_cache' option.
+*/
 
-  As the URI is unique, we can use it as key */
-
-static char *PHK_Stream_cache_key(php_stream_wrapper * wrapper,
-								  const char *uri, int uri_len,
-								  int *key_len TSRMLS_DC)
+static int PHK_Stream_is_cacheable(php_stream_wrapper * wrapper,
+	const char *uri, int options, php_stream_context *context)
 {
 	char *p, *mnt_start, *mnt_end;
-	zval *mnt;
+	zval zmnt;
 	PHK_Mnt *mp;
+	int uri_len;
 
-	if (uri_len < 6) return NULL;
+	uri_len=strlen(uri);
+	if (uri_len < 6) return 0;
 
 	mnt_start = p = (char *) (uri + 6);
 	mnt_end = NULL;
 
 	while (*p) {
 		if (((*p) == '/') && (!mnt_end)) mnt_end = p;
-		if (*(p++) == '?') return NULL;
+		if (*(p++) == '?') return 0;
 	}
-	if (!mnt_end) return NULL;
+	if (!mnt_end) return 0;
 
 	(*mnt_end) = '\0';
-	ALLOC_INIT_ZVAL(mnt);
-	ZVAL_STRINGL(mnt, mnt_start, mnt_end - mnt_start, 1);
+	INIT_ZVAL(zmnt);
+	ZVAL_STRINGL(&zmnt, mnt_start, mnt_end - mnt_start, 0);
+	mp = PHK_Mgr_get_mnt(&zmnt, 0, 0 TSRMLS_CC);
 	(*mnt_end) = '/';
 
-	mp = PHK_Mgr_get_mnt(mnt, 0, 0 TSRMLS_CC);
-	ut_ezval_ptr_dtor(&mnt);
-	if ((!mp) || mp->no_opcode_cache) return NULL;
+	if ((!mp) || mp->no_opcode_cache) return 0;
 
 	set_last_cached_opcode(uri, uri_len TSRMLS_CC);
 
-	(*key_len) = uri_len;
-	return (char *) uri;
+	return 1;
 }
 
 /*---------------------------------------------------------------*/
@@ -852,8 +850,9 @@ static php_stream_wrapper_ops phk_stream_wops = {
 	NULL,						/* rename */
 	NULL,						/* mkdir */
 	NULL						/* rmdir */
-#ifdef STREAMS_SUPPORT_CACHE_KEY
-	, PHK_Stream_cache_key		/* cache_key */
+#ifdef PHP_STREAMS_SUPPORT_IS_CACHEABLE
+	, NULL						/* metadata */
+	, PHK_Stream_is_cacheable	/* is_cacheable */
 #endif
 };
 

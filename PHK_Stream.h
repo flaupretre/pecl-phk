@@ -75,8 +75,8 @@ static php_stream *PHK_Stream_opendir(php_stream_wrapper * wrapper,
 	php_stream_context *context STREAMS_DC TSRMLS_DC);
 static void PHK_Stream_parse_uri(zval * uri, zval * z_command,
 	zval * z_params, zval * z_mnt, zval * z_path TSRMLS_DC);
-static char *PHK_Stream_cache_key(php_stream_wrapper * wrapper,
-	const char *uri, int uri_len, int *key_len TSRMLS_DC);
+static int PHK_Stream_is_cacheable(php_stream_wrapper * wrapper,
+	const char *uri, int options, php_stream_context *context);
 
 static int MINIT_PHK_Stream(TSRMLS_D);
 static int MSHUTDOWN_PHK_Stream(TSRMLS_D);
