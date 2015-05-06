@@ -142,14 +142,12 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp
 	, long flags TSRMLS_DC)
 {
 	zval *zufidp;
-	ulong hash;
 	Automap_Pmap *pmp;
 
 	/* Compute UFID (Unique File ID) */
 
 	Automap_ufid(zapathp, &zufidp TSRMLS_CC);
 	if (EG(exception)) return NULL;
-	hash=ZSTRING_HASH(zufidp);
 
 	/* Run extended func */
 	
@@ -204,7 +202,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp
 * - If zbase_pathp_arg is null, we compute its value from the file path and
 *       content
 * - pmap_flags:
-*       AUTOMAP_PMAP_NO_CRC_CHECK: DOn't check CRC
+*       AUTOMAP_PMAP_NO_CRC_CHECK: Don't check CRC
 */
 
 static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
