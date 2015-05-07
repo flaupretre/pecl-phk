@@ -80,25 +80,6 @@ static PHP_METHOD(Automap, map)
 
 /* }}} */
 /*---------------------------------------------------------------*/
-/* {{{ proto Automap_Map Automap::base_path(long id) */
-
-static PHP_METHOD(Automap, base_path)
-{
-	zval *zid;
-	Automap_Mnt *mp;
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &zid) ==
-		FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
-	convert_to_long(zid);
-
-	mp = Automap_Mnt_get(Z_LVAL_P(zid), 1 TSRMLS_CC);
-	if (EG(exception)) return;
-
-	RETVAL_BY_VAL(mp->map->zbase_path);
-}
-
-/* }}} */
-/*---------------------------------------------------------------*/
 
 ZEND_BEGIN_ARG_INFO_EX(Automap_load_arginfo, 0, 0, 1)
 ZEND_ARG_INFO(0, path)
@@ -125,8 +106,6 @@ static zend_function_entry Automap_functions[] = {
 	PHP_ME(Automap, id_is_active, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, map, UT_1arg_ref_arginfo,
-		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, base_path, UT_1arg_ref_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, active_ids, UT_noarg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
