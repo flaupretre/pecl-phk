@@ -144,11 +144,6 @@ static DECLARE_CZVAL(Automap__autoload_hook);
 
 /* Hash keys */
 
-static DECLARE_HKEY(map);
-static DECLARE_HKEY(options);
-static DECLARE_HKEY(automap);
-static DECLARE_HKEY(base_path);
-
 static DECLARE_HKEY(no_cache);
 static DECLARE_HKEY(no_opcode_cache);
 static DECLARE_HKEY(required_extensions);

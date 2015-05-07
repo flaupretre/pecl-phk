@@ -84,7 +84,7 @@ static void Automap_Mnt_array_add(Automap_Mnt *mp TSRMLS_DC)
 * - zpathp is an absolute path
 * - zufidp is the unique file identifier for zpathp
 * - hash is the hashcode of zufidp
-* - zbasep is the base path to use
+* - zbasep is the base path to use when creating pmp if null
 * - If non null, pmp points to the Pmap to use (used by PHK to speed up loading)
 */
 
@@ -97,7 +97,7 @@ static Automap_Mnt *Automap_Mnt_load_extended(zval *zpathp, zval *zufidp
 
 	mp=NULL;
 
-	if (!pmp) pmp=Automap_Pmap_get_or_create_extended(zpathp, NULL, 0, zufidp
+	if (!pmp) pmp=Automap_Pmap_get_or_create_extended(zpathp, zufidp
 		, hash, zbasep, flags TSRMLS_CC);
 	if (!pmp) return NULL;
 
@@ -260,7 +260,7 @@ static int Automap_Mnt_resolve_key(Automap_Mnt *mp, zval *zkey, ulong hash TSRML
 
 	switch(ftype=pep->ftype) {
 		case AUTOMAP_F_EXTENSION:
-			ut_load_extension_file(&(pep->zfpath) TSRMLS_CC);
+			ut_load_extension_file(&(pep->zfapath) TSRMLS_CC);
 			if (EG(exception)) RETURN_AUTOMAP_MNT_RESOLVE_KEY(FAILURE);
 			Automap_call_success_handlers(mp,pep TSRMLS_CC);
 			RETURN_AUTOMAP_MNT_RESOLVE_KEY(SUCCESS);

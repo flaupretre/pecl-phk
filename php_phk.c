@@ -111,11 +111,6 @@ static void build_constant_values()
 	
 	/* Hash keys */
 
-	INIT_HKEY(map);
-	INIT_HKEY(options);
-	INIT_HKEY(automap);
-	INIT_HKEY(base_path);
-
 	INIT_HKEY(no_cache);
 	INIT_HKEY(no_opcode_cache);
 	INIT_HKEY(required_extensions);
