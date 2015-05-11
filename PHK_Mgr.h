@@ -24,6 +24,7 @@
 #endif
 
 /*----- Mount flags --------*/
+/* Bytes 0-3 are reserved for Automap */
 
 #define PHK_FLAG_CRC_CHECK			16
 #define PHK_FLAG_NO_MOUNT_SCRIPT	32

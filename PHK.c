@@ -103,7 +103,7 @@ static void PHK_init(PHK_Mnt * mp TSRMLS_DC)
 		/* Transmit mount flags to Automap::load() */
 		automap_mp=Automap_Mnt_load_extended(mp->automap_uri,mp->mnt,mp->hash
 			,mp->base_uri, mp->pdata->pmap
-			, Z_LVAL_P(mp->flags) | AUTOMAP_FLAG_NO_CRC_CHECK TSRMLS_CC);
+			, Z_LVAL_P(mp->flags) TSRMLS_CC);
 		if (EG(exception)) return;
 		mp->automap_id=automap_mp->id;
 		/* Cache a pointer to the Pmap struct so that load is faster next time */

@@ -161,8 +161,6 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp
 *       path (with trailing separator)
 * - If zbase_pathp_arg is null, the value must be computed from the file path and
 *       content
-* - pmap_flags:
-*       AUTOMAP_PMAP_NO_CRC_CHECK: Don't check CRC
 */
 
 static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
@@ -197,7 +195,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 	/* Instantiate Automap_Map (load the map file) */
 
 	args[0] = zpathp;
-	ZVAL_LONG(&zlong,flags);
+	ZVAL_LONG(&zlong,flags|AUTOMAP_FLAG_CRC_CHECK|AUTOMAP_FLAG_PECL_LOAD);
 	args[1] = &zlong;
 	args[2] = (zbase_pathp_arg ? zbase_pathp_arg : (&znull));
 	map=ut_new_instance(ZEND_STRL("Automap_Map"), YES, 3, args TSRMLS_CC);

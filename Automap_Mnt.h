@@ -34,7 +34,8 @@ typedef struct _Automap_Mnt {	/* Per request */
 /* Load flags */
 
 #define AUTOMAP_FLAG_NO_AUTOLOAD	1
-#define AUTOMAP_FLAG_NO_CRC_CHECK	2
+#define AUTOMAP_FLAG_CRC_CHECK		2
+#define AUTOMAP_FLAG_PECL_LOAD		4
 
 /*============================================================================*/
 
