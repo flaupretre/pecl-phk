@@ -468,6 +468,7 @@ UT_SYMBOL inline zval *_ut_SERVER_element(HKEY_STRUCT * hkey TSRMLS_DC);
 UT_SYMBOL inline zval *_ut_REQUEST_element(HKEY_STRUCT * hkey TSRMLS_DC);
 UT_SYMBOL char *ut_http_base_url(TSRMLS_D);
 UT_SYMBOL void ut_http_301_redirect(char *path, int must_free TSRMLS_DC);
+UT_SYMBOL char *ut_trim_char(char *str, int *lenp, char c);
 UT_SYMBOL inline void ut_rtrim_zval(zval * zp TSRMLS_DC);
 UT_SYMBOL inline void ut_tolower(char *p, int len TSRMLS_DC);
 UT_SYMBOL inline void ut_file_suffix(zval * path, zval * ret TSRMLS_DC);

@@ -762,6 +762,36 @@ UT_SYMBOL void ut_http_301_redirect(char *path, int must_free TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
+/* Trim a string in place. The input string is not modified, meaning
+   that the returned string is NOT zero-terminated. */
+
+UT_SYMBOL char *ut_trim_char(char *str, int *lenp, char c)
+{
+char *p;
+int len,trimmed,i;
+
+p=str;
+len=*lenp;
+trimmed=0;
+if (len) {
+	for (i = 0; i < len; i++) {
+		if (p[i]==c) trimmed++;
+		else break;
+	}
+}
+len -= trimmed;
+p += trimmed;
+if (len) {
+	for (i = len - 1; i >= 0; i--) {
+		if (p[i]==c) len--;
+		else break;
+	}
+}
+(*lenp)=len;
+return p;
+}
+
+/*---------------------------------------------------------------*/
 
 UT_SYMBOL void ut_rtrim_zval(zval * zp TSRMLS_DC)
 {

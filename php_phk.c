@@ -42,6 +42,7 @@ static int init_done=0;
 #include "Automap_Pmap.c"
 #include "Automap_Type.c"
 #include "Automap_Util.c"
+#include "Automap_Parser.c"
 
 #include "PHK_Cache.c"
 #include "PHK_Stream.c"
@@ -156,6 +157,7 @@ static PHP_RINIT_FUNCTION(phk)
 	if (RINIT_Automap_Pmap(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RINIT_Automap_Type(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RINIT_Automap_Util(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RINIT_Automap_Parser(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RINIT_PHK_Cache(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RINIT_PHK_Stream(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RINIT_PHK_Mgr(TSRMLS_C) == FAILURE) return FAILURE;
@@ -174,6 +176,7 @@ static PHP_RSHUTDOWN_FUNCTION(phk)
 	if (RSHUTDOWN_PHK_Mgr(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RSHUTDOWN_PHK_Stream(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RSHUTDOWN_PHK_Cache(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RSHUTDOWN_Automap_Parser(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RSHUTDOWN_Automap_Util(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RSHUTDOWN_Automap_Type(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RSHUTDOWN_Automap_Pmap(TSRMLS_C) == FAILURE) return FAILURE;
@@ -214,6 +217,7 @@ static PHP_MINIT_FUNCTION(phk)
 	if (MINIT_Automap_Mnt(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MINIT_Automap_Type(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MINIT_Automap_Util(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MINIT_Automap_Parser(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MINIT_PHK_Cache(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MINIT_PHK_Stream(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MINIT_PHK_Mgr(TSRMLS_C) == FAILURE) return FAILURE;
@@ -237,6 +241,7 @@ static PHP_MSHUTDOWN_FUNCTION(phk)
 	if (MSHUTDOWN_PHK_Stream(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MSHUTDOWN_PHK_Cache(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MSHUTDOWN_Automap_Handlers(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MSHUTDOWN_Automap_Parser(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MSHUTDOWN_Automap_Util(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MSHUTDOWN_Automap_Type(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MSHUTDOWN_Automap_Mnt(TSRMLS_C) == FAILURE) return FAILURE;
@@ -250,6 +255,14 @@ static PHP_MSHUTDOWN_FUNCTION(phk)
 }
 
 /*---------------------------------------------------------------*/
+/*-- Functions --*/
+
+static zend_function_entry phk_functions[] = {
+	PHP_FE(_automap_parse_tokens, UT_2args_arginfo)
+    {NULL, NULL, NULL}  /* must be the last line */
+};
+
+/*---------------------------------------------------------------*/
 /*-- Module definition --*/
 
 zend_module_entry phk_module_entry = {
@@ -257,7 +270,7 @@ zend_module_entry phk_module_entry = {
 	STANDARD_MODULE_HEADER,
 #endif
 	PHP_PHK_EXTNAME,
-	NULL,
+	phk_functions,
 	PHP_MINIT(phk),
 	PHP_MSHUTDOWN(phk),
 	PHP_RINIT(phk),

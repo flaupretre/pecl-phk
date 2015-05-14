@@ -99,6 +99,7 @@
 #include "Automap_Mnt.h"
 #include "Automap_Type.h"
 #include "Automap_Util.h"
+#include "Automap_Parser.h"
 #include "PHK_Cache.h"
 #include "PHK_Stream.h"
 #include "PHK_Mgr.h"
