@@ -59,7 +59,8 @@
 
 /*============================================================================*/
 
-static PHP_FUNCTION(_automap_parse_tokens);
+static PHP_NAMED_FUNCTION(Automap_Ext_file_get_contents);
+static PHP_NAMED_FUNCTION(Automap_Ext_parse_tokens);
 static void Automap_Parser_add_symbol(zval *arr,char type,char *ns,int nslen
 	,char *name,int nalen);
 static void Automap_parse_tokens(zval *zbuf, int skip_blocks, zval *ret TSRMLS_DC);

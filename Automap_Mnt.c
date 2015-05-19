@@ -52,7 +52,7 @@ static Automap_Mnt *Automap_Mnt_get(long id, int exception TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
-/* {{{ proto boolean Automap::id_is_active(integer id) */
+/* {{{ proto boolean \Automap\Mgr::id_is_active(integer id) */
 
 static PHP_METHOD(Automap, id_is_active)
 {
@@ -156,9 +156,9 @@ static Automap_Mnt *Automap_Mnt_load(zval *zpathp, long flags TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
-/* {{{ proto string Automap::load(string path[, int flags]) */
+/* {{{ proto string \Automap\Mgr::load(string path[, int flags]) */
 
-/* The $_bp arg of the PHP version of Automap::load is only used when loading a
+/* The $_bp arg of the PHP version of \Automap\Mgr::load is only used when loading a
 * package through the PHK PHP runtime . Here, as both extensions are merged,
 * we know that PHK are loaded through their extension, using another mechanism.
 * So, we don't need the $_bp parameter.
@@ -195,7 +195,7 @@ static void Automap_unload(long id TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
-/* {{{ proto void Automap::unload(integer id) */
+/* {{{ proto void \Automap\Mgr::unload(integer id) */
 
 static PHP_METHOD(Automap, unload)
 {
@@ -210,7 +210,7 @@ static PHP_METHOD(Automap, unload)
 
 /* }}} */
 /*---------------------------------------------------------------*/
-/* {{{ proto array Automap::active_ids() */
+/* {{{ proto array \Automap\Mgr::active_ids() */
 
 static PHP_METHOD(Automap, active_ids)
 {

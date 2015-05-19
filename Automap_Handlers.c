@@ -17,7 +17,7 @@
 */
 
 /*---------------------------------------------------------------*/
-/* {{{ proto string Automap::register_failure_handler(callable callback) */
+/* {{{ proto string \Automap\Mgr::register_failure_handler(callable callback) */
 
 static PHP_METHOD(Automap, register_failure_handler)
 {
@@ -63,7 +63,7 @@ static void Automap_call_failure_handlers(char type, char *symbol, int slen TSRM
 }
 
 /*---------------------------------------------------------------*/
-/* {{{ proto string Automap::register_success_handler(callable callback) */
+/* {{{ proto string \Automap\Mgr::register_success_handler(callable callback) */
 
 static PHP_METHOD(Automap, register_success_handler)
 {

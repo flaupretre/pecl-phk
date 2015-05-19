@@ -17,7 +17,7 @@
 */
 
 /*---------------------------------------------------------------*/
-/* {{{ proto void Automap::autoload_hook(string symbol [, string type ]) */
+/* {{{ proto void \Automap\Mgr::autoload_hook(string symbol [, string type ]) */
 
 static PHP_METHOD(Automap, autoload_hook)
 {
@@ -29,26 +29,30 @@ static PHP_METHOD(Automap, autoload_hook)
 	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "s|s",&symbol, &slen
 		,&type,&tlen)==FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
 
-	DBG_MSG1("Starting Automap::autoload_hook(%s)",symbol);
+	DBG_MSG1("Starting \\Automap\\Mgr::autoload_hook(%s)",symbol);
 
 	Automap_resolve_symbol((type ? (*type) : AUTOMAP_T_CLASS), symbol
 		, slen, 1, 0 TSRMLS_CC);
 
-	DBG_MSG("Ending Automap::autoload_hook");
+	DBG_MSG("Ending \\Automap\\Mgr::autoload_hook");
 }
 
 /* }}} */
 /*---------------------------------------------------------------*/
-/* Run  spl_autoload_register('Automap::autoload_hook'); */
+/* Run  spl_autoload_register('\Automap\Mgr::autoload_hook'); */
 
 static void Automap_Loader_register_hook(TSRMLS_D)
 {
-	zval *zp;
+	zval zv1, zv2, *args[3];
 
-	MAKE_STD_ZVAL(zp);
-	ZVAL_STRINGL(zp,"Automap::autoload_hook",22,1);
-	ut_call_user_function_void(NULL,ZEND_STRL("spl_autoload_register"),1,&zp TSRMLS_CC);
-	ut_ezval_ptr_dtor(&zp);
+	INIT_ZVAL(zv1);
+	ZVAL_STRINGL(&zv1,"Automap\\Mgr::autoload_hook",26,1);
+	args[0]=&zv1;
+	INIT_ZVAL(zv2);
+	ZVAL_TRUE(&zv2);
+	args[1]=args[2]=&zv2;
+	ut_call_user_function_void(NULL,ZEND_STRL("spl_autoload_register"),3,args TSRMLS_CC);
+	ut_ezval_dtor(&zv1);
 }
 
 /*---------------------------------------------------------------*/

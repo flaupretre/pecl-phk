@@ -74,24 +74,6 @@ static PHP_METHOD(Automap, using_accelerator)
 }
 
 /* }}} */
-/*---------------------------------------------------------------*/
-/* {{{ proto void Automap::accel_techinfo() */
-
-static PHP_METHOD(Automap, accel_techinfo)
-{
-	if (sapi_module.phpinfo_as_text) {
-		php_printf("Using Automap Accelerator: Yes\n");
-		php_printf("Accelerator Version: %s\n", PHP_PHK_VERSION);
-	} else {
-		php_printf("<table border=0>");
-		php_printf("<tr><td>Using Automap Accelerator:&nbsp;</td><td>Yes</td></tr>");
-		php_printf("<tr><td>Accelerator Version:&nbsp;</td><td>%s</td></tr>",
-			 PHP_PHK_VERSION);
-		php_printf("</table>");
-	}
-}
-
-/* }}} */
 /*===============================================================*/
 
 static int MINIT_Automap_Util(TSRMLS_D)

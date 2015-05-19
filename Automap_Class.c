@@ -17,7 +17,7 @@
 */
 
 /*---------------------------------------------------------------*/
-/* {{{ proto string Automap::__construct() */
+/* {{{ proto string \Automap\Mgr::__construct() */
 /* This private method is never called. It exists only to prevent instanciation
 * from user code using a 'new Automap' directive */
 
@@ -34,7 +34,7 @@ static zval *Automap_map_object_by_mp(Automap_Mnt *mp TSRMLS_DC)
 		MAKE_STD_ZVAL(flags_zp);
 		ZVAL_LONG(flags_zp,mp->flags);
 		args[1]=flags_zp;
-		mp->map_object=ut_new_instance(ZEND_STRL("Automap_Map"), YES, 2
+		mp->map_object=ut_new_instance(ZEND_STRL("Automap\\Map"), YES, 2
 			, args TSRMLS_CC);
 		ut_ezval_ptr_dtor(&flags_zp);
 	}
@@ -55,7 +55,7 @@ static zval *Automap_map(long id TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
-/* {{{ proto Automap_Map Automap::map(long id) */
+/* {{{ proto Automap_Map \Automap\Mgr::map(long id) */
 
 static PHP_METHOD(Automap, map)
 {
@@ -84,6 +84,7 @@ static PHP_METHOD(Automap, map)
 ZEND_BEGIN_ARG_INFO_EX(Automap_load_arginfo, 0, 0, 1)
 ZEND_ARG_INFO(0, path)
 ZEND_ARG_INFO(0, flags)
+/* No _bp parameter here */
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(Automap_autoload_hook_arginfo, 0, 0, 1)
@@ -96,8 +97,6 @@ static zend_function_entry Automap_functions[] = {
 	PHP_ME(Automap, register_failure_handler, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, register_success_handler, UT_1arg_arginfo,
-		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, key, UT_2args_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, type_to_string, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
@@ -133,8 +132,6 @@ static zend_function_entry Automap_functions[] = {
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, require_extension, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, accel_techinfo, UT_noarg_arginfo,
-		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	{NULL, NULL, NULL, 0, 0}
 };
 
@@ -142,10 +139,6 @@ static zend_function_entry Automap_functions[] = {
 
 static void Automap_Class_set_constants(zend_class_entry * ce)
 {
-	UT_DECLARE_STRING_CONSTANT(AUTOMAP_VERSION,"VERSION");
-	UT_DECLARE_STRING_CONSTANT(AUTOMAP_MIN_MAP_VERSION,"MIN_MAP_VERSION");
-	UT_DECLARE_STRING_CONSTANT(AUTOMAP_MAGIC,"MAGIC");
-
 	UT_DECLARE_CHAR_CONSTANT(AUTOMAP_T_FUNCTION,"T_FUNCTION");
 	UT_DECLARE_CHAR_CONSTANT(AUTOMAP_T_CONSTANT,"T_CONSTANT");
 	UT_DECLARE_CHAR_CONSTANT(AUTOMAP_T_CLASS,"T_CLASS");
@@ -167,7 +160,7 @@ static int MINIT_Automap_Class(TSRMLS_D)
 {
 	zend_class_entry ce, *entry;
 
-	INIT_CLASS_ENTRY(ce, "Automap", Automap_functions);
+	INIT_CLASS_ENTRY(ce, "Automap\\Mgr", Automap_functions);
 	entry = zend_register_internal_class(&ce TSRMLS_CC);
 
 	Automap_Class_set_constants(entry);

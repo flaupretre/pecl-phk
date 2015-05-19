@@ -182,7 +182,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 		return pmp; \
 	}
 
-	/* Map is not in Pmap cache -> load it using Automap_Map (PHP) */
+	/* Map is not in Pmap cache -> load it using \Automap\Map (PHP) */
 	/*-- Slow path --*/
 
 	DBG_MSG2("Automap_Pmap cache miss (path=%s,ufid=%s)",Z_STRVAL_P(zpathp)
@@ -192,13 +192,13 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 
 	PHK_need_php_runtime(TSRMLS_C);
 
-	/* Instantiate Automap_Map (load the map file) */
+	/* Instantiate \Automap\Map (load the map file) */
 
 	args[0] = zpathp;
 	ZVAL_LONG(&zlong,flags|AUTOMAP_FLAG_CRC_CHECK|AUTOMAP_FLAG_PECL_LOAD);
 	args[1] = &zlong;
 	args[2] = (zbase_pathp_arg ? zbase_pathp_arg : (&znull));
-	map=ut_new_instance(ZEND_STRL("Automap_Map"), YES, 3, args TSRMLS_CC);
+	map=ut_new_instance(ZEND_STRL("Automap\\Map"), YES, 3, args TSRMLS_CC);
 	if (EG(exception)) ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 
 	/* Get data from Automap_Map object */
@@ -208,7 +208,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 	ut_call_user_function_array(map,ZEND_STRL("_pecl_get_map"),&zdata,1,args);
 	if (EG(exception)) ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	if (!ZVAL_IS_ARRAY(&zdata)) {
-		THROW_EXCEPTION_1("%s : Automap_Map::_pecl_get_map() should return an array",Z_STRVAL_P(zpathp));
+		THROW_EXCEPTION_1("%s : Automap\\Map::_pecl_get_map() should return an array",Z_STRVAL_P(zpathp));
 		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	}
 	

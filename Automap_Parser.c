@@ -17,9 +17,35 @@
 */
 
 /*---------------------------------------------------------------*/
+/* {{{ proto string _automap_file_get_contents(string path) */
+
+static PHP_NAMED_FUNCTION(Automap_Ext_file_get_contents)
+{
+	char *path,*buf=NULL;
+	int pathlen;
+	FILE *fp;
+	struct stat st;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "s",&path,&pathlen
+		)==FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
+
+	fp=fopen(path,"rb");
+	if (!fp) {
+		EXCEPTION_ABORT_1("%s: Cannot open file",path);
+	}
+	fstat(fileno(fp),&st);
+	if (!S_ISREG(st.st_mode)) EXCEPTION_ABORT_1("%s: File is not a regular file",path);
+	EALLOCATE(buf,st.st_size+1);
+	while (!fread(buf,st.st_size,1,fp)) {}
+	buf[st.st_size]='\0';
+	fclose(fp);
+	RETVAL_STRINGL(buf,st.st_size,0);
+}
+
+/*---------------------------------------------------------------*/
 /* {{{ proto array _automap_parse_tokens(string buf, bool skip_blocks) */
 
-static PHP_FUNCTION(_automap_parse_tokens)
+static PHP_NAMED_FUNCTION(Automap_Ext_parse_tokens)
 {
 	zval *zbuf;
 	zend_bool skip_blocks;
@@ -84,7 +110,7 @@ static void Automap_Parser_add_symbol(zval *arr,char type,char *ns,int nslen
 static void Automap_parse_tokens(zval *zbuf, int skip_blocks, zval *ret TSRMLS_DC)
 {
 	int block_level,nalen,nslen,tnum,tvlen;
-	char name[AUTOMAP_SYMBOL_MAX],ns[AUTOMAP_SYMBOL_MAX],*tvalue,schar;
+	char ns[AUTOMAP_SYMBOL_MAX],*tvalue,schar;
 	char state;
 	zval ztokens,**ztoken, *args[1], **zpp;
 	HashTable *ht_tokens,*ht;
@@ -95,8 +121,7 @@ static void Automap_parse_tokens(zval *zbuf, int skip_blocks, zval *ret TSRMLS_D
 	state=AUTOMAP_ST_OUT;
 	nalen=nslen=0;
 
-	/* Loop on token_
-	get_all() result */
+	/* Loop on token_get_all() result */
 
 	args[0]=zbuf;
 	ut_call_user_function_array(NULL,"token_get_all",13,&ztokens,1,args TSRMLS_CC);

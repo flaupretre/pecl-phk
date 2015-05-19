@@ -258,7 +258,8 @@ static PHP_MSHUTDOWN_FUNCTION(phk)
 /*-- Functions --*/
 
 static zend_function_entry phk_functions[] = {
-	PHP_FE(_automap_parse_tokens, UT_2args_arginfo)
+	PHP_NAMED_FE(Automap\\Ext\\file_get_contents,Automap_Ext_file_get_contents, UT_1arg_arginfo)
+	PHP_NAMED_FE(Automap\\Ext\\parse_tokens,Automap_Ext_parse_tokens, UT_2args_arginfo)
     {NULL, NULL, NULL}  /* must be the last line */
 };
 

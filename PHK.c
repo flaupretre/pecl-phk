@@ -100,7 +100,7 @@ static void PHK_init(PHK_Mnt * mp TSRMLS_DC)
 	}
 
 	if (mp->automap_uri) {	/* Load map */
-		/* Transmit mount flags to Automap::load() */
+		/* Transmit mount flags to \Automap\Mgr::load() */
 		automap_mp=Automap_Mnt_load_extended(mp->automap_uri,mp->mnt,mp->hash
 			,mp->base_uri, mp->pdata->pmap
 			, Z_LVAL_P(mp->flags) TSRMLS_CC);

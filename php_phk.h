@@ -37,6 +37,7 @@
 #endif
 
 #include <stdio.h>
+#include <fcntl.h>
 
 #ifdef HAVE_SYS_TYPES_H
 #	include <sys/types.h>
@@ -113,15 +114,7 @@
 
 /*---------------------------------------------------------------*/
 
-#define PHP_PHK_VERSION "2.1.0" /* The extension version */
-
-/* This version is compared to the minimum version required by the maps */
-
-#define AUTOMAP_VERSION "3.0.0"
-
-/* We cannot read versions older than this */
-
-#define AUTOMAP_MIN_MAP_VERSION "3.0.0"
+#define PHP_PHK_VERSION "3.0.0" /* The extension version */
 
 /* Version to compare to package's required runtime version */
 

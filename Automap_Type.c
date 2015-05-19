@@ -31,7 +31,7 @@ static char *Automap_type_to_string(char type TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
-/* {{{ proto string Automap::type_to_string(string type) */
+/* {{{ proto string \Automap\Mgr::type_to_string(string type) */
 
 static PHP_METHOD(Automap, type_to_string)
 {
@@ -61,7 +61,7 @@ static char Automap_string_to_type(char *string TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
-/* {{{ proto string Automap::string_to_type(string str) */
+/* {{{ proto string \Automap\Mgr::string_to_type(string str) */
 
 static PHP_METHOD(Automap, string_to_type)
 {

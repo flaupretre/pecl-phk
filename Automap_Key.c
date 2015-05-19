@@ -38,22 +38,6 @@ static void Automap_key(char type, char *symbol, unsigned long len
 	ZVAL_STRINGL(ret,p,len+1,0);
 }
 
-/*---------------------------------------------------------------*/
-/* {{{ proto string Automap::key(string type, string symbol) */
-
-static PHP_METHOD(Automap, key)
-{
-	char *type,*symbol;
-	int tlen,slen;
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "ss", &type,&tlen
-		,&symbol,&slen)==FAILURE)
-		EXCEPTION_ABORT("Cannot parse parameters");
-
-	Automap_key(*type,symbol,slen,return_value TSRMLS_CC);
-}
-
-/* }}} */
 /*===============================================================*/
 
 static int MINIT_Automap_Key(TSRMLS_D)
