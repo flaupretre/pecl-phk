@@ -100,18 +100,7 @@
 #endif
 
 /*----------------*/
-
-#define CZVAL(name) ( czval_ ## name )
-
-#define DECLARE_CZVAL(name)	zval CZVAL(name)
-
-#define INIT_CZVAL(name)	INIT_CZVAL_VALUE(name, #name)
-
-#define INIT_CZVAL_VALUE(name,value)	\
-	{ \
-	INIT_ZVAL(CZVAL(name)); \
-	ZVAL_STRING(&(CZVAL(name)), value,0); \
-	}
+/* The ancestor of zend_string :) */
 
 typedef struct {
 	char *string;

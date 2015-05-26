@@ -128,14 +128,6 @@ zend_module_entry phk_module_entry;
 
 /*---------------------------------------------------------------*/
 
-static DECLARE_CZVAL(false);
-static DECLARE_CZVAL(true);
-static DECLARE_CZVAL(null);
-
-static DECLARE_CZVAL(Automap);
-static DECLARE_CZVAL(spl_autoload_register);
-static DECLARE_CZVAL(Automap__autoload_hook);
-
 /* Hash keys */
 
 static DECLARE_HKEY(no_cache);

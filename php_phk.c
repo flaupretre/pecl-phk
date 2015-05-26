@@ -95,22 +95,7 @@ static void phk_globals_dtor(zend_phk_globals * globals TSRMLS_DC)
 
 static void build_constant_values()
 {
-	/* Constant zvalues */
-
-	INIT_ZVAL(CZVAL(false));
-	ZVAL_BOOL(&CZVAL(false), 0);
-
-	INIT_ZVAL(CZVAL(true));
-	ZVAL_BOOL(&CZVAL(true), 1);
-
-	INIT_ZVAL(CZVAL(null));
-	ZVAL_NULL(&CZVAL(null));
-
-	INIT_CZVAL(Automap);
-	INIT_CZVAL(spl_autoload_register);
-	INIT_CZVAL_VALUE(Automap__autoload_hook,"Automap::autoload_hook");
-	
-	/* Hash keys */
+	/* Pre-compute constant hash keys */
 
 	INIT_HKEY(no_cache);
 	INIT_HKEY(no_opcode_cache);
