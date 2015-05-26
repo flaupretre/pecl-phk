@@ -34,7 +34,7 @@ static void PHK_need_php_runtime(TSRMLS_D)
 
 	if (PHK_G(php_runtime_is_loaded)) return;
 
-	if (HKEY_EXISTS(EG(class_table), phk_stream_backend)) {
+	if (HKEY_EXISTS(EG(class_table), phk_stream_backend_class)) {
 		PHK_G(php_runtime_is_loaded) = 1;
 		return;
 	}
@@ -165,7 +165,7 @@ static PHP_METHOD(PHK, file_is_package)
 
 	PHK_need_php_runtime(TSRMLS_C);
 	RETVAL_BOOL(ut_call_user_function_bool(NULL
-		, ZEND_STRL("PHK_Proxy::file_is_package"), 1, &zp TSRMLS_CC));
+		, ZEND_STRL("PHK\\Proxy::file_is_package"), 1, &zp TSRMLS_CC));
 }
 
 /* }}} */
@@ -182,7 +182,7 @@ static PHP_METHOD(PHK, data_is_package)
 
 	PHK_need_php_runtime(TSRMLS_C);
 	RETVAL_BOOL(ut_call_user_function_bool(NULL
-	   , ZEND_STRL("PHK_Proxy::data_is_package"), 1, &zp TSRMLS_CC));
+	   , ZEND_STRL("PHK\\Proxy::data_is_package"), 1, &zp TSRMLS_CC));
 }
 
 /* }}} */
@@ -515,7 +515,7 @@ static char *web_tunnel(PHK_Mnt * mp, zval * path,
 		spprintf(&p, UT_PATH_MAX, "require('%s');", Z_STRVAL_P(uri));
 	} else {
 		spprintf(&p, UT_PATH_MAX,
-				 "PHK_Mgr::mime_header('%s','%s'); readfile('%s');",
+				 "\\PHK\\Mgr::mime_header('%s','%s'); readfile('%s');",
 				 Z_STRVAL_P(mp->mnt), Z_STRVAL_P(tpath),
 				 Z_STRVAL_P(uri));
 	}
@@ -805,7 +805,7 @@ static PHP_METHOD(PHK, get_subpath)
 static zval *PHK_backend(PHK_Mnt * mp, zval * phk TSRMLS_DC)
 {
 	if (!mp->backend) {
-		mp->backend=ut_new_instance(ZEND_STRL("PHK_Backend"), 1, 1,	&phk TSRMLS_CC);
+		mp->backend=ut_new_instance(ZEND_STRL("PHK\\Backend"), 1, 1,	&phk TSRMLS_CC);
 	}
 
 	return mp->backend;
@@ -832,7 +832,7 @@ static PHP_METHOD(PHK, __call)
 	args[0] = PHK_backend(mp, getThis()TSRMLS_CC);
 	args[1] = method;
 	args[2] = call_args;
-	ut_call_user_function(NULL, ZEND_STRL("PHK_Util::call_method")
+	ut_call_user_function(NULL, ZEND_STRL("PHK\\Tools\\Util::call_method")
 		, return_value, 3, args TSRMLS_CC);
 }
 
@@ -957,7 +957,7 @@ static PHP_METHOD(PHK, prolog)
 	if (!status) {
 		PHK_need_php_runtime(TSRMLS_C);
 		instance = PHK_Mgr_instance_by_mp(mp TSRMLS_CC);
-		ut_call_user_function_void(NULL, ZEND_STRL("PHK_Util::run_webinfo")
+		ut_call_user_function_void(NULL, ZEND_STRL("PHK\\Util::run_webinfo")
 			, 1, &instance TSRMLS_CC);
 		return;
 	}

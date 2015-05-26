@@ -310,7 +310,7 @@ static zval *PHK_Mgr_proxy_by_mp(PHK_Mnt * mp TSRMLS_DC)
 	if (!(mp->proxy)) {
 		args[0] = mp->path;
 		args[1] = mp->flags;
-		mp->proxy=ut_new_instance(ZEND_STRL("PHK_Proxy"), 1, 2, args TSRMLS_CC);
+		mp->proxy=ut_new_instance(ZEND_STRL("PHK\\Proxy"), 1, 2, args TSRMLS_CC);
 	}
 
 	return mp->proxy;
@@ -911,6 +911,7 @@ static long PHK_Mgr_mount_from_Automap(zval * path, long flags TSRMLS_DC)
 #define RETURN_FROM_PHK_MGR_MOUNT(_ret) \
 	{ \
 	CLEANUP_PHK_MGR_MOUNT(); \
+	DBG_MSG("Exiting PHK_Mgr_mount"); \
 	return _ret; \
 	}
 
@@ -979,7 +980,7 @@ static PHK_Mnt *PHK_Mgr_mount(zval * path, long flags TSRMLS_DC)
 		args[0] = mp->mnt;
 		args[1] = mp->path;
 		args[2] = mp->flags;
-		mp->instance=ut_new_instance(ZEND_STRL("PHK_Creator"), 1, 3, args TSRMLS_CC);
+		mp->instance=ut_new_instance(ZEND_STRL("PHK\\Build\\Creator"), 1, 3, args TSRMLS_CC);
 	} else {
 		PHK_Mgr_compute_mnt(path, &parent_mp, &mnt, &mtime TSRMLS_CC);
 		if (EG(exception)) ABORT_PHK_MGR_MOUNT();
@@ -1125,7 +1126,7 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 	ZVAL_BOOL(ztmp,0);
 	args[1] = ztmp;
 	ut_call_user_function_string(NULL
-		, ZEND_STRL("PHK_Util::get_min_version"), min_version,2, args TSRMLS_CC);
+		, ZEND_STRL("PHK\\Tools\\Util::get_min_version"), min_version,2, args TSRMLS_CC);
 	ut_ezval_ptr_dtor(&ztmp);
 	if (EG(exception)) ABORT_PHK_GET_OR_CREATE_PERSISTENT_DATA();
 
@@ -1140,7 +1141,7 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 	ALLOC_INIT_ZVAL(ztmp);
 	args[1] = ztmp;
 	ut_call_user_function_array(NULL
-			, ZEND_STRL("PHK_Util::get_options"), options, 2,	args TSRMLS_CC);
+			, ZEND_STRL("PHK\\Tools\\Util::get_options"), options, 2,	args TSRMLS_CC);
 	ut_ezval_ptr_dtor(&ztmp);
 	if (EG(exception)) ABORT_PHK_GET_OR_CREATE_PERSISTENT_DATA();
 
@@ -1188,7 +1189,7 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 	opt_ht = Z_ARRVAL_P(entry->options);
 
 	ut_call_user_function_array(NULL
-		, ZEND_STRL("PHK_Util::get_build_info"), build_info, 2, args TSRMLS_CC);
+		, ZEND_STRL("PHK\\Tools\\Util::get_build_info"), build_info, 2, args TSRMLS_CC);
 	entry->build_info=ut_persist_zval(build_info);
 
 	/* Set shortcuts */
@@ -1436,7 +1437,7 @@ static int MINIT_PHK_Mgr(TSRMLS_D)
 
 	/*--- Init class */
 
-	INIT_CLASS_ENTRY(ce, "PHK_Mgr", PHK_Mgr_functions);
+	INIT_CLASS_ENTRY(ce, "PHK\\Mgr", PHK_Mgr_functions);
 	zend_register_internal_class(&ce TSRMLS_CC);
 
 	/*--- Init persistent data */

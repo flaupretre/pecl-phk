@@ -269,7 +269,7 @@ static int MINIT_PHK_Cache(TSRMLS_D)
 	/*------*/
 	/* Init class */
 
-	INIT_CLASS_ENTRY(ce, "PHK_Cache", PHK_Cache_functions);
+	INIT_CLASS_ENTRY(ce, "PHK\\Cache", PHK_Cache_functions);
 	entry = zend_register_internal_class(&ce TSRMLS_CC);
 
 	/*------*/

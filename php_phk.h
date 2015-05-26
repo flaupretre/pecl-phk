@@ -154,14 +154,14 @@ static DECLARE_HKEY(PHK_mp_property_name);
 static DECLARE_HKEY(web_main_redirect);
 static DECLARE_HKEY(_PHK_path);
 static DECLARE_HKEY(ORIG_PATH_INFO);
-static DECLARE_HKEY(phk_backend);
+static DECLARE_HKEY(phk_backend_class);
 static DECLARE_HKEY(lib_run_script);
 static DECLARE_HKEY(cli_run_script);
 static DECLARE_HKEY(auto_umount);
 static DECLARE_HKEY(argc);
 static DECLARE_HKEY(argv);
 static DECLARE_HKEY(automap);
-static DECLARE_HKEY(phk_stream_backend);
+static DECLARE_HKEY(phk_stream_backend_class);
 static DECLARE_HKEY(eaccelerator_get);
 static DECLARE_HKEY(phk);
 
@@ -182,7 +182,7 @@ int automap_sh_count;					/* Success handler count */
 
 /*-- PHK --*/
 
-HashTable *mtab;		/* PHK_Mgr - Null until initialized */
+HashTable *mtab;		/* PHK\Mgr - Null until initialized */
 PHK_Mnt  **mount_order;	/* Array of (PHK_Mnt *)|NULL */
 int mcount;				/* Size of the mount_order table */
 

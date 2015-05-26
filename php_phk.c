@@ -128,14 +128,13 @@ static void build_constant_values()
 	INIT_HKEY(web_main_redirect);
 	INIT_HKEY(_PHK_path);
 	INIT_HKEY(ORIG_PATH_INFO);
-	INIT_HKEY(phk_backend);
 	INIT_HKEY(lib_run_script);
 	INIT_HKEY(cli_run_script);
 	INIT_HKEY(auto_umount);
 	INIT_HKEY(argc);
 	INIT_HKEY(argv);
 	INIT_HKEY(automap);
-	INIT_HKEY(phk_stream_backend);
+	INIT_HKEY_VALUE(phk_stream_backend_class,"phk\\stream\\backend");
 	INIT_HKEY(eaccelerator_get);
 	INIT_HKEY(phk);
 }

@@ -139,10 +139,10 @@ static void PHK_Stream_get_file(int dir, zval * ret_p, zval * uri_p,
 		ZVAL_TRUE(can_cache);
 		args[4] = can_cache;
 		if (dir) {
-			ut_call_user_function(NULL,ZEND_STRL("PHK_Stream_Backend::get_dir_data")
+			ut_call_user_function(NULL,ZEND_STRL("PHK\\Stream\\Backend::get_dir_data")
 				, ret_p, 5, args TSRMLS_CC);
 		} else {
-			ut_call_user_function(NULL,ZEND_STRL("PHK_Stream_Backend::get_file_data")
+			ut_call_user_function(NULL,ZEND_STRL("PHK\\Stream\\Backend::get_file_data")
 				, ret_p, 5, args TSRMLS_CC);
 		}
 		if (EG(exception) || ZVAL_IS_NULL(ret_p))
@@ -373,7 +373,7 @@ static int do_stat(php_stream_wrapper * wrapper, const char *uri,
 		args[5] = z_mode;
 		args[6] = z_size;
 		args[7] = z_mtime;
-		ut_call_user_function_void(NULL, ZEND_STRL("PHK_Stream_Backend::get_stat_data")
+		ut_call_user_function_void(NULL, ZEND_STRL("PHK\\Stream\\Backend::get_stat_data")
 			, 8, args TSRMLS_CC);
 		if (EG(exception)) {
 			DBG_MSG1("do_stat: file not found (%s)", uri);
@@ -892,7 +892,7 @@ static int MINIT_PHK_Stream(TSRMLS_D)
 
 	/*-- Define PHK_Stream class */
 
-	INIT_CLASS_ENTRY(ce, "PHK_Stream", PHK_Stream_functions);
+	INIT_CLASS_ENTRY(ce, "PHK\\Stream\\Wrapper", PHK_Stream_functions);
 	zend_register_internal_class(&ce TSRMLS_CC);
 
 	return SUCCESS;
