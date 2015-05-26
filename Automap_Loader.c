@@ -43,16 +43,12 @@ static PHP_METHOD(Automap, autoload_hook)
 
 static void Automap_Loader_register_hook(TSRMLS_D)
 {
-	zval zv1, zv2, *args[3];
+	zval *zp;
 
-	INIT_ZVAL(zv1);
-	ZVAL_STRINGL(&zv1,"Automap\\Mgr::autoload_hook",26,1);
-	args[0]=&zv1;
-	INIT_ZVAL(zv2);
-	ZVAL_TRUE(&zv2);
-	args[1]=args[2]=&zv2;
-	ut_call_user_function_void(NULL,ZEND_STRL("spl_autoload_register"),3,args TSRMLS_CC);
-	ut_ezval_dtor(&zv1);
+	MAKE_STD_ZVAL(zp);
+	ZVAL_STRINGL(zp,"Automap\\Mgr::autoload_hook",26,1);
+	ut_call_user_function_void(NULL,ZEND_STRL("spl_autoload_register"),1,&zp TSRMLS_CC);
+	ut_ezval_ptr_dtor(&zp);	zval zv1;
 }
 
 /*---------------------------------------------------------------*/
