@@ -36,9 +36,9 @@ typedef struct {
 	int init_done;
 	time_t ctime;
 
-	zval *min_version;			/* String */
+	zval *minVersion;			/* String */
 	zval *options;				/* Array */
-	zval *build_info;			/* Array */
+	zval *buildInfo;			/* Array */
 
 	/* Shortcuts */
 
@@ -57,8 +57,8 @@ typedef struct {
 
 	/* Pre-computed constant values */
 
-	zval *base_uri;				/* String zval */
-	zval *automap_uri;			/* String zval or null if map not defined */
+	zval *baseURI;				/* String zval */
+	zval *automapURI;			/* String zval or null if map not defined */
 	zval *mount_script_uri;		/* String zval or null if not defined */
 	zval *umount_script_uri;	/* String zval or null if not defined */
 	zval *lib_run_script_uri;	/* String zval or null if not defined */
@@ -89,9 +89,9 @@ typedef struct _PHK_Mnt {
 
 	/* Persistent data */
 
-	zval *min_version;			/* (String zval *) */
+	zval *minVersion;			/* (String zval *) */
 	zval *options;				/* (Array zval *) */
-	zval *build_info;			/* (Array zval *) */
+	zval *buildInfo;			/* (Array zval *) */
 
 	/* Shortcuts (copy from persistent data) */
 
@@ -108,9 +108,9 @@ typedef struct _PHK_Mnt {
 
 	/* Pre-computed constant values (persistent) */
 
-	zval *base_uri;				/* (String zval *) */
-	zval *automap_uri;			/* (String zval *)|NULL */
-	long automap_id;			/* Long */
+	zval *baseURI;				/* (String zval *) */
+	zval *automapURI;			/* (String zval *)|NULL */
+	long automapID;			/* Long */
 	zval *mount_script_uri;		/* (String zval *)|NULL */
 	zval *umount_script_uri;	/* (String zval *)|NULL */
 	zval *lib_run_script_uri;	/* (String zval *)|NULL */
@@ -134,7 +134,7 @@ static void PHK_Mgr_remove_mnt(PHK_Mnt * mp TSRMLS_DC);
 static PHK_Mnt *PHK_Mgr_new_mnt(zval * mnt, ulong hash TSRMLS_DC);
 static PHK_Mnt *PHK_Mgr_get_mnt(zval * mnt, ulong hash,
 										  int exception TSRMLS_DC);
-static PHP_METHOD(PHK_Mgr, is_mounted);
+static PHP_METHOD(PHK_Mgr, isMounted);
 static void PHK_Mgr_validate(zval * mnt, ulong hash TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, validate);
 static void PHK_Mgr_umount(zval * mnt, ulong hash TSRMLS_DC);
@@ -146,37 +146,37 @@ static PHP_METHOD(PHK_Mgr, instance);
 static zval *PHK_Mgr_proxy_by_mp(PHK_Mnt * mp TSRMLS_DC);
 static zval *PHK_Mgr_proxy(zval * mnt, ulong hash TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, proxy);
-static void PHK_Mgr_mnt_list(zval * ret TSRMLS_DC);
-static PHP_METHOD(PHK_Mgr, mnt_list);
-static int PHK_Mgr_is_a_phk_uri(zval * path TSRMLS_DC);
-static PHP_METHOD(PHK_Mgr, is_a_phk_uri);
+static void PHK_Mgr_mntList(zval * ret TSRMLS_DC);
+static PHP_METHOD(PHK_Mgr, mntList);
+static int PHK_Mgr_isPhkUri(zval * path TSRMLS_DC);
+static PHP_METHOD(PHK_Mgr, isPhkUri);
 static void PHK_Mgr_uri(zval * mnt, zval * path, zval * ret TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, uri);
-static void PHK_Mgr_command_uri(zval * mnt, zval * command,
+static void PHK_Mgr_commandURI(zval * mnt, zval * command,
 								zval * ret TSRMLS_DC);
-static PHP_METHOD(PHK_Mgr, command_uri);
-static void PHK_Mgr_section_uri(zval * mnt, zval * section,
+static PHP_METHOD(PHK_Mgr, commandURI);
+static void PHK_Mgr_sectionURI(zval * mnt, zval * section,
 								zval * ret TSRMLS_DC);
-static PHP_METHOD(PHK_Mgr, section_uri);
-static void PHK_Mgr_normalize_uri(zval * uri, zval * ret TSRMLS_DC);
-static PHP_METHOD(PHK_Mgr, normalize_uri);
-static void compute_automap_uri(zval * mnt, zval * ret TSRMLS_DC);
-static PHP_METHOD(PHK_Mgr, automap_uri);
-static void compute_base_uri(zval * mnt, zval * ret TSRMLS_DC);
-static PHP_METHOD(PHK_Mgr, base_uri);
-static void PHK_Mgr_uri_to_mnt(zval * uri, zval * ret TSRMLS_DC);
-static PHP_METHOD(PHK_Mgr, uri_to_mnt);
-static void PHK_Mgr_toplevel_path(zval * zpath, zval * ret TSRMLS_DC);
-static PHP_METHOD(PHK_Mgr, toplevel_path);
-static void PHK_Mgr_php_version_check(TSRMLS_D);
-static PHP_METHOD(PHK_Mgr, php_version_check);
-static void PHK_Mgr_set_cache(zval * zp TSRMLS_DC);
-static PHP_METHOD(PHK_Mgr, set_cache);
-static int PHK_Mgr_cache_enabled(zval * mnt, ulong hash, zval * command,
+static PHP_METHOD(PHK_Mgr, sectionURI);
+static void PHK_Mgr_normalizeURI(zval * uri, zval * ret TSRMLS_DC);
+static PHP_METHOD(PHK_Mgr, normalizeURI);
+static void compute_automapURI(zval * mnt, zval * ret TSRMLS_DC);
+static PHP_METHOD(PHK_Mgr, automapURI);
+static void compute_baseURI(zval * mnt, zval * ret TSRMLS_DC);
+static PHP_METHOD(PHK_Mgr, baseURI);
+static void PHK_Mgr_uriToMnt(zval * uri, zval * ret TSRMLS_DC);
+static PHP_METHOD(PHK_Mgr, uriToMnt);
+static void PHK_Mgr_topLevelPath(zval * zpath, zval * ret TSRMLS_DC);
+static PHP_METHOD(PHK_Mgr, topLevelPath);
+static void PHK_Mgr_checkPhpVersion(TSRMLS_D);
+static PHP_METHOD(PHK_Mgr, checkPhpVersion);
+static void PHK_Mgr_setCache(zval * zp TSRMLS_DC);
+static PHP_METHOD(PHK_Mgr, setCache);
+static int PHK_Mgr_cacheEnabled(zval * mnt, ulong hash, zval * command,
 								 zval * params, zval * path TSRMLS_DC);
-static void PHK_Mgr_path_to_mnt(zval * path, zval * mnt TSRMLS_DC);
-static PHP_METHOD(PHK_Mgr, path_to_mnt);
-static void PHK_Mgr_compute_mnt(zval * path, PHK_Mnt ** parent_mpp,
+static void PHK_Mgr_pathToMnt(zval * path, zval * mnt TSRMLS_DC);
+static PHP_METHOD(PHK_Mgr, pathToMnt);
+static void PHK_Mgr_computeMnt(zval * path, PHK_Mnt ** parent_mpp,
 								zval ** mnt, zval ** mtime TSRMLS_DC);
 static long PHK_Mgr_mount_from_Automap(zval * path, long flags TSRMLS_DC);
 static PHK_Mnt *PHK_Mgr_mount(zval * path, long flags TSRMLS_DC);
@@ -184,7 +184,7 @@ static PHP_METHOD(PHK_Mgr, mount);
 static PHK_Pdata *PHK_Mgr_get_pdata(zval * mnt, ulong hash TSRMLS_DC);
 static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,ulong hash TSRMLS_DC);
 static void PHK_Mgr_populate_pdata(zval * mnt, ulong hash,PHK_Mnt * mp TSRMLS_DC);
-static PHP_METHOD(PHK_Mgr, mime_header);
+static PHP_METHOD(PHK_Mgr, mimeHeader);
 static void PHK_Mgr_Persistent_Data_dtor(PHK_Pdata * entry);
 
 static int MINIT_PHK_Mgr(TSRMLS_D);

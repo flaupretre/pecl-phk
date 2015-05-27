@@ -18,7 +18,7 @@
 
 /*---------------------------------------------------------------*/
 
-static char *Automap_type_to_string(char type TSRMLS_DC)
+static char *Automap_typeToString(char type TSRMLS_DC)
 {
 	automap_type_string *sp;
 
@@ -31,9 +31,9 @@ static char *Automap_type_to_string(char type TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
-/* {{{ proto string \Automap\Mgr::type_to_string(string type) */
+/* {{{ proto string \Automap\Mgr::typeToString(string type) */
 
-static PHP_METHOD(Automap, type_to_string)
+static PHP_METHOD(Automap, typeToString)
 {
 	char *type,*p;
 	int tlen;
@@ -41,14 +41,14 @@ static PHP_METHOD(Automap, type_to_string)
 	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "s", &type,&tlen) ==
 		FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
 
-	if (!(p=Automap_type_to_string(*type TSRMLS_CC))) return;
+	if (!(p=Automap_typeToString(*type TSRMLS_CC))) return;
 	RETURN_STRING(p,1);
 }
 
 /* }}} */
 /*---------------------------------------------------------------*/
 
-static char Automap_string_to_type(char *string TSRMLS_DC)
+static char Automap_stringToType(char *string TSRMLS_DC)
 {
 	automap_type_string *sp;
 
@@ -61,9 +61,9 @@ static char Automap_string_to_type(char *string TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
-/* {{{ proto string \Automap\Mgr::string_to_type(string str) */
+/* {{{ proto string \Automap\Mgr::stringToType(string str) */
 
-static PHP_METHOD(Automap, string_to_type)
+static PHP_METHOD(Automap, stringToType)
 {
 	char *string,c[2];
 	int slen;
@@ -71,7 +71,7 @@ static PHP_METHOD(Automap, string_to_type)
 	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "s", &string,&slen) ==
 		FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
 
-	if (!(c[0]=Automap_string_to_type(string TSRMLS_CC))) return;
+	if (!(c[0]=Automap_stringToType(string TSRMLS_CC))) return;
 	c[1]='\0';
 	RETURN_STRINGL(c,1,1);
 }

@@ -42,7 +42,7 @@ static Automap_Pmap *Automap_Pmap_get(zval *zufidp, ulong hash TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 /* Callback only - Used by Automap_Pmap_get_or_create() */
-/* zpp : Return from Automap_Map::_pecl_get_map(): array(stype,symbol,ptype,path) */
+/* zpp : Return from Automap_Map::_peclGetMap(): array(stype,symbol,ptype,path) */
 
 static int Automap_Pmap_create_entry(zval **zpp, zval **zsymbols	TSRMLS_DC)
 	{
@@ -157,14 +157,14 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp
 * - zufidp is non null
 * - hash is non null
 * - If buf is non null, it contains the map data (don't read from path)
-* - If zbase_pathp_arg is non null, it is the final absolute base
+* - If zbasePathp_arg is non null, it is the final absolute base
 *       path (with trailing separator)
-* - If zbase_pathp_arg is null, the value must be computed from the file path and
+* - If zbasePathp_arg is null, the value must be computed from the file path and
 *       content
 */
 
 static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
-	,zval *zufidp, ulong hash, zval *zbase_pathp_arg, long flags TSRMLS_DC)
+	,zval *zufidp, ulong hash, zval *zbasePathp_arg, long flags TSRMLS_DC)
 {
 	Automap_Pmap tmp_map, *pmp;
 	zval zdata, *args[3], zlong, *map, znull;
@@ -190,14 +190,14 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 
 	INIT_AUTOMAP_PMAP_GET_OR_CREATE();
 
-	PHK_need_php_runtime(TSRMLS_C);
+	PHK_needPhpRuntime(TSRMLS_C);
 
 	/* Instantiate \Automap\Map (load the map file) */
 
 	args[0] = zpathp;
 	ZVAL_LONG(&zlong,flags|AUTOMAP_FLAG_CRC_CHECK|AUTOMAP_FLAG_PECL_LOAD);
 	args[1] = &zlong;
-	args[2] = (zbase_pathp_arg ? zbase_pathp_arg : (&znull));
+	args[2] = (zbasePathp_arg ? zbasePathp_arg : (&znull));
 	map=ut_new_instance(ZEND_STRL("Automap\\Map"), YES, 3, args TSRMLS_CC);
 	if (EG(exception)) ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 
@@ -205,10 +205,10 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 
 	ZVAL_LONG(&zlong,AUTOMAP_MAP_PROTOCOL);
 	args[0] = &zlong;
-	ut_call_user_function_array(map,ZEND_STRL("_pecl_get_map"),&zdata,1,args);
+	ut_call_user_function_array(map,ZEND_STRL("_peclGetMap"),&zdata,1,args);
 	if (EG(exception)) ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	if (!ZVAL_IS_ARRAY(&zdata)) {
-		THROW_EXCEPTION_1("%s : Automap\\Map::_pecl_get_map() should return an array",Z_STRVAL_P(zpathp));
+		THROW_EXCEPTION_1("%s : Automap\\Map::_peclGetMap() should return an array",Z_STRVAL_P(zpathp));
 		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	}
 	
@@ -268,7 +268,7 @@ static Automap_Pmap_Entry *Automap_Pmap_find_key(Automap_Pmap *pmp
 
 /*---------------------------------------------------------------*/
 
-static void Automap_Pmap_export_entry(Automap_Pmap_Entry *pep, zval *zp TSRMLS_DC)
+static void Automap_Pmap_exportEntry(Automap_Pmap_Entry *pep, zval *zp TSRMLS_DC)
 {
 	char str[2];
 

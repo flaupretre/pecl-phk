@@ -50,12 +50,12 @@ static int Automap_Pmap_create_entry(zval **zpp, zval **zsymbols TSRMLS_DC);
 static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp
 	, long flags TSRMLS_DC);
 static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
-	, zval *zufidp, ulong hash, zval *zbase_pathp_arg, long flags TSRMLS_DC);
+	, zval *zufidp, ulong hash, zval *zbasePathp_arg, long flags TSRMLS_DC);
 static void Automap_Pmap_dtor(Automap_Pmap *pmp);
 static void Automap_Pmap_Entry_dtor(Automap_Pmap_Entry *pep);
 static Automap_Pmap_Entry *Automap_Pmap_find_key(Automap_Pmap *pmp
 	, zval *zkey, ulong hash TSRMLS_DC);
-static void Automap_Pmap_export_entry(Automap_Pmap_Entry *pep, zval *zp TSRMLS_DC);
+static void Automap_Pmap_exportEntry(Automap_Pmap_Entry *pep, zval *zp TSRMLS_DC);
 
 static int MINIT_Automap_Pmap(TSRMLS_D);
 static int MSHUTDOWN_Automap_Pmap(TSRMLS_D);

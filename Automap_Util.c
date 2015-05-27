@@ -17,16 +17,16 @@
 */
 
 /*---------------------------------------------------------------*/
-/* In case of error, free mem allocated by ut_path_unique_id() */
+/* In case of error, free mem allocated by ut_pathUniqueID() */
 
 static void Automap_ufid(zval *path, zval **zufidpp TSRMLS_DC)
 {
-	ut_path_unique_id('m', path, zufidpp, NULL TSRMLS_CC);
+	ut_pathUniqueID('m', path, zufidpp, NULL TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/
 
-static int Automap_symbol_is_defined(char type, char *symbol
+static int Automap_symbolIsDefined(char type, char *symbol
 	, unsigned int slen TSRMLS_DC)
 {
 	char *p;
@@ -68,7 +68,7 @@ static int Automap_symbol_is_defined(char type, char *symbol
 /*---------------------------------------------------------------*/
 /* {{{ proto bool PHK::using accelerator() */
 
-static PHP_METHOD(Automap, using_accelerator)
+static PHP_METHOD(Automap, usingAccelerator)
 {
 	RETVAL_TRUE;
 }

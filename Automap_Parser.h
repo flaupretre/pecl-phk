@@ -60,10 +60,10 @@
 /*============================================================================*/
 
 static PHP_NAMED_FUNCTION(Automap_Ext_file_get_contents);
-static PHP_NAMED_FUNCTION(Automap_Ext_parse_tokens);
-static void Automap_Parser_add_symbol(zval *arr,char type,char *ns,int nslen
+static PHP_NAMED_FUNCTION(Automap_Ext_parseTokens);
+static void Automap_Parser_addSymbol(zval *arr,char type,char *ns,int nslen
 	,char *name,int nalen);
-static void Automap_parse_tokens(zval *zbuf, int skip_blocks, zval *ret TSRMLS_DC);
+static void Automap_parseTokens(zval *zbuf, int skip_blocks, zval *ret TSRMLS_DC);
 
 static int MINIT_Automap_Parser(TSRMLS_D);
 static int MSHUTDOWN_Automap_Parser(TSRMLS_D);

@@ -87,50 +87,50 @@ ZEND_ARG_INFO(0, flags)
 /* No _bp parameter here */
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(Automap_autoload_hook_arginfo, 0, 0, 1)
+ZEND_BEGIN_ARG_INFO_EX(Automap_autoloadHook_arginfo, 0, 0, 1)
 ZEND_ARG_INFO(0, symbol)
 ZEND_ARG_INFO(0, type)
 ZEND_END_ARG_INFO()
 
 static zend_function_entry Automap_functions[] = {
 	PHP_ME(Automap, __construct, UT_noarg_arginfo, ZEND_ACC_PRIVATE)
-	PHP_ME(Automap, register_failure_handler, UT_1arg_arginfo,
+	PHP_ME(Automap, registerFailureHandler, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, register_success_handler, UT_1arg_arginfo,
+	PHP_ME(Automap, registerSuccessHandler, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, type_to_string, UT_1arg_arginfo,
+	PHP_ME(Automap, typeToString, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, string_to_type, UT_1arg_arginfo,
+	PHP_ME(Automap, stringToType, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, id_is_active, UT_1arg_arginfo,
+	PHP_ME(Automap, isActiveID, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, map, UT_1arg_ref_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, active_ids, UT_noarg_arginfo,
+	PHP_ME(Automap, activeIDs, UT_noarg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, load, Automap_load_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, unload, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, using_accelerator, UT_noarg_arginfo,
+	PHP_ME(Automap, usingAccelerator, UT_noarg_arginfo,
 		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-	PHP_ME(Automap, autoload_hook, Automap_autoload_hook_arginfo,
+	PHP_ME(Automap, autoloadHook, Automap_autoloadHook_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, get_function, UT_1arg_arginfo,
+	PHP_ME(Automap, getFunction, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, get_constant, UT_1arg_arginfo,
+	PHP_ME(Automap, getConstant, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, get_class, UT_1arg_arginfo,
+	PHP_ME(Automap, getClass, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, get_extension, UT_1arg_arginfo,
+	PHP_ME(Automap, getExtension, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, require_function, UT_1arg_arginfo,
+	PHP_ME(Automap, requireFunction, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, require_constant, UT_1arg_arginfo,
+	PHP_ME(Automap, requireConstant, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, require_class, UT_1arg_arginfo,
+	PHP_ME(Automap, requireClass, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
-	PHP_ME(Automap, require_extension, UT_1arg_arginfo,
+	PHP_ME(Automap, requireExtension, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL, 0, 0}
 };

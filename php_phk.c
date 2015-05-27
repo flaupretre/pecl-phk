@@ -59,7 +59,7 @@ static PHP_MINFO_FUNCTION(phk)
 
 	php_info_print_table_row(2, "PHK/Automap accelerator", "enabled");
 	php_info_print_table_row(2, "Version", PHK_ACCEL_VERSION);
-	php_info_print_table_row(2, "Cache used",PHK_Cache_cache_name(TSRMLS_C));
+	php_info_print_table_row(2, "Cache used",PHK_Cache_cacheName(TSRMLS_C));
 #ifdef PHK_DEBUG
 	{
 	char buf[10];
@@ -119,9 +119,9 @@ static void build_constant_values()
 	INIT_HKEY(argc);
 	INIT_HKEY(argv);
 	INIT_HKEY(automap);
-	INIT_HKEY_VALUE(phk_stream_backend_class,"phk\\stream\\backend");
+	INIT_HKEY_VALUE(phk_stream_backend_class_lc,"phk\\stream\\backend");
 	INIT_HKEY(eaccelerator_get);
-	INIT_HKEY(phk);
+	INIT_HKEY_VALUE(phk_class_lc,"phk");
 }
 
 /*---------------------------------------------------------------*/
@@ -184,7 +184,7 @@ static PHP_MINIT_FUNCTION(phk)
 	   the Automap PHP runtime has been initialized. In this case,
 	   we must not define anything */
 
-	if (EG(class_table) && HKEY_EXISTS(EG(class_table),phk)) return SUCCESS;
+	if (EG(class_table) && HKEY_EXISTS(EG(class_table),phk_class_lc)) return SUCCESS;
 	else init_done=1;
 
 	ZEND_INIT_MODULE_GLOBALS(phk, phk_globals_ctor, NULL);
@@ -243,7 +243,7 @@ static PHP_MSHUTDOWN_FUNCTION(phk)
 
 static zend_function_entry phk_functions[] = {
 	PHP_NAMED_FE(Automap\\Ext\\file_get_contents,Automap_Ext_file_get_contents, UT_1arg_arginfo)
-	PHP_NAMED_FE(Automap\\Ext\\parse_tokens,Automap_Ext_parse_tokens, UT_2args_arginfo)
+	PHP_NAMED_FE(Automap\\Ext\\parseTokens,Automap_Ext_parseTokens, UT_2args_arginfo)
     {NULL, NULL, NULL}  /* must be the last line */
 };
 

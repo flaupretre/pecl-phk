@@ -43,9 +43,9 @@ static PHP_NAMED_FUNCTION(Automap_Ext_file_get_contents)
 }
 
 /*---------------------------------------------------------------*/
-/* {{{ proto array _automap_parse_tokens(string buf, bool skip_blocks) */
+/* {{{ proto array Automap\Ext\parseTokens(string buf, bool skip_blocks) */
 
-static PHP_NAMED_FUNCTION(Automap_Ext_parse_tokens)
+static PHP_NAMED_FUNCTION(Automap_Ext_parseTokens)
 {
 	zval *zbuf;
 	zend_bool skip_blocks;
@@ -53,12 +53,12 @@ static PHP_NAMED_FUNCTION(Automap_Ext_parse_tokens)
 	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "zb",&zbuf,&skip_blocks
 		)==FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
 
-	Automap_parse_tokens(zbuf, skip_blocks, return_value TSRMLS_CC);
+	Automap_parseTokens(zbuf, skip_blocks, return_value TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/
 
-static void Automap_Parser_add_symbol(zval *arr,char type,char *ns,int nslen
+static void Automap_Parser_addSymbol(zval *arr,char type,char *ns,int nslen
 	,char *name,int nalen)
 {
 	char *key,*p;
@@ -107,7 +107,7 @@ static void Automap_Parser_add_symbol(zval *arr,char type,char *ns,int nslen
 
 #define TVALUE_IS_CHAR(_c)	((tvlen==1) && ((*tvalue)==_c))
 
-static void Automap_parse_tokens(zval *zbuf, int skip_blocks, zval *ret TSRMLS_DC)
+static void Automap_parseTokens(zval *zbuf, int skip_blocks, zval *ret TSRMLS_DC)
 {
 	int block_level,nalen,nslen,tnum,tvlen;
 	char ns[AUTOMAP_SYMBOL_MAX],*tvalue,schar;
@@ -220,7 +220,7 @@ static void Automap_parse_tokens(zval *zbuf, int skip_blocks, zval *ret TSRMLS_D
 				// No break here !
 			case AUTOMAP_ST_CLASS_FOUND:
 				if (tnum==T_STRING) {
-					Automap_Parser_add_symbol(ret,state,ns,nslen,tvalue,tvlen);
+					Automap_Parser_addSymbol(ret,state,ns,nslen,tvalue,tvlen);
 					}
 				else {
 					THROW_EXCEPTION_2("Unrecognized token for class/function definition (type=%d;value='%s'). String expected",tnum,tvalue);
@@ -232,7 +232,7 @@ static void Automap_parse_tokens(zval *zbuf, int skip_blocks, zval *ret TSRMLS_D
 
 			case AUTOMAP_ST_CONST_FOUND:
 				if (tnum==T_STRING) {
-					Automap_Parser_add_symbol(ret,AUTOMAP_T_CONSTANT,ns,nslen,tvalue,tvlen);
+					Automap_Parser_addSymbol(ret,AUTOMAP_T_CONSTANT,ns,nslen,tvalue,tvlen);
 					}
 				else {
 					THROW_EXCEPTION_2("Unrecognized token for constant definition (type=%d;value='%s'). String expected",tnum,tvalue);
@@ -282,7 +282,7 @@ static void Automap_parse_tokens(zval *zbuf, int skip_blocks, zval *ret TSRMLS_D
 					if (schar=='\'' || schar=='"') { /* trim(tvalue,schar) */
 						tvalue=ut_trim_char(tvalue,&tvlen,schar);
 						}
-					Automap_Parser_add_symbol(ret,AUTOMAP_T_CONSTANT,"",0,tvalue,tvlen);
+					Automap_Parser_addSymbol(ret,AUTOMAP_T_CONSTANT,"",0,tvalue,tvlen);
 					}
 				else {
 					THROW_EXCEPTION_2("Unrecognized token for constant definition (type=%d;value='%s'). Expected quoted string constant",tnum,tvalue);

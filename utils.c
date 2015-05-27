@@ -544,7 +544,7 @@ UT_SYMBOL int ut_extension_loaded(char *name, int len TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-UT_SYMBOL void ut_load_extension_file(zval *file TSRMLS_DC)
+UT_SYMBOL void ut_loadExtension_file(zval *file TSRMLS_DC)
 {
 	if (!ut_call_user_function_bool(NULL,ZEND_STRL("dl"),1,&file TSRMLS_CC)) {
 		THROW_EXCEPTION_1("%s: Cannot load extension",Z_STRVAL_P(file));
@@ -559,7 +559,7 @@ UT_SYMBOL void ut_load_extension_file(zval *file TSRMLS_DC)
 #define _UT_LE_PREFIX
 #endif
 
-UT_SYMBOL void ut_load_extension(char *name, int len TSRMLS_DC)
+UT_SYMBOL void ut_loadExtension(char *name, int len TSRMLS_DC)
 {
 	zval *zp;
 	char *p;
@@ -570,21 +570,21 @@ UT_SYMBOL void ut_load_extension(char *name, int len TSRMLS_DC)
 	MAKE_STD_ZVAL(zp);
 	ZVAL_STRING(zp,p,0);
 
-	ut_load_extension_file(zp TSRMLS_CC);
+	ut_loadExtension_file(zp TSRMLS_CC);
 
 	ut_ezval_ptr_dtor(&zp);
 }
 
 /*---------------------------------------------------------------*/
 
-UT_SYMBOL void ut_load_extensions(zval * extensions TSRMLS_DC)
+UT_SYMBOL void ut_loadExtensions(zval * extensions TSRMLS_DC)
 {
 	HashTable *ht;
 	HashPosition pos;
 	zval **zpp;
 
 	if (!ZVAL_IS_ARRAY(extensions)) {
-		THROW_EXCEPTION("ut_load_extensions: argument should be an array");
+		THROW_EXCEPTION("ut_loadExtensions: argument should be an array");
 		return;
 	}
 
@@ -594,7 +594,7 @@ UT_SYMBOL void ut_load_extensions(zval * extensions TSRMLS_DC)
 	while (zend_hash_get_current_data_ex(ht, (void **) (&zpp), &pos) ==
 		   SUCCESS) {
 		if (ZVAL_IS_STRING(*zpp)) {
-			ut_load_extension(Z_STRVAL_PP(zpp),Z_STRLEN_PP(zpp) TSRMLS_CC);
+			ut_loadExtension(Z_STRVAL_PP(zpp),Z_STRLEN_PP(zpp) TSRMLS_CC);
 			if (EG(exception)) return;
 		}
 		zend_hash_move_forward_ex(ht, &pos);
@@ -644,7 +644,7 @@ UT_SYMBOL void ut_header(long response_code, char *string TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-UT_SYMBOL void ut_http_403_fail(TSRMLS_D)
+UT_SYMBOL void ut_http403Fail(TSRMLS_D)
 {
 	ut_header(403, "HTTP/1.0 403 Forbidden" TSRMLS_CC);
 
@@ -653,7 +653,7 @@ UT_SYMBOL void ut_http_403_fail(TSRMLS_D)
 
 /*---------------------------------------------------------------*/
 
-UT_SYMBOL void ut_http_404_fail(TSRMLS_D)
+UT_SYMBOL void ut_http404Fail(TSRMLS_D)
 {
 	ut_header(404, "HTTP/1.0 404 Not Found" TSRMLS_CC);
 
@@ -710,7 +710,7 @@ UT_SYMBOL zval *_ut_REQUEST_element(HKEY_STRUCT * hkey TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-UT_SYMBOL char *ut_http_base_url(TSRMLS_D)
+UT_SYMBOL char *ut_httpBaseURL(TSRMLS_D)
 {
 	zval *pathinfo, *php_self;
 	int ilen, slen, nslen;
@@ -742,15 +742,15 @@ UT_SYMBOL char *ut_http_base_url(TSRMLS_D)
 
 /*---------------------------------------------------------------*/
 
-UT_SYMBOL void ut_http_301_redirect(char *path, int must_free TSRMLS_DC)
+UT_SYMBOL void ut_http301Redirect(char *path, int must_free TSRMLS_DC)
 {
-	char *p,*base_url;
+	char *p,*baseURL;
 
-	base_url=ut_http_base_url(TSRMLS_C);
+	baseURL=ut_httpBaseURL(TSRMLS_C);
 	if (EG(exception)) return;
 
 	spprintf(&p, UT_PATH_MAX, "Location: http://%s%s%s",
-			 Z_STRVAL_P(SERVER_ELEMENT(HTTP_HOST)),base_url,path);
+			 Z_STRVAL_P(SERVER_ELEMENT(HTTP_HOST)),baseURL,path);
 
 	ut_header(301, p TSRMLS_CC);
 	efree(p);
@@ -821,7 +821,7 @@ UT_SYMBOL void ut_tolower(char *p, int len TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-UT_SYMBOL void ut_file_suffix(zval * path, zval * ret TSRMLS_DC)
+UT_SYMBOL void ut_fileSuffix(zval * path, zval * ret TSRMLS_DC)
 {
 	int found, suffix_len;
 	char *p;
@@ -980,7 +980,7 @@ UT_SYMBOL char *ut_absolute_dirname(char *path, int len, int *reslen, int separ 
 	int dlen;
 
 	dir=ut_dirname(path,len,&dlen TSRMLS_CC);
-	res=ut_mk_absolute_path(dir,dlen,reslen,separ TSRMLS_CC);
+	res=ut_mkAbsolutePath(dir,dlen,reslen,separ TSRMLS_CC);
 	EFREE(dir);
 	return res;
 }
@@ -1020,7 +1020,7 @@ UT_SYMBOL int ut_is_uri(char *path, int len TSRMLS_DC)
 /* Return a newly-allocated absolute path with a trailing separator or not*/
 /* A URI is considered as an absolute path */
 
-UT_SYMBOL char *ut_mk_absolute_path(char *path, int len, int *reslen
+UT_SYMBOL char *ut_mkAbsolutePath(char *path, int len, int *reslen
 	, int separ TSRMLS_DC)
 {
 	char buf[MAXPATHLEN];
@@ -1096,7 +1096,7 @@ return (p-p1);
 
 /*---------------------------------------------------------------*/
 
-UT_SYMBOL void ut_path_unique_id(char prefix, zval * path, zval ** mnt
+UT_SYMBOL void ut_pathUniqueID(char prefix, zval * path, zval ** mnt
 	, time_t *mtp  TSRMLS_DC)
 {
 	char *p;

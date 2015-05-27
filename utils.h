@@ -444,23 +444,23 @@ UT_SYMBOL inline void ut_call_user_function_array(zval * obj_zp, char *func,
 UT_SYMBOL inline void ut_call_user_function(zval *obj_zp, char *func,
 	int func_len, zval *ret, int nb_args, zval ** args TSRMLS_DC);
 UT_SYMBOL int ut_extension_loaded(char *name, int len TSRMLS_DC);
-UT_SYMBOL void ut_load_extension_file(zval *file TSRMLS_DC);
-UT_SYMBOL void ut_load_extension(char *name, int len TSRMLS_DC);
-UT_SYMBOL void ut_load_extensions(zval * extensions TSRMLS_DC);
+UT_SYMBOL void ut_loadExtension_file(zval *file TSRMLS_DC);
+UT_SYMBOL void ut_loadExtension(char *name, int len TSRMLS_DC);
+UT_SYMBOL void ut_loadExtensions(zval * extensions TSRMLS_DC);
 UT_SYMBOL void ut_require(char *string, zval * ret TSRMLS_DC);
 UT_SYMBOL inline int ut_strings_are_equal(zval * zp1, zval * zp2 TSRMLS_DC);
 UT_SYMBOL void ut_header(long response_code, char *string TSRMLS_DC);
-UT_SYMBOL void ut_http_403_fail(TSRMLS_D);
-UT_SYMBOL void ut_http_404_fail(TSRMLS_D);
+UT_SYMBOL void ut_http403Fail(TSRMLS_D);
+UT_SYMBOL void ut_http404Fail(TSRMLS_D);
 UT_SYMBOL void ut_exit(int status TSRMLS_DC);
 UT_SYMBOL inline zval *_ut_SERVER_element(HKEY_STRUCT * hkey TSRMLS_DC);
 UT_SYMBOL inline zval *_ut_REQUEST_element(HKEY_STRUCT * hkey TSRMLS_DC);
-UT_SYMBOL char *ut_http_base_url(TSRMLS_D);
-UT_SYMBOL void ut_http_301_redirect(char *path, int must_free TSRMLS_DC);
+UT_SYMBOL char *ut_httpBaseURL(TSRMLS_D);
+UT_SYMBOL void ut_http301Redirect(char *path, int must_free TSRMLS_DC);
 UT_SYMBOL char *ut_trim_char(char *str, int *lenp, char c);
 UT_SYMBOL inline void ut_rtrim_zval(zval * zp TSRMLS_DC);
 UT_SYMBOL inline void ut_tolower(char *p, int len TSRMLS_DC);
-UT_SYMBOL inline void ut_file_suffix(zval * path, zval * ret TSRMLS_DC);
+UT_SYMBOL inline void ut_fileSuffix(zval * path, zval * ret TSRMLS_DC);
 UT_SYMBOL void ut_unserialize_zval(const unsigned char *buffer
 	, unsigned long len, zval *ret TSRMLS_DC);
 UT_SYMBOL void ut_file_get_contents(char *path, zval *ret TSRMLS_DC);
@@ -472,10 +472,10 @@ UT_SYMBOL void ut_printf_pad_both(char *str, int len, int size TSRMLS_DC);
 UT_SYMBOL char *ut_absolute_dirname(char *path, int len, int *reslen, int separ TSRMLS_DC);
 UT_SYMBOL char *ut_dirname(char *path, int len, int *reslen TSRMLS_DC);
 UT_SYMBOL inline int ut_is_uri(char *path, int len TSRMLS_DC);
-UT_SYMBOL char *ut_mk_absolute_path(char *path, int len, int *reslen
+UT_SYMBOL char *ut_mkAbsolutePath(char *path, int len, int *reslen
 	, int separ TSRMLS_DC);
 UT_SYMBOL int ut_cut_at_space(char *p);
-UT_SYMBOL void ut_path_unique_id(char prefix, zval * path, zval ** mnt
+UT_SYMBOL void ut_pathUniqueID(char prefix, zval * path, zval ** mnt
 	, time_t *mtp  TSRMLS_DC);
 UT_SYMBOL void ut_compute_crc32(const unsigned char *input, size_t input_len
 	, char *output TSRMLS_DC);

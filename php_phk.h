@@ -153,9 +153,9 @@ static DECLARE_HKEY(auto_umount);
 static DECLARE_HKEY(argc);
 static DECLARE_HKEY(argv);
 static DECLARE_HKEY(automap);
-static DECLARE_HKEY(phk_stream_backend_class);
+static DECLARE_HKEY(phk_stream_backend_class_lc);
 static DECLARE_HKEY(eaccelerator_get);
-static DECLARE_HKEY(phk);
+static DECLARE_HKEY(phk_class_lc);
 
 /*============================================================================*/
 
@@ -166,10 +166,10 @@ ZEND_BEGIN_MODULE_GLOBALS(phk)
 Automap_Mnt **map_array;	/* Array of (Automap_Mnt *)|NULL, index = map ID */
 int map_count;				/* Size of map_array */
 
-zval **automap_failure_handlers;
+zval **automap_failureHandlers;
 int automap_fh_count;					/* Failure handler count */
 
-zval **automap_success_handlers;
+zval **automap_successHandlers;
 int automap_sh_count;					/* Success handler count */
 
 /*-- PHK --*/
@@ -184,7 +184,7 @@ char root_package[UT_PATH_MAX + 1];
 
 int php_runtime_is_loaded;
 
-zval *mime_table;
+zval *mimeTable;
 
 ZEND_END_MODULE_GLOBALS(phk)
 

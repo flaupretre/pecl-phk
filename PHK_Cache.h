@@ -56,14 +56,14 @@ static int cache_maxsize = 524288;	/* Default: 512 Kb */
 
 /*============================================================================*/
 
-static int PHK_Cache_cache_present(TSRMLS_D);
-static PHP_METHOD(PHK_Cache, cache_present);
-static char *PHK_Cache_cache_name(TSRMLS_D);
-static PHP_METHOD(PHK_Cache, cache_name);
-static void PHK_Cache_cache_id(const char *prefix, int prefix_len, const char *key,
+static int PHK_Cache_cachePresent(TSRMLS_D);
+static PHP_METHOD(PHK_Cache, cachePresent);
+static char *PHK_Cache_cacheName(TSRMLS_D);
+static PHP_METHOD(PHK_Cache, cacheName);
+static void PHK_Cache_cacheID(const char *prefix, int prefix_len, const char *key,
 							   int key_len, zval * z_ret_p TSRMLS_DC);
-static PHP_METHOD(PHK_Cache, cache_id);
-static PHP_METHOD(PHK_Cache, set_maxsize);
+static PHP_METHOD(PHK_Cache, cacheID);
+static PHP_METHOD(PHK_Cache, setCacheMaxSize);
 static void PHK_Cache_get(zval * z_key_p, zval * z_ret_p TSRMLS_DC);
 static PHP_METHOD(PHK_Cache, get);
 static void PHK_Cache_set(zval * z_key_p, zval * z_data_p TSRMLS_DC);

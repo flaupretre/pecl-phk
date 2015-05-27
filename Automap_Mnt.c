@@ -52,9 +52,9 @@ static Automap_Mnt *Automap_Mnt_get(long id, int exception TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
-/* {{{ proto boolean \Automap\Mgr::id_is_active(integer id) */
+/* {{{ proto boolean \Automap\Mgr::isActiveID(integer id) */
 
-static PHP_METHOD(Automap, id_is_active)
+static PHP_METHOD(Automap, isActiveID)
 {
 	zval *zid;
 	int retval;
@@ -133,7 +133,7 @@ static Automap_Mnt *Automap_Mnt_load(zval *zpathp, long flags TSRMLS_DC)
 
 	if (!ZVAL_IS_STRING(zpathp)) convert_to_string(zpathp);
 	/* Make path absolute */
-	p=ut_mk_absolute_path(Z_STRVAL_P(zpathp),Z_STRLEN_P(zpathp),&len,0 TSRMLS_CC);
+	p=ut_mkAbsolutePath(Z_STRVAL_P(zpathp),Z_STRLEN_P(zpathp),&len,0 TSRMLS_CC);
 	MAKE_STD_ZVAL(zapathp);
 	ZVAL_STRINGL(zapathp, p, len, 0);
 	
@@ -158,7 +158,7 @@ static Automap_Mnt *Automap_Mnt_load(zval *zpathp, long flags TSRMLS_DC)
 /*---------------------------------------------------------------*/
 /* {{{ proto string \Automap\Mgr::load(string path[, int flags]) */
 
-/* The $_bp arg of the PHP version of \Automap\Mgr::load is only used when loading a
+/* The $_bp arg of the PHP version of Automap\Mgr::load is only used when loading a
 * package through the PHK PHP runtime . Here, as both extensions are merged,
 * we know that PHK are loaded through their extension, using another mechanism.
 * So, we don't need the $_bp parameter.
@@ -210,9 +210,9 @@ static PHP_METHOD(Automap, unload)
 
 /* }}} */
 /*---------------------------------------------------------------*/
-/* {{{ proto array \Automap\Mgr::active_ids() */
+/* {{{ proto array \Automap\Mgr::activeIDs() */
 
-static PHP_METHOD(Automap, active_ids)
+static PHP_METHOD(Automap, activeIDs)
 {
 	long i;
 	Automap_Mnt *mp;
@@ -260,9 +260,9 @@ static int Automap_Mnt_resolve_key(Automap_Mnt *mp, zval *zkey, ulong hash TSRML
 
 	switch(ftype=pep->ftype) {
 		case AUTOMAP_F_EXTENSION:
-			ut_load_extension_file(&(pep->zfapath) TSRMLS_CC);
+			ut_loadExtension_file(&(pep->zfapath) TSRMLS_CC);
 			if (EG(exception)) RETURN_AUTOMAP_MNT_RESOLVE_KEY(FAILURE);
-			Automap_call_success_handlers(mp,pep TSRMLS_CC);
+			Automap_callSuccessHandlers(mp,pep TSRMLS_CC);
 			RETURN_AUTOMAP_MNT_RESOLVE_KEY(SUCCESS);
 			break;
 
@@ -271,7 +271,7 @@ static int Automap_Mnt_resolve_key(Automap_Mnt *mp, zval *zkey, ulong hash TSRML
 			spprintf(&req_str,1024,"require '%s';",Z_STRVAL(pep->zfapath));
 			DBG_MSG1("eval : %s",req_str);
 			zend_eval_string(req_str,NULL,req_str TSRMLS_CC);
-			Automap_call_success_handlers(mp,pep TSRMLS_CC);
+			Automap_callSuccessHandlers(mp,pep TSRMLS_CC);
 			RETURN_AUTOMAP_MNT_RESOLVE_KEY(SUCCESS);
 			break;
 

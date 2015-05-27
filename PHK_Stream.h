@@ -42,10 +42,10 @@ static void free_dp(PHK_STREAM_DATA ** dpp);
 static void clear_last_cached_opcode(TSRMLS_D);
 static void set_last_cached_opcode(const char *path, int len TSRMLS_DC);
 static int is_last_cached_opcode(const char *path, int len TSRMLS_DC);
-static void PHK_Stream_get_file(int dir, zval * z_ret_p, zval * z_uri_p,
+static void PHK_Stream_getFile(int dir, zval * z_ret_p, zval * z_uri_p,
 	zval * z_mnt_p, zval * z_command_p, zval * z_params_p, zval * z_path_p,
 	zval * z_cache_p TSRMLS_DC);
-static PHP_METHOD(PHK_Stream, get_file);
+static PHP_METHOD(PHK_Stream, getFile);
 static size_t PHK_Stream_write(php_stream * stream, const char *buf,
 	size_t count TSRMLS_DC);
 static size_t PHK_Stream_read(php_stream * stream, char *buf,
@@ -73,7 +73,7 @@ static int PHK_Stream_url_stat(php_stream_wrapper * wrapper, const char *uri,
 static php_stream *PHK_Stream_opendir(php_stream_wrapper * wrapper,
 	const char *uri, const char *mode, int options, char **opened_path,
 	php_stream_context *context STREAMS_DC TSRMLS_DC);
-static void PHK_Stream_parse_uri(zval * uri, zval * z_command,
+static void PHK_Stream_parseURI(zval * uri, zval * z_command,
 	zval * z_params, zval * z_mnt, zval * z_path TSRMLS_DC);
 static char *PHK_Stream_cache_key(php_stream_wrapper * wrapper,
 	const char *uri, int uri_len, int *key_len TSRMLS_DC);
