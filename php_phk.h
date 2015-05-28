@@ -106,7 +106,7 @@
 #include "PHK_Mgr.h"
 #include "PHK.h"
 
-#if ZEND_EXTENSION_API_NO >= PHP_5_5_X_API_NO
+#if ZEND_EXTENSION_API_NO >= PHP_5_6_X_API_NO
 #include "zend_virtual_cwd.h"
 #else
 #include "TSRM/tsrm_virtual_cwd.h"
@@ -146,7 +146,6 @@ static DECLARE_HKEY(PHK_mp_property_name);
 static DECLARE_HKEY(web_main_redirect);
 static DECLARE_HKEY(_PHK_path);
 static DECLARE_HKEY(ORIG_PATH_INFO);
-static DECLARE_HKEY(phk_backend_class);
 static DECLARE_HKEY(lib_run_script);
 static DECLARE_HKEY(cli_run_script);
 static DECLARE_HKEY(auto_umount);

@@ -48,7 +48,7 @@
 #include "SAPI.h"
 #include "php_streams.h"
 
-#if ZEND_EXTENSION_API_NO >= PHP_5_5_X_API_NO
+#if ZEND_EXTENSION_API_NO >= PHP_5_6_X_API_NO
 #include "zend_virtual_cwd.h"
 #else
 #include "TSRM/tsrm_virtual_cwd.h"
@@ -291,6 +291,7 @@ UT_SYMBOL void ut_pzval_dtor(zval *zp) { ut_pezval_dtor(zp,1); }
 
 UT_SYMBOL void ut_pezval_ptr_dtor(zval ** zpp, int persistent)
 {
+	TSRMLS_FETCH();
 	if (*zpp) {
 		if (persistent) {
 			ut_decref(*zpp);
