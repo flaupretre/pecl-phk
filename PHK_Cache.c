@@ -55,45 +55,45 @@ static int PHK_Cache_eaccelerator_init(TSRMLS_D)
 /* PHK_Cache class                                                            */
 
 /*---------------*/
-/* cache_present() */
+/* cachePresent() */
 
 /*-- C API ----*/
 
-static int PHK_Cache_cache_present(TSRMLS_D)
+static int PHK_Cache_cachePresent(TSRMLS_D)
 {
 	return (cache != NULL);
 }
 
 /*-- PHP API --*/
-/* {{{ proto bool PHK_Cache::cache_present() */
+/* {{{ proto bool PHK_Cache::cachePresent() */
 
-static PHP_METHOD(PHK_Cache, cache_present)
+static PHP_METHOD(PHK_Cache, cachePresent)
 {
-	RETURN_BOOL(PHK_Cache_cache_present(TSRMLS_C));
+	RETURN_BOOL(PHK_Cache_cachePresent(TSRMLS_C));
 }
 
 /* }}} */
 /*---------------*/
-/* cache_name() */
+/* cacheName() */
 
 /*-- C API ----*/
 
-static char *PHK_Cache_cache_name(TSRMLS_D)
+static char *PHK_Cache_cacheName(TSRMLS_D)
 {
 	return (cache ? cache->name : "none");
 }
 
 /*-- PHP API --*/
-/* {{{ proto string PHK_Cache::cache_name() */
+/* {{{ proto string PHK_Cache::cacheName() */
 
-static PHP_METHOD(PHK_Cache, cache_name)
+static PHP_METHOD(PHK_Cache, cacheName)
 {
-	RETVAL_STRING(PHK_Cache_cache_name(TSRMLS_C), 1);
+	RETVAL_STRING(PHK_Cache_cacheName(TSRMLS_C), 1);
 }
 
 /* }}} */
 /*---------------*/
-/* cache_id() */
+/* cacheID() */
 /* Note: We use a different key for accelerated and non-accelerated versions
 * because the cached data has different formats and, in theory, the cached data
 * can be persistent across PHP invocations.
@@ -101,7 +101,7 @@ static PHP_METHOD(PHK_Cache, cache_name)
 
 /*-- C API ----*/
 
-static void PHK_Cache_cache_id(char *prefix, int prefix_len, char *key,
+static void PHK_Cache_cacheID(const char *prefix, int prefix_len, const char *key,
 	int key_len, zval * z_ret_p TSRMLS_DC)
 {
 	char *p;
@@ -119,9 +119,9 @@ static void PHK_Cache_cache_id(char *prefix, int prefix_len, char *key,
 }
 
 /*-- PHP API --*/
-/* {{{ proto string PHK_Cache::cache_id(string prefix, string key) */
+/* {{{ proto string PHK_Cache::cacheID(string prefix, string key) */
 
-static PHP_METHOD(PHK_Cache, cache_id)
+static PHP_METHOD(PHK_Cache, cacheID)
 {
 	char *prefix, *key;
 	int prefix_len, key_len;
@@ -131,19 +131,22 @@ static PHP_METHOD(PHK_Cache, cache_id)
 		 &key_len) == FAILURE)
 		EXCEPTION_ABORT("Cannot parse parameters");
 
-	PHK_Cache_cache_id(prefix, prefix_len, key, key_len,
+	PHK_Cache_cacheID(prefix, prefix_len, key, key_len,
 					   return_value TSRMLS_CC);
 }
 
 /* }}} */
 /*---------------*/
-/* {{{ proto void PHK_Cache::set_maxsize(int size) */
+/* {{{ proto void PHK_Cache::setCacheMaxSize(int size) */
 
-static PHP_METHOD(PHK_Cache, set_maxsize)
+static PHP_METHOD(PHK_Cache, setCacheMaxSize)
 {
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "l", &cache_maxsize)
-		== FAILURE)
-		EXCEPTION_ABORT("Cannot parse parameters");
+	long tmp;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "l", &tmp)
+ 		== FAILURE)
+ 		EXCEPTION_ABORT("Cannot parse parameters");
+	cache_maxsize = (int)tmp;
 }
 
 /* }}} */
@@ -243,13 +246,13 @@ static PHP_METHOD(PHK_Cache, set)
 /*---------------------------------------------------------------*/
 
 static zend_function_entry PHK_Cache_functions[] = {
-	PHP_ME(PHK_Cache, cache_present, UT_noarg_arginfo,
+	PHP_ME(PHK_Cache, cachePresent, UT_noarg_arginfo,
 		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-	PHP_ME(PHK_Cache, cache_name, UT_noarg_arginfo,
+	PHP_ME(PHK_Cache, cacheName, UT_noarg_arginfo,
 		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-	PHP_ME(PHK_Cache, cache_id, UT_2args_arginfo,
+	PHP_ME(PHK_Cache, cacheID, UT_2args_arginfo,
 		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-	PHP_ME(PHK_Cache, set_maxsize, UT_1arg_arginfo,
+	PHP_ME(PHK_Cache, setCacheMaxSize, UT_1arg_arginfo,
 		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	PHP_ME(PHK_Cache, get, UT_1arg_arginfo,
 		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -269,7 +272,7 @@ static int MINIT_PHK_Cache(TSRMLS_D)
 	/*------*/
 	/* Init class */
 
-	INIT_CLASS_ENTRY(ce, "PHK_Cache", PHK_Cache_functions);
+	INIT_CLASS_ENTRY(ce, "PHK\\Cache", PHK_Cache_functions);
 	entry = zend_register_internal_class(&ce TSRMLS_CC);
 
 	/*------*/

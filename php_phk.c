@@ -35,13 +35,14 @@ static int init_done=0;
 #include "utils.c"
 
 #include "Automap_Handlers.c"
-#include "Automap_Instance.c"
+#include "Automap_Class.c"
 #include "Automap_Key.c"
 #include "Automap_Loader.c"
 #include "Automap_Mnt.c"
 #include "Automap_Pmap.c"
 #include "Automap_Type.c"
 #include "Automap_Util.c"
+#include "Automap_Parser.c"
 
 #include "PHK_Cache.c"
 #include "PHK_Stream.c"
@@ -58,14 +59,14 @@ static PHP_MINFO_FUNCTION(phk)
 
 	php_info_print_table_row(2, "PHK/Automap accelerator", "enabled");
 	php_info_print_table_row(2, "Version", PHK_ACCEL_VERSION);
-	php_info_print_table_row(2, "Cache used",PHK_Cache_cache_name(TSRMLS_C));
+	php_info_print_table_row(2, "Cache used",PHK_Cache_cacheName(TSRMLS_C));
 #ifdef PHK_DEBUG
 	{
 	char buf[10];
 
 	sprintf(buf,"%d",zend_hash_num_elements(&persistent_mtab));
 	php_info_print_table_row(2, "Persistent package count",buf);
-	sprintf(buf,"%d",zend_hash_num_elements(&ptab));
+	sprintf(buf,"%d",zend_hash_num_elements(&pmap_array));
 	php_info_print_table_row(2, "Persistent map count",buf);
 	}
 #endif
@@ -94,26 +95,7 @@ static void phk_globals_dtor(zend_phk_globals * globals TSRMLS_DC)
 
 static void build_constant_values()
 {
-	/* Constant zvalues */
-
-	INIT_ZVAL(CZVAL(false));
-	ZVAL_BOOL(&CZVAL(false), 0);
-
-	INIT_ZVAL(CZVAL(true));
-	ZVAL_BOOL(&CZVAL(true), 1);
-
-	INIT_ZVAL(CZVAL(null));
-	ZVAL_NULL(&CZVAL(null));
-
-	INIT_CZVAL(Automap);
-	INIT_CZVAL(spl_autoload_register);
-	INIT_CZVAL_VALUE(Automap__autoload_hook,"Automap::autoload_hook");
-	
-	/* Hash keys */
-
-	INIT_HKEY(map);
-	INIT_HKEY(options);
-	INIT_HKEY(automap);
+	/* Pre-compute constant hash keys */
 
 	INIT_HKEY(no_cache);
 	INIT_HKEY(no_opcode_cache);
@@ -127,20 +109,19 @@ static void build_constant_values()
 	INIT_HKEY(max_php_version);
 	INIT_HKEY(mime_types);
 	INIT_HKEY(web_run_script);
-	INIT_HKEY_VALUE(mp_property_name,MP_PROPERTY_NAME);
+	INIT_HKEY_VALUE(PHK_mp_property_name,PHK_MP_PROPERTY_NAME);
 	INIT_HKEY(web_main_redirect);
 	INIT_HKEY(_PHK_path);
 	INIT_HKEY(ORIG_PATH_INFO);
-	INIT_HKEY(phk_backend);
 	INIT_HKEY(lib_run_script);
 	INIT_HKEY(cli_run_script);
 	INIT_HKEY(auto_umount);
 	INIT_HKEY(argc);
 	INIT_HKEY(argv);
 	INIT_HKEY(automap);
-	INIT_HKEY(phk_stream_backend);
+	INIT_HKEY_VALUE(phk_stream_backend_class_lc,"phk\\stream\\backend");
 	INIT_HKEY(eaccelerator_get);
-	INIT_HKEY(phk);
+	INIT_HKEY_VALUE(phk_class_lc,"phk");
 }
 
 /*---------------------------------------------------------------*/
@@ -153,13 +134,14 @@ static PHP_RINIT_FUNCTION(phk)
 
 	if (RINIT_utils(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RINIT_Automap_Handlers(TSRMLS_C) == FAILURE) return FAILURE;
-	if (RINIT_Automap_Instance(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RINIT_Automap_Class(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RINIT_Automap_Key(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RINIT_Automap_Loader(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RINIT_Automap_Mnt(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RINIT_Automap_Pmap(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RINIT_Automap_Type(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RINIT_Automap_Util(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RINIT_Automap_Parser(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RINIT_PHK_Cache(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RINIT_PHK_Stream(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RINIT_PHK_Mgr(TSRMLS_C) == FAILURE) return FAILURE;
@@ -178,13 +160,14 @@ static PHP_RSHUTDOWN_FUNCTION(phk)
 	if (RSHUTDOWN_PHK_Mgr(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RSHUTDOWN_PHK_Stream(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RSHUTDOWN_PHK_Cache(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RSHUTDOWN_Automap_Parser(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RSHUTDOWN_Automap_Util(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RSHUTDOWN_Automap_Type(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RSHUTDOWN_Automap_Pmap(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RSHUTDOWN_Automap_Mnt(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RSHUTDOWN_Automap_Loader(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RSHUTDOWN_Automap_Key(TSRMLS_C) == FAILURE) return FAILURE;
-	if (RSHUTDOWN_Automap_Instance(TSRMLS_C) == FAILURE) return FAILURE;
+	if (RSHUTDOWN_Automap_Class(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RSHUTDOWN_Automap_Handlers(TSRMLS_C) == FAILURE) return FAILURE;
 	if (RSHUTDOWN_utils(TSRMLS_C) == FAILURE) return FAILURE;
 
@@ -200,9 +183,12 @@ static PHP_MINIT_FUNCTION(phk)
 	/* Handle case where the Automap extension is dynamically loaded after
 	   the Automap PHP runtime has been initialized. In this case,
 	   we must not define anything */
+	/* Test disabled because some environments crash when accessing EG()
+	   during MINIT. Todo : check more precisely if executor is valid
+	   before accessing EG(). */
+	/* if (EG(class_table) && HKEY_EXISTS(EG(class_table),phk_class_lc)) return SUCCESS; */
 
-	if (EG(class_table) && HKEY_EXISTS(EG(class_table),phk)) return SUCCESS;
-	else init_done=1;
+	init_done=1;
 
 	ZEND_INIT_MODULE_GLOBALS(phk, phk_globals_ctor, NULL);
 
@@ -211,13 +197,14 @@ static PHP_MINIT_FUNCTION(phk)
 
 	if (MINIT_utils(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MINIT_Automap_Handlers(TSRMLS_C) == FAILURE) return FAILURE;
-	if (MINIT_Automap_Instance(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MINIT_Automap_Class(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MINIT_Automap_Key(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MINIT_Automap_Loader(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MINIT_Automap_Pmap(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MINIT_Automap_Mnt(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MINIT_Automap_Type(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MINIT_Automap_Util(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MINIT_Automap_Parser(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MINIT_PHK_Cache(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MINIT_PHK_Stream(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MINIT_PHK_Mgr(TSRMLS_C) == FAILURE) return FAILURE;
@@ -241,17 +228,27 @@ static PHP_MSHUTDOWN_FUNCTION(phk)
 	if (MSHUTDOWN_PHK_Stream(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MSHUTDOWN_PHK_Cache(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MSHUTDOWN_Automap_Handlers(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MSHUTDOWN_Automap_Parser(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MSHUTDOWN_Automap_Util(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MSHUTDOWN_Automap_Type(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MSHUTDOWN_Automap_Mnt(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MSHUTDOWN_Automap_Pmap(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MSHUTDOWN_Automap_Loader(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MSHUTDOWN_Automap_Key(TSRMLS_C) == FAILURE) return FAILURE;
-	if (MSHUTDOWN_Automap_Instance(TSRMLS_C) == FAILURE) return FAILURE;
+	if (MSHUTDOWN_Automap_Class(TSRMLS_C) == FAILURE) return FAILURE;
 	if (MSHUTDOWN_utils(TSRMLS_C) == FAILURE) return FAILURE;
 
 	return SUCCESS;
 }
+
+/*---------------------------------------------------------------*/
+/*-- Functions --*/
+
+static zend_function_entry phk_functions[] = {
+	PHP_NAMED_FE(Automap\\Ext\\file_get_contents,Automap_Ext_file_get_contents, UT_1arg_arginfo)
+	PHP_NAMED_FE(Automap\\Ext\\parseTokens,Automap_Ext_parseTokens, UT_2args_arginfo)
+    {NULL, NULL, NULL}  /* must be the last line */
+};
 
 /*---------------------------------------------------------------*/
 /*-- Module definition --*/
@@ -261,7 +258,7 @@ zend_module_entry phk_module_entry = {
 	STANDARD_MODULE_HEADER,
 #endif
 	PHP_PHK_EXTNAME,
-	NULL,
+	phk_functions,
 	PHP_MINIT(phk),
 	PHP_MSHUTDOWN(phk),
 	PHP_RINIT(phk),

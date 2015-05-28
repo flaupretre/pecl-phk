@@ -45,6 +45,8 @@ static mime_entry mime_init[] = {
 	{"css", "text/css"},
 	{"php", "application/x-httpd-php"},
 	{"phk", "application/x-httpd-php"},
+	{"inc", "application/x-httpd-php"},
+	{"hh",  "application/x-httpd-php"},
 	{"pdf", "application/pdf"},
 	{"js", "application/x-javascript"},
 	{"swf", "application/x-shockwave-flash"},
@@ -74,7 +76,7 @@ static char *autoindex_fnames[] = {
 	DBG_MSG("Entering PHK::" #_func); \
 	CHECK_MEM(); \
 	_valid=0; \
-	if (FIND_HKEY(Z_OBJPROP_P(getThis()),mp_property_name,&_tmp)==SUCCESS) { \
+	if (FIND_HKEY(Z_OBJPROP_P(getThis()),PHK_mp_property_name,&_tmp)==SUCCESS) { \
 		_order=Z_LVAL_PP(_tmp); \
 		if (_order<PHK_G(mcount)) { \
 			mp=PHK_G(mount_order)[_order]; \
@@ -88,14 +90,14 @@ static char *autoindex_fnames[] = {
 /*============================================================================*/
 
 static void PHK_set_mp_property(zval * obj, int order TSRMLS_DC);
-ZEND_DLEXPORT void PHK_need_php_runtime(TSRMLS_D);
-static PHP_METHOD(PHK, need_php_runtime);
+static void PHK_needPhpRuntime(TSRMLS_D);
+static PHP_METHOD(PHK, needPhpRuntime);
 static void PHK_init(PHK_Mnt * mp TSRMLS_DC);
-static PHP_METHOD(PHK, map_defined);
-static PHP_METHOD(PHK, set_cache);
-static PHP_METHOD(PHK, file_is_package);
-static PHP_METHOD(PHK, data_is_package);
-static int PHK_cache_enabled(PHK_Mnt * mp, zval * command,
+static PHP_METHOD(PHK, mapDefined);
+static PHP_METHOD(PHK, setCache);
+static PHP_METHOD(PHK, fileIsPackage);
+static PHP_METHOD(PHK, dataIsPackage);
+static int PHK_cacheEnabled(PHK_Mnt * mp, zval * command,
 							 zval * params, zval * path TSRMLS_DC);
 static void PHK_umount(PHK_Mnt * mp TSRMLS_DC);
 static PHP_METHOD(PHK, mnt);
@@ -103,38 +105,38 @@ static PHP_METHOD(PHK, path);
 static PHP_METHOD(PHK, flags);
 static PHP_METHOD(PHK, mtime);
 static PHP_METHOD(PHK, options);
-static PHP_METHOD(PHK, base_uri);
-static PHP_METHOD(PHK, automap_uri);
+static PHP_METHOD(PHK, baseURI);
+static PHP_METHOD(PHK, automapURI);
 static PHP_METHOD(PHK, plugin);
 static PHP_METHOD(PHK, uri);
-static PHP_METHOD(PHK, section_uri);
-static PHP_METHOD(PHK, command_uri);
+static PHP_METHOD(PHK, sectionURI);
+static PHP_METHOD(PHK, commandURI);
 static PHP_METHOD(PHK, option);
-static PHP_METHOD(PHK, parent_mnt);
+static PHP_METHOD(PHK, parentMnt);
 static int web_access_matches(zval * apath, zval * path TSRMLS_DC);
-static int web_access_allowed(PHK_Mnt * mp, zval * path TSRMLS_DC);
-static char *goto_main(PHK_Mnt * mp TSRMLS_DC);
-static char *web_tunnel(PHK_Mnt * mp, zval * path,int webinfo TSRMLS_DC);
-static PHP_METHOD(PHK, web_tunnel);
-static void PHK_mime_header(PHK_Mnt * mp, zval * path TSRMLS_DC);
-static PHP_METHOD(PHK, mime_header);
-static void PHK_mime_type(zval *ret, PHK_Mnt * mp, zval * path TSRMLS_DC);
-static PHP_METHOD(PHK, mime_type);
-static int PHK_is_php_source_path(PHK_Mnt * mp, zval * path TSRMLS_DC);
-static PHP_METHOD(PHK, is_php_source_path);
+static int webAccessAllowed(PHK_Mnt * mp, zval * path TSRMLS_DC);
+static char *gotoMain(PHK_Mnt * mp TSRMLS_DC);
+static char *webTunnel(PHK_Mnt * mp, zval * path,int webinfo TSRMLS_DC);
+static PHP_METHOD(PHK, webTunnel);
+static void PHK_mimeHeader(PHK_Mnt * mp, zval * path TSRMLS_DC);
+static PHP_METHOD(PHK, mimeHeader);
+static void PHK_mimeType(zval *ret, PHK_Mnt * mp, zval * path TSRMLS_DC);
+static PHP_METHOD(PHK, mimeType);
+static int PHK_isPHPSourcePath(PHK_Mnt * mp, zval * path TSRMLS_DC);
+static PHP_METHOD(PHK, isPHPSourcePath);
 static PHP_METHOD(PHK, proxy);
-static void PHK_crc_check(PHK_Mnt * mp TSRMLS_DC);
-static PHP_METHOD(PHK, accelerator_is_present);
-static PHP_METHOD(PHK, build_info);
-static PHP_METHOD(PHK, subpath_url);
-static void PHK_get_subpath(zval * ret TSRMLS_DC);
-static PHP_METHOD(PHK, get_subpath);
+static void PHK_crcCheck(PHK_Mnt * mp TSRMLS_DC);
+static PHP_METHOD(PHK, acceleratorIsPresent);
+static PHP_METHOD(PHK, buildInfo);
+static PHP_METHOD(PHK, subpathURL);
+static void PHK_setSubpath(zval * ret TSRMLS_DC);
+static PHP_METHOD(PHK, setSubpath);
 static zval *PHK_backend(PHK_Mnt * mp, zval * phk TSRMLS_DC);
 static PHP_METHOD(PHK, __call);
-static PHP_METHOD(PHK, accel_techinfo);
+static PHP_METHOD(PHK, accelTechInfo);
 static PHP_METHOD(PHK, prolog);
-static inline void init_mime_table(TSRMLS_D);
-static void shutdown_mime_table(TSRMLS_D);
+static inline void init_mimeTable(TSRMLS_D);
+static void shutdown_mimeTable(TSRMLS_D);
 static void set_constants(zend_class_entry * ce);
 
 static int MINIT_PHK(TSRMLS_D);
