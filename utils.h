@@ -324,7 +324,7 @@ which is the case in this extension. */
 #else
 #define RETVAL_BY_REF(zp) \
 	{ \
-	ut_ezval_ptr_dtor(return_value_ptr); \
+	ut_ezval_ptr_dtor(return_value_ptr TSRMLS_CC); \
 	Z_ADDREF_P(zp); \
 	*return_value_ptr=(zp); \
 	}
@@ -420,15 +420,15 @@ UT_SYMBOL inline void ut_dbg_print_time();
 
 UT_SYMBOL inline int ut_is_web(void);
 UT_SYMBOL void ut_decref(zval *zp);
-UT_SYMBOL void ut_pezval_dtor(zval *zp, int persistent);
-UT_SYMBOL void ut_ezval_dtor(zval *zp);
-UT_SYMBOL void ut_pzval_dtor(zval *zp);
-UT_SYMBOL void ut_pezval_ptr_dtor(zval ** zpp, int persistent);
-UT_SYMBOL void ut_ezval_ptr_dtor(zval **zpp);
-UT_SYMBOL void ut_pzval_ptr_dtor(zval **zpp);
-UT_SYMBOL void ut_persistent_array_init(zval * zp);
-UT_SYMBOL void ut_persistent_copy_ctor(zval ** ztpp);
-UT_SYMBOL zval *ut_persist_zval(zval * zsp);
+UT_SYMBOL void ut_pezval_dtor(zval *zp, int persistent TSRMLS_DC);
+UT_SYMBOL void ut_ezval_dtor(zval *zp TSRMLS_DC);
+UT_SYMBOL void ut_pzval_dtor(zval *zp TSRMLS_DC);
+UT_SYMBOL void ut_pezval_ptr_dtor(zval ** zpp, int persistent TSRMLS_DC);
+UT_SYMBOL void ut_ezval_ptr_dtor(zval **zpp TSRMLS_DC);
+UT_SYMBOL void ut_pzval_ptr_dtor(zval **zpp TSRMLS_DC);
+UT_SYMBOL void ut_persistent_array_init(zval * zp TSRMLS_DC);
+UT_SYMBOL void ut_persistent_copy_ctor(zval ** ztpp TSRMLS_DC);
+UT_SYMBOL zval *ut_persist_zval(zval * zsp TSRMLS_DC);
 UT_SYMBOL zval *ut_new_instance(char *class_name, int class_name_len,
 	int construct, int nb_args,	zval ** args TSRMLS_DC);
 UT_SYMBOL inline void ut_call_user_function_void(zval *obj_zp, char *func,

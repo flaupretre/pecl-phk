@@ -48,7 +48,7 @@ static void Automap_Loader_register_hook(TSRMLS_D)
 	MAKE_STD_ZVAL(zp);
 	ZVAL_STRINGL(zp,"Automap\\Mgr::autoloadHook",25,1);
 	ut_call_user_function_void(NULL,ZEND_STRL("spl_autoload_register"),1,&zp TSRMLS_CC);
-	ut_ezval_ptr_dtor(&zp);
+	ut_ezval_ptr_dtor(&zp TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/
@@ -82,7 +82,7 @@ static int Automap_resolve_symbol(char type, char *symbol, int slen, int autoloa
 		if (!mp) continue;
 		if (Automap_Mnt_resolve_key(mp, zkey, hash TSRMLS_CC)==SUCCESS) {
 			DBG_MSG2("Found key %s in map %d",Z_STRVAL_P(zkey),mp->id);
-			ut_ezval_ptr_dtor(&zkey);
+			ut_ezval_ptr_dtor(&zkey TSRMLS_CC);
 			return SUCCESS;
 		}
 	}
@@ -94,7 +94,7 @@ static int Automap_resolve_symbol(char type, char *symbol, int slen, int autoloa
 		THROW_EXCEPTION_2("Automap: Unknown %s: %s",ts,symbol);
 	}
 
-	ut_ezval_ptr_dtor(&zkey);
+	ut_ezval_ptr_dtor(&zkey TSRMLS_CC);
 	return FAILURE;
 }
 

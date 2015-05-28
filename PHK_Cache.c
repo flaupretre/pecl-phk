@@ -114,7 +114,7 @@ static void PHK_Cache_cacheID(const char *prefix, int prefix_len, const char *ke
 	memmove(p + prefix_len + 9, key, key_len);
 	p[prefix_len + key_len + 9] = '\0';
 
-	ut_ezval_dtor(z_ret_p);
+	ut_ezval_dtor(z_ret_p TSRMLS_CC);
 	ZVAL_STRINGL(z_ret_p, p, len, 0);
 }
 
@@ -154,7 +154,7 @@ static PHP_METHOD(PHK_Cache, setCacheMaxSize)
 
 static void PHK_Cache_get(zval * z_key_p, zval * z_ret_p TSRMLS_DC)
 {
-	ut_ezval_dtor(z_ret_p);
+	ut_ezval_dtor(z_ret_p TSRMLS_CC);
 
 	if (!cache) return;
 
@@ -220,7 +220,7 @@ static void PHK_Cache_set(zval * z_key_p, zval * z_data_p TSRMLS_DC)
 		ut_call_user_function_void(NULL, cache->set_funcname_string
 			,cache->set_funcname_len, 3, args TSRMLS_CC);
 		
-		ut_ezval_ptr_dtor(&ttl);
+		ut_ezval_ptr_dtor(&ttl TSRMLS_CC);
 	}
 }
 

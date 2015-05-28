@@ -147,7 +147,7 @@ static PHP_METHOD(PHK, setCache)
 			FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
 
 	SEPARATE_ARG_IF_REF(zp);
-	ut_ezval_ptr_dtor(&(mp->caching));
+	ut_ezval_ptr_dtor(&(mp->caching) TSRMLS_CC);
 	mp->caching = zp;
 }
 
@@ -203,7 +203,7 @@ static int PHK_cacheEnabled(PHK_Mnt * mp, zval * command,
 
 static void PHK_umount(PHK_Mnt * mp TSRMLS_DC)
 {
-	if (mp->plugin) ut_ezval_ptr_dtor(&(mp->plugin));
+	if (mp->plugin) ut_ezval_ptr_dtor(&(mp->plugin) TSRMLS_CC);
 
 	if (mp->umount_script_uri
 		&& (!(Z_LVAL_P(mp->flags) & PHK_FLAG_NO_MOUNT_SCRIPT))) {
@@ -212,7 +212,7 @@ static void PHK_umount(PHK_Mnt * mp TSRMLS_DC)
 	}
 
 	if (mp->automapURI) {
-		Automap_unload(mp->automapID);
+		Automap_unload(mp->automapID TSRMLS_CC);
 	}
 }
 
@@ -409,7 +409,7 @@ static char *gotoMain(PHK_Mnt * mp TSRMLS_DC)
 		MAKE_STD_ZVAL(zp);
 		PHK_Mgr_uri(mp->mnt, mp->web_run_script, zp TSRMLS_CC);
 		spprintf(&p, 1024, "require('%s');", Z_STRVAL_P(zp));
-		ut_ezval_ptr_dtor(&zp);
+		ut_ezval_ptr_dtor(&zp TSRMLS_CC);
 	}
 	return p;
 }
@@ -419,8 +419,8 @@ static char *gotoMain(PHK_Mnt * mp TSRMLS_DC)
 
 #define CLEANUP_WEB_TUNNEL() \
 	{ \
-	ut_ezval_ptr_dtor(&tpath); \
-	ut_ezval_ptr_dtor(&uri); \
+	ut_ezval_ptr_dtor(&tpath TSRMLS_CC); \
+	ut_ezval_ptr_dtor(&uri TSRMLS_CC); \
 	}
 
 static char *webTunnel(PHK_Mnt * mp, zval * path,
@@ -563,7 +563,7 @@ static void PHK_mimeHeader(PHK_Mnt * mp, zval * path TSRMLS_DC)
 		EALLOCATE(p,0);
 	}
 
-	ut_ezval_ptr_dtor(&type);
+	ut_ezval_ptr_dtor(&type TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/
@@ -592,7 +592,7 @@ static void PHK_mimeType(zval *ret, PHK_Mnt * mp, zval * path TSRMLS_DC)
 {
 	zval *suffix, **zpp;
 
-	ut_ezval_dtor(ret);
+	ut_ezval_dtor(ret TSRMLS_CC);
 	INIT_PZVAL(ret);
 
 	ALLOC_INIT_ZVAL(suffix);
@@ -617,7 +617,7 @@ static void PHK_mimeType(zval *ret, PHK_Mnt * mp, zval * path TSRMLS_DC)
 		}
 	}
 
-	ut_ezval_ptr_dtor(&suffix);
+	ut_ezval_ptr_dtor(&suffix TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/
@@ -650,7 +650,7 @@ static int PHK_isPHPSourcePath(PHK_Mnt * mp, zval * path TSRMLS_DC)
 	if (ZVAL_IS_STRING(type) && (Z_STRLEN_P(type)==23)
 		&& (!memcmp(Z_STRVAL_P(type),"application/x-httpd-php",23))) res=1;
 	
-	ut_ezval_ptr_dtor(&type);
+	ut_ezval_ptr_dtor(&type TSRMLS_CC);
 	return res;
 }
 
@@ -1043,7 +1043,7 @@ static inline void init_mimeTable(TSRMLS_D)
 
 static void shutdown_mimeTable(TSRMLS_D)
 {
-	ut_ezval_ptr_dtor(&PHK_G(mimeTable));
+	ut_ezval_ptr_dtor(&PHK_G(mimeTable) TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/

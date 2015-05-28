@@ -40,15 +40,15 @@ static PHK_STREAM_DATA *new_dp(int show_errors)
 
 /*--------------------*/
 
-static void free_dp(PHK_STREAM_DATA ** dpp)
+static void free_dp(PHK_STREAM_DATA ** dpp TSRMLS_DC)
 {
 	if ((!dpp) || (!(*dpp))) return;
 
-	ut_ezval_ptr_dtor(&((*dpp)->z_command));
-	ut_ezval_ptr_dtor(&((*dpp)->z_params));
-	ut_ezval_ptr_dtor(&((*dpp)->z_mnt));
-	ut_ezval_ptr_dtor(&((*dpp)->z_path));
-	ut_ezval_ptr_dtor(&((*dpp)->z_data));
+	ut_ezval_ptr_dtor(&((*dpp)->z_command) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&((*dpp)->z_params) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&((*dpp)->z_mnt) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&((*dpp)->z_path) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&((*dpp)->z_data) TSRMLS_CC);
 
 	EALLOCATE(*dpp,0);
 }
@@ -91,7 +91,7 @@ static int is_last_cached_opcode(const char *path, int len TSRMLS_DC)
 
 #define INIT_PHK_STREAM_GET_FILE() \
 	{ \
-	ut_ezval_dtor(ret_p); \
+	ut_ezval_dtor(ret_p TSRMLS_CC); \
 	ALLOC_INIT_ZVAL(key); \
 	ALLOC_INIT_ZVAL(can_cache); \
 	ALLOC_INIT_ZVAL(tmp); \
@@ -99,15 +99,15 @@ static int is_last_cached_opcode(const char *path, int len TSRMLS_DC)
 
 #define CLEANUP_PHK_STREAM_GET_FILE() \
 	{ \
-	ut_ezval_ptr_dtor(&key); \
-	ut_ezval_ptr_dtor(&can_cache); \
-	ut_ezval_ptr_dtor(&tmp); \
+	ut_ezval_ptr_dtor(&key TSRMLS_CC); \
+	ut_ezval_ptr_dtor(&can_cache TSRMLS_CC); \
+	ut_ezval_ptr_dtor(&tmp TSRMLS_CC); \
 	}
 
 #define ABORT_PHK_STREAM_GET_FILE() \
 	{ \
 	CLEANUP_PHK_STREAM_GET_FILE(); \
-	ut_ezval_dtor(ret_p); \
+	ut_ezval_dtor(ret_p TSRMLS_CC); \
 	return; \
 	}
 
@@ -226,7 +226,7 @@ static int PHK_Stream_close(php_stream * stream,
 {
 	PHK_STREAM_DATA *dp = stream->abstract;
 
-	free_dp(&dp);
+	free_dp(&dp TSRMLS_CC);
 
 	return 0;
 }
@@ -288,15 +288,15 @@ static int PHK_Stream_seek(php_stream * stream, off_t offset, int whence,
 
 #define CLEANUP_PHK_STREAM_DO_STAT() \
 	{ \
-	ut_ezval_ptr_dtor(&z_key); \
-	ut_ezval_ptr_dtor(&z_cache); \
-	ut_ezval_ptr_dtor(&z_tmp); \
-	ut_ezval_ptr_dtor(&z_tmp_a); \
-	ut_ezval_ptr_dtor(&z_ssb); \
-	ut_ezval_ptr_dtor(&z_uri); \
-	ut_ezval_ptr_dtor(&z_mode); \
-	ut_ezval_ptr_dtor(&z_size); \
-	ut_ezval_ptr_dtor(&z_mtime); \
+	ut_ezval_ptr_dtor(&z_key TSRMLS_CC); \
+	ut_ezval_ptr_dtor(&z_cache TSRMLS_CC); \
+	ut_ezval_ptr_dtor(&z_tmp TSRMLS_CC); \
+	ut_ezval_ptr_dtor(&z_tmp_a TSRMLS_CC); \
+	ut_ezval_ptr_dtor(&z_ssb TSRMLS_CC); \
+	ut_ezval_ptr_dtor(&z_uri TSRMLS_CC); \
+	ut_ezval_ptr_dtor(&z_mode TSRMLS_CC); \
+	ut_ezval_ptr_dtor(&z_size TSRMLS_CC); \
+	ut_ezval_ptr_dtor(&z_mtime TSRMLS_CC); \
 	}
 
 #define ABORT_PHK_STREAM_DO_STAT() \
@@ -535,10 +535,10 @@ static php_stream_ops phk_dirops = {
 
 #define CLEANUP_PHK_STREAM_OPEN() \
 	{ \
-	ut_ezval_ptr_dtor(&z_key); \
-	ut_ezval_ptr_dtor(&z_cache); \
-	ut_ezval_ptr_dtor(&z_tmp); \
-	ut_ezval_ptr_dtor(&z_uri); \
+	ut_ezval_ptr_dtor(&z_key TSRMLS_CC); \
+	ut_ezval_ptr_dtor(&z_cache TSRMLS_CC); \
+	ut_ezval_ptr_dtor(&z_tmp TSRMLS_CC); \
+	ut_ezval_ptr_dtor(&z_uri TSRMLS_CC); \
 	}
 
 #define ABORT_PHK_STREAM_OPEN() \
@@ -546,7 +546,7 @@ static php_stream_ops phk_dirops = {
 	DBG_MSG("Aborting generic_open()"); \
 	zend_clear_exception(TSRMLS_C); \
 	CLEANUP_PHK_STREAM_OPEN(); \
-	free_dp(&dp); \
+	free_dp(&dp TSRMLS_CC); \
 	return NULL; \
 	}
 
@@ -654,7 +654,7 @@ static int PHK_Stream_url_stat(php_stream_wrapper *wrapper, const char *uri,
 
 	dp = new_dp((flags & PHP_STREAM_URL_STAT_QUIET) ? 0 : REPORT_ERRORS);
 	retval = do_stat(wrapper, uri, dp, ssb TSRMLS_CC);
-	free_dp(&dp);
+	free_dp(&dp TSRMLS_CC);
 
 	return retval;
 }
@@ -830,7 +830,7 @@ static char *PHK_Stream_cache_key(php_stream_wrapper * wrapper,
 	(*mnt_end) = '/';
 
 	mp = PHK_Mgr_get_mnt(mnt, 0, 0 TSRMLS_CC);
-	ut_ezval_ptr_dtor(&mnt);
+	ut_ezval_ptr_dtor(&mnt TSRMLS_CC);
 	if ((!mp) || mp->no_opcode_cache) return NULL;
 
 	set_last_cached_opcode(uri, uri_len TSRMLS_CC);

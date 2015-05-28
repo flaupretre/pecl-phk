@@ -129,7 +129,7 @@ StaticMutexDeclare(persistent_mtab);
 
 static void PHK_Mgr_init_pdata(TSRMLS_D);
 static void PHK_Mgr_shutdown_pdata(TSRMLS_D);
-static void PHK_Mgr_mnt_dtor(PHK_Mnt * mp);
+static void PHK_Mgr_mnt_dtor(PHK_Mnt * mp TSRMLS_DC);
 static void PHK_Mgr_remove_mnt(PHK_Mnt * mp TSRMLS_DC);
 static PHK_Mnt *PHK_Mgr_new_mnt(zval * mnt, ulong hash TSRMLS_DC);
 static PHK_Mnt *PHK_Mgr_get_mnt(zval * mnt, ulong hash,
@@ -185,7 +185,7 @@ static PHK_Pdata *PHK_Mgr_get_pdata(zval * mnt, ulong hash TSRMLS_DC);
 static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,ulong hash TSRMLS_DC);
 static void PHK_Mgr_populate_pdata(zval * mnt, ulong hash,PHK_Mnt * mp TSRMLS_DC);
 static PHP_METHOD(PHK_Mgr, mimeHeader);
-static void PHK_Mgr_Persistent_Data_dtor(PHK_Pdata * entry);
+static void PHK_Mgr_Persistent_Data_dtor(PHK_Pdata * entry TSRMLS_DC);
 
 static int MINIT_PHK_Mgr(TSRMLS_D);
 static int MSHUTDOWN_PHK_Mgr(TSRMLS_D);
