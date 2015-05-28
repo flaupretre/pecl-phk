@@ -590,7 +590,7 @@ static PHP_METHOD(PHK, mimeHeader)
 
 static void PHK_mimeType(zval *ret, PHK_Mnt * mp, zval * path TSRMLS_DC)
 {
-	zval *suffix, **zpp;
+	zval *suffix, **zpp=NULL;
 
 	ut_ezval_dtor(ret);
 	INIT_PZVAL(ret);
