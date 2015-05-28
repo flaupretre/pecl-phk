@@ -183,9 +183,12 @@ static PHP_MINIT_FUNCTION(phk)
 	/* Handle case where the Automap extension is dynamically loaded after
 	   the Automap PHP runtime has been initialized. In this case,
 	   we must not define anything */
+	/* Test disabled because some environments crash when accessing EG()
+	   during MINIT. Todo : check more precisely if executor is valid
+	   before accessing EG(). */
+	/* if (EG(class_table) && HKEY_EXISTS(EG(class_table),phk_class_lc)) return SUCCESS; */
 
-	if (EG(class_table) && HKEY_EXISTS(EG(class_table),phk_class_lc)) return SUCCESS;
-	else init_done=1;
+	init_done=1;
 
 	ZEND_INIT_MODULE_GLOBALS(phk, phk_globals_ctor, NULL);
 
