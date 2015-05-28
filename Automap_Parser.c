@@ -91,7 +91,7 @@ static void Automap_Parser_addSymbol(zval *arr,char type,char *ns,int nslen
 
 #define CLEANUP_AUTOMAP_PARSE_TOKENS() \
 	{ \
-	ut_ezval_dtor(&ztokens); \
+	ut_ezval_dtor(&ztokens TSRMLS_CC); \
 	}
 
 #define RETURN_FROM_AUTOMAP_PARSE_TOKENS() \

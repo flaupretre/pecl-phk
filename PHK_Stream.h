@@ -38,7 +38,7 @@ static int last_cached_opcode_len;
 /*============================================================================*/
 
 static PHK_STREAM_DATA *new_dp(int show_errors);
-static void free_dp(PHK_STREAM_DATA ** dpp);
+static void free_dp(PHK_STREAM_DATA ** dpp TSRMLS_DC);
 static void clear_last_cached_opcode(TSRMLS_D);
 static void set_last_cached_opcode(const char *path, int len TSRMLS_DC);
 static int is_last_cached_opcode(const char *path, int len TSRMLS_DC);

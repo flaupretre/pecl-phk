@@ -260,7 +260,7 @@ UT_SYMBOL void ut_decref(zval *zp)
 /*---------*/
 /* Free zval content and reset it */
 
-UT_SYMBOL void ut_pezval_dtor(zval *zp, int persistent)
+UT_SYMBOL void ut_pezval_dtor(zval *zp, int persistent TSRMLS_DC)
 {
 	if (persistent) {
 		switch (Z_TYPE_P(zp) & IS_CONSTANT_TYPE_MASK) {
@@ -283,20 +283,20 @@ UT_SYMBOL void ut_pezval_dtor(zval *zp, int persistent)
 
 /*---------*/
 
-UT_SYMBOL void ut_ezval_dtor(zval *zp) { ut_pezval_dtor(zp,0); }
-UT_SYMBOL void ut_pzval_dtor(zval *zp) { ut_pezval_dtor(zp,1); }
+UT_SYMBOL void ut_ezval_dtor(zval *zp TSRMLS_DC) { ut_pezval_dtor(zp,0 TSRMLS_CC); }
+UT_SYMBOL void ut_pzval_dtor(zval *zp TSRMLS_DC) { ut_pezval_dtor(zp,1 TSRMLS_CC); }
 
 /*---------*/
 /* clear the zval pointer */
 
-UT_SYMBOL void ut_pezval_ptr_dtor(zval ** zpp, int persistent)
+UT_SYMBOL void ut_pezval_ptr_dtor(zval ** zpp, int persistent TSRMLS_DC)
 {
 	if (*zpp) {
 		if (persistent) {
 			ut_decref(*zpp);
 			/* php_printf("Reference count = %d\n",Z_REFCOUNT_PP(zpp)); */
 			if (Z_REFCOUNT_PP(zpp) == 0) {
-				ut_pzval_dtor(*zpp);
+				ut_pzval_dtor(*zpp TSRMLS_CC);
 				GC_REMOVE_ZVAL_FROM_BUFFER(*zpp);
 				ut_pallocate(*zpp, 0);
 			} 
@@ -309,12 +309,12 @@ UT_SYMBOL void ut_pezval_ptr_dtor(zval ** zpp, int persistent)
 
 /*---------*/
 
-UT_SYMBOL void ut_ezval_ptr_dtor(zval **zpp) { ut_pezval_ptr_dtor(zpp,0); }
-UT_SYMBOL void ut_pzval_ptr_dtor(zval **zpp) { ut_pezval_ptr_dtor(zpp,1); }
+UT_SYMBOL void ut_ezval_ptr_dtor(zval **zpp TSRMLS_DC) { ut_pezval_ptr_dtor(zpp,0 TSRMLS_CC); }
+UT_SYMBOL void ut_pzval_ptr_dtor(zval **zpp TSRMLS_DC) { ut_pezval_ptr_dtor(zpp,1 TSRMLS_CC); }
 
 /*---------*/
 
-UT_SYMBOL void ut_persistent_array_init(zval * zp)
+UT_SYMBOL void ut_persistent_array_init(zval * zp TSRMLS_DC)
 {
 	HashTable *htp;
 
@@ -326,16 +326,16 @@ UT_SYMBOL void ut_persistent_array_init(zval * zp)
 
 /*---------*/
 
-UT_SYMBOL void ut_persistent_copy_ctor(zval ** ztpp)
+UT_SYMBOL void ut_persistent_copy_ctor(zval ** ztpp TSRMLS_DC)
 {
-	*ztpp=ut_persist_zval(*ztpp);
+	*ztpp=ut_persist_zval(*ztpp TSRMLS_CC);
 }
 
 /*---------*/
 /* Duplicates a zval and all its descendants to persistent storage */
 /* Does not support objects and resources */
 
-UT_SYMBOL zval *ut_persist_zval(zval * zsp)
+UT_SYMBOL zval *ut_persist_zval(zval * zsp TSRMLS_DC)
 {
 	int type, len;
 	char *p;
@@ -354,7 +354,7 @@ UT_SYMBOL zval *ut_persist_zval(zval * zsp)
 
 	  case IS_ARRAY:
 	  case IS_CONSTANT_ARRAY:
-		  ut_persistent_array_init(ztp);
+		  ut_persistent_array_init(ztp TSRMLS_CC);
 		  zend_hash_copy(Z_ARRVAL_P(ztp), Z_ARRVAL_P(zsp)
 						 , (copy_ctor_func_t) ut_persistent_copy_ctor,
 						 NULL, sizeof(zval *));
@@ -408,7 +408,7 @@ UT_SYMBOL void ut_call_user_function_void(zval *obj_zp, char *func,
 
 	ALLOC_INIT_ZVAL(ret);
 	ut_call_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
-	ut_ezval_ptr_dtor(&ret);		/* Discard return value */
+	ut_ezval_ptr_dtor(&ret TSRMLS_CC);		/* Discard return value */
 }
 
 /*---------------------------------------------------------------*/
@@ -422,7 +422,7 @@ UT_SYMBOL int ut_call_user_function_bool(zval * obj_zp, char *func,
 	ALLOC_INIT_ZVAL(ret);
 	ut_call_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
 	result = zend_is_true(ret);
-	ut_ezval_ptr_dtor(&ret);
+	ut_ezval_ptr_dtor(&ret TSRMLS_CC);
 
 	return result;
 }
@@ -440,7 +440,7 @@ UT_SYMBOL long ut_call_user_function_long(zval *obj_zp, char *func,
 
 	ENSURE_LONG(ret);
 	result=Z_LVAL_P(ret);
-	ut_ezval_ptr_dtor(&ret);
+	ut_ezval_ptr_dtor(&ret TSRMLS_CC);
 
 	return result;
 }
@@ -518,11 +518,11 @@ and 5.3.9 */
 
 	status=call_user_function(EG(function_table), &obj_zp, func_zp, ret, nb_args,
 		args TSRMLS_CC);
-	ut_ezval_ptr_dtor(&func_zp);
+	ut_ezval_ptr_dtor(&func_zp TSRMLS_CC);
 
 #if ZEND_MODULE_API_NO <= 20050922
 	if (clen) {
-		ut_ezval_ptr_dtor(&obj_zp);
+		ut_ezval_ptr_dtor(&obj_zp TSRMLS_CC);
 	}
 #endif
 
@@ -572,7 +572,7 @@ UT_SYMBOL void ut_loadExtension(char *name, int len TSRMLS_DC)
 
 	ut_loadExtension_file(zp TSRMLS_CC);
 
-	ut_ezval_ptr_dtor(&zp);
+	ut_ezval_ptr_dtor(&zp TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/
@@ -865,7 +865,7 @@ UT_SYMBOL void ut_unserialize_zval(const unsigned char *buffer
 
 	INIT_ZVAL(*ret);
 	if (!php_var_unserialize(&ret,&buffer,buffer+len,&var_hash TSRMLS_CC)) {
-		ut_ezval_dtor(ret);
+		ut_ezval_dtor(ret TSRMLS_CC);
 		THROW_EXCEPTION("Unserialize error");
 		}
 	PHP_VAR_UNSERIALIZE_DESTROY(var_hash);
@@ -888,7 +888,7 @@ UT_SYMBOL void ut_file_get_contents(char *path, zval *ret TSRMLS_DC)
 
 	if (len < 0) EXCEPTION_ABORT_1("%s : Cannot read file",path);
 
-	ut_ezval_dtor(ret);
+	ut_ezval_dtor(ret TSRMLS_CC);
 	ZVAL_STRINGL(ret,contents,len,0);
 }
 

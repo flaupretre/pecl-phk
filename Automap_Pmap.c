@@ -112,11 +112,11 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp
 	/* Run extended func */
 	
 	pmp=Automap_Pmap_get_or_create_extended(zapathp, zufidp
-		, ZSTRING_HASH(zufidp), NULL, flags TSRMLS_DC);
+		, ZSTRING_HASH(zufidp), NULL, flags TSRMLS_CC);
 
 	/* Cleanup */
 
-	ut_ezval_ptr_dtor(&zufidp);
+	ut_ezval_ptr_dtor(&zufidp TSRMLS_CC);
 
 	return pmp;
 }
@@ -134,9 +134,9 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp
 
 #define CLEANUP_AUTOMAP_PMAP_GET_OR_CREATE() \
 	{ \
-	ut_ezval_dtor(&zdata); \
-	ut_ezval_dtor(&zlong); \
-	ut_ezval_dtor(&znull); \
+	ut_ezval_dtor(&zdata TSRMLS_CC); \
+	ut_ezval_dtor(&zlong TSRMLS_CC); \
+	ut_ezval_dtor(&znull TSRMLS_CC); \
 	}
 
 #define RETURN_FROM_AUTOMAP_PMAP_GET_OR_CREATE(_ret) \
@@ -148,7 +148,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp
 
 #define ABORT_AUTOMAP_PMAP_GET_OR_CREATE() \
 	{ \
-	Automap_Pmap_dtor(&tmp_map); \
+	Automap_Pmap_dtor(&tmp_map TSRMLS_CC); \
 	RETURN_FROM_AUTOMAP_PMAP_GET_OR_CREATE(NULL); \
 	}
 
@@ -205,14 +205,14 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 
 	ZVAL_LONG(&zlong,AUTOMAP_MAP_PROTOCOL);
 	args[0] = &zlong;
-	ut_call_user_function_array(map,ZEND_STRL("_peclGetMap"),&zdata,1,args);
+	ut_call_user_function_array(map,ZEND_STRL("_peclGetMap"),&zdata,1,args TSRMLS_CC);
 	if (EG(exception)) ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	if (!ZVAL_IS_ARRAY(&zdata)) {
 		THROW_EXCEPTION_1("%s : Automap\\Map::_peclGetMap() should return an array",Z_STRVAL_P(zpathp));
 		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	}
 	
-	ut_ezval_ptr_dtor(&map);	/* Delete Automap_Map object */
+	ut_ezval_ptr_dtor(&map TSRMLS_CC);	/* Delete Automap_Map object */
 	
 	/* Move data to persistent storage */
 
@@ -238,17 +238,17 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 
 /*---------------------------------------------------------------*/
 
-static void Automap_Pmap_dtor(Automap_Pmap *pmp)
+static void Automap_Pmap_dtor(Automap_Pmap *pmp TSRMLS_DC)
 {
-	ut_pzval_ptr_dtor(&(pmp->zsymbols));
+	ut_pzval_ptr_dtor(&(pmp->zsymbols) TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/
 
-static void Automap_Pmap_Entry_dtor(Automap_Pmap_Entry *pep)
+static void Automap_Pmap_Entry_dtor(Automap_Pmap_Entry *pep TSRMLS_DC)
 {
-	ut_pzval_dtor(&(pep->zsname));
-	ut_pzval_dtor(&(pep->zfapath));
+	ut_pzval_dtor(&(pep->zsname) TSRMLS_CC);
+	ut_pzval_dtor(&(pep->zfapath) TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/

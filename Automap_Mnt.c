@@ -20,12 +20,10 @@
 /* Here, we check every pointers because the function can be called during
    the creation of the structure (load failure) */
  
-static void Automap_Mnt_dtor(Automap_Mnt *mp)
+static void Automap_Mnt_dtor(Automap_Mnt *mp TSRMLS_DC)
 {
-	TSRMLS_FETCH();
-
-	ut_ezval_ptr_dtor(&(mp->map_object));
-	ut_ezval_ptr_dtor(&(mp->zpath));
+	ut_ezval_ptr_dtor(&(mp->map_object) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->zpath) TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/
@@ -33,7 +31,7 @@ static void Automap_Mnt_dtor(Automap_Mnt *mp)
 static void Automap_Mnt_remove(Automap_Mnt *mp TSRMLS_DC)
 {
 	PHK_G(map_array)[mp->id]=NULL;
-	Automap_Mnt_dtor(mp);
+	Automap_Mnt_dtor(mp TSRMLS_CC);
 	EALLOCATE(mp,0);
 }
 
@@ -112,7 +110,7 @@ static Automap_Mnt *Automap_Mnt_load_extended(zval *zpathp, zval *zufidp
 	ZVAL_STRINGL(mp->zpath,Z_STRVAL_P(zpathp),Z_STRLEN_P(zpathp),1);
 	mp->flags=flags;
 	
-	Automap_Mnt_array_add(mp);
+	Automap_Mnt_array_add(mp TSRMLS_CC);
 	return mp;
 }
 
@@ -138,7 +136,7 @@ static Automap_Mnt *Automap_Mnt_load(zval *zpathp, long flags TSRMLS_DC)
 	ZVAL_STRINGL(zapathp, p, len, 0);
 	
 	if (!(pmp=Automap_Pmap_get_or_create(zapathp, flags TSRMLS_CC))) {
-		ut_ezval_ptr_dtor(&zapathp);
+		ut_ezval_ptr_dtor(&zapathp TSRMLS_CC);
 		return NULL;
 	}
 
@@ -151,7 +149,7 @@ static Automap_Mnt *Automap_Mnt_load(zval *zpathp, long flags TSRMLS_DC)
 	mp->zpath=zapathp;
 	mp->flags=flags;
 
-	Automap_Mnt_array_add(mp);
+	Automap_Mnt_array_add(mp TSRMLS_CC);
 	return mp;
 }
 
@@ -331,7 +329,7 @@ static int RSHUTDOWN_Automap_Mnt(TSRMLS_D)
 	if (PHK_G(map_count) > 1) {
 		for (i=1;i<PHK_G(map_count);i++) { /* Slot 0 is always NULL */
 			mp=PHK_G(map_array)[i];
-			if (mp) Automap_Mnt_remove(mp);
+			if (mp) Automap_Mnt_remove(mp TSRMLS_CC);
 		}
 	}
 

@@ -57,8 +57,8 @@ static void Automap_callFailureHandlers(char type, char *symbol, int slen TSRMLS
 			,Z_STRLEN_P(PHK_G(automap_failureHandlers)[i])
 			,2 ,args TSRMLS_CC);
 		}
-		ut_ezval_ptr_dtor(&ztype);
-		ut_ezval_ptr_dtor(&zsymbol);
+		ut_ezval_ptr_dtor(&ztype TSRMLS_CC);
+		ut_ezval_ptr_dtor(&zsymbol TSRMLS_CC);
 	}
 }
 
@@ -103,8 +103,8 @@ static void Automap_callSuccessHandlers(Automap_Mnt *mp
 				,Z_STRLEN_P(PHK_G(automap_successHandlers)[i])
 				,2,args TSRMLS_CC);
 		}
-		ut_ezval_ptr_dtor(&entry_zp);
-		ut_ezval_ptr_dtor(&id_zp);
+		ut_ezval_ptr_dtor(&entry_zp TSRMLS_CC);
+		ut_ezval_ptr_dtor(&id_zp TSRMLS_CC);
 	}
 }
 
@@ -141,7 +141,7 @@ static int RSHUTDOWN_Automap_Handlers(TSRMLS_D)
 
 	if (PHK_G(automap_fh_count)) {
 		for (i=0;i<PHK_G(automap_fh_count);i++) {
-			ut_ezval_ptr_dtor(PHK_G(automap_failureHandlers)+i);
+			ut_ezval_ptr_dtor(PHK_G(automap_failureHandlers)+i TSRMLS_CC);
 		}
 		EALLOCATE(PHK_G(automap_failureHandlers),0);
 		PHK_G(automap_fh_count)=0;
@@ -149,7 +149,7 @@ static int RSHUTDOWN_Automap_Handlers(TSRMLS_D)
 
 	if (PHK_G(automap_sh_count)) {
 		for (i=0;i<PHK_G(automap_sh_count);i++) {
-			ut_ezval_ptr_dtor(PHK_G(automap_successHandlers)+i);
+			ut_ezval_ptr_dtor(PHK_G(automap_successHandlers)+i TSRMLS_CC);
 		}
 		EALLOCATE(PHK_G(automap_successHandlers),0);
 		PHK_G(automap_sh_count)=0;

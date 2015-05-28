@@ -36,7 +36,7 @@ static zval *Automap_map_object_by_mp(Automap_Mnt *mp TSRMLS_DC)
 		args[1]=flags_zp;
 		mp->map_object=ut_new_instance(ZEND_STRL("Automap\\Map"), YES, 2
 			, args TSRMLS_CC);
-		ut_ezval_ptr_dtor(&flags_zp);
+		ut_ezval_ptr_dtor(&flags_zp TSRMLS_CC);
 	}
 
 	return mp->map_object;

@@ -44,13 +44,11 @@ static void PHK_Mgr_shutdown_pdata(TSRMLS_D)
    ut_ezval_ptr_dtor() handles this case.
 */
 
-static void PHK_Mgr_mnt_dtor(PHK_Mnt * mp)
+static void PHK_Mgr_mnt_dtor(PHK_Mnt * mp TSRMLS_DC)
 {
-	TSRMLS_FETCH();
-
 	EALLOCATE(mp->children,0);
 
-	ut_ezval_ptr_dtor(&(mp->mnt));
+	ut_ezval_ptr_dtor(&(mp->mnt) TSRMLS_CC);
 
 	if (mp->instance) /* Invalidate object */
 		{
@@ -58,31 +56,31 @@ static void PHK_Mgr_mnt_dtor(PHK_Mnt * mp)
 			,sizeof(PHK_MP_PROPERTY_NAME));
 		}
 
-	ut_ezval_ptr_dtor(&(mp->instance));
-	ut_ezval_ptr_dtor(&(mp->proxy));
-	ut_ezval_ptr_dtor(&(mp->path));
-	ut_ezval_ptr_dtor(&(mp->plugin));
-	ut_ezval_ptr_dtor(&(mp->flags));
-	ut_ezval_ptr_dtor(&(mp->caching));
-	ut_ezval_ptr_dtor(&(mp->mtime));
-	ut_ezval_ptr_dtor(&(mp->backend));
+	ut_ezval_ptr_dtor(&(mp->instance) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->proxy) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->path) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->plugin) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->flags) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->caching) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->mtime) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->backend) TSRMLS_CC);
 
-	ut_ezval_ptr_dtor(&(mp->minVersion));
-	ut_ezval_ptr_dtor(&(mp->options));
-	ut_ezval_ptr_dtor(&(mp->buildInfo));
-	ut_ezval_ptr_dtor(&(mp->mime_types));
-	ut_ezval_ptr_dtor(&(mp->web_run_script));
-	ut_ezval_ptr_dtor(&(mp->plugin_class));
-	ut_ezval_ptr_dtor(&(mp->web_access));
-	ut_ezval_ptr_dtor(&(mp->min_php_version));
-	ut_ezval_ptr_dtor(&(mp->max_php_version));
+	ut_ezval_ptr_dtor(&(mp->minVersion) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->options) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->buildInfo) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->mime_types) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->web_run_script) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->plugin_class) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->web_access) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->min_php_version) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->max_php_version) TSRMLS_CC);
 
-	ut_ezval_ptr_dtor(&(mp->baseURI));
-	ut_ezval_ptr_dtor(&(mp->automapURI));
-	ut_ezval_ptr_dtor(&(mp->mount_script_uri));
-	ut_ezval_ptr_dtor(&(mp->umount_script_uri));
-	ut_ezval_ptr_dtor(&(mp->lib_run_script_uri));
-	ut_ezval_ptr_dtor(&(mp->cli_run_command));
+	ut_ezval_ptr_dtor(&(mp->baseURI) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->automapURI) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->mount_script_uri) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->umount_script_uri) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->lib_run_script_uri) TSRMLS_CC);
+	ut_ezval_ptr_dtor(&(mp->cli_run_command) TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/
@@ -774,19 +772,19 @@ static void PHK_Mgr_pathToMnt(zval * path, zval * mnt TSRMLS_DC)
 	tmp_mnt=NULL;
 	PHK_Mgr_computeMnt(path, NULL, &tmp_mnt, NULL TSRMLS_CC);
 	if (EG(exception)) {
-		ut_ezval_ptr_dtor(&tmp_mnt);
+		ut_ezval_ptr_dtor(&tmp_mnt TSRMLS_CC);
 		return;
 	}
 
 	PHK_Mgr_get_mnt(tmp_mnt, 0, 1 TSRMLS_CC);
 	if (EG(exception)) {
-		ut_ezval_ptr_dtor(&tmp_mnt);
+		ut_ezval_ptr_dtor(&tmp_mnt TSRMLS_CC);
 		return;
 	}
 
 	ZVAL_COPY_VALUE(mnt,tmp_mnt);
 	zval_copy_ctor(mnt);
-	ut_ezval_ptr_dtor(&tmp_mnt);
+	ut_ezval_ptr_dtor(&tmp_mnt TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/
@@ -904,8 +902,8 @@ static long PHK_Mgr_mount_from_Automap(zval * path, long flags TSRMLS_DC)
 
 #define CLEANUP_PHK_MGR_MOUNT() \
 	{ \
-	ut_ezval_ptr_dtor(&mnt); \
-	ut_ezval_ptr_dtor(&mtime); \
+	ut_ezval_ptr_dtor(&mnt TSRMLS_CC); \
+	ut_ezval_ptr_dtor(&mtime TSRMLS_CC); \
 	}
 
 #define RETURN_FROM_PHK_MGR_MOUNT(_ret) \
@@ -1078,9 +1076,9 @@ static PHK_Pdata *PHK_Mgr_get_pdata(
 
 #define CLEANUP_PHK_GET_OR_CREATE_PERSISTENT_DATA() \
 	{ \
-	ut_ezval_ptr_dtor(&minVersion); \
-	ut_ezval_ptr_dtor(&options); \
-	ut_ezval_ptr_dtor(&buildInfo); \
+	ut_ezval_ptr_dtor(&minVersion TSRMLS_CC); \
+	ut_ezval_ptr_dtor(&options TSRMLS_CC); \
+	ut_ezval_ptr_dtor(&buildInfo TSRMLS_CC); \
 	}
 	
 #define RETURN_FROM_PHK_GET_OR_CREATE_PERSISTENT_DATA(_ret) \
@@ -1127,7 +1125,7 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 	args[1] = ztmp;
 	ut_call_user_function_string(NULL
 		, ZEND_STRL("PHK\\Tools\\Util::getMinVersion"), minVersion,2, args TSRMLS_CC);
-	ut_ezval_ptr_dtor(&ztmp);
+	ut_ezval_ptr_dtor(&ztmp TSRMLS_CC);
 	if (EG(exception)) ABORT_PHK_GET_OR_CREATE_PERSISTENT_DATA();
 
 	/* Check minVersion */
@@ -1142,7 +1140,7 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 	args[1] = ztmp;
 	ut_call_user_function_array(NULL
 			, ZEND_STRL("PHK\\Tools\\Util::getOptions"), options, 2,	args TSRMLS_CC);
-	ut_ezval_ptr_dtor(&ztmp);
+	ut_ezval_ptr_dtor(&ztmp TSRMLS_CC);
 	if (EG(exception)) ABORT_PHK_GET_OR_CREATE_PERSISTENT_DATA();
 
 	/* Check that the required extensions are present or can be loaded */
@@ -1183,14 +1181,14 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 
 	entry->ctime = time(NULL);
 
-	entry->minVersion=ut_persist_zval(minVersion);
+	entry->minVersion=ut_persist_zval(minVersion TSRMLS_CC);
 
-	entry->options=ut_persist_zval(options);
+	entry->options=ut_persist_zval(options TSRMLS_CC);
 	opt_ht = Z_ARRVAL_P(entry->options);
 
 	ut_call_user_function_array(NULL
 		, ZEND_STRL("PHK\\Tools\\Util::getBuildInfo"), buildInfo, 2, args TSRMLS_CC);
-	entry->buildInfo=ut_persist_zval(buildInfo);
+	entry->buildInfo=ut_persist_zval(buildInfo TSRMLS_CC);
 
 	/* Set shortcuts */
 
@@ -1234,39 +1232,39 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 
 	ALLOC_INIT_ZVAL(ztmp);
 	compute_baseURI(mnt, ztmp TSRMLS_CC);
-	entry->baseURI=ut_persist_zval(ztmp);
-	ut_ezval_ptr_dtor(&ztmp);
+	entry->baseURI=ut_persist_zval(ztmp TSRMLS_CC);
+	ut_ezval_ptr_dtor(&ztmp TSRMLS_CC);
 
 	if ((FIND_HKEY(Z_ARRVAL_P(entry->buildInfo), map_defined, &zpp) ==
 		 SUCCESS) && ZVAL_IS_BOOL(*zpp) && Z_BVAL_PP(zpp)) {
 		ALLOC_INIT_ZVAL(ztmp);
 		compute_automapURI(mnt, ztmp TSRMLS_CC);
-		entry->automapURI=ut_persist_zval(ztmp);
-		ut_ezval_ptr_dtor(&ztmp);
+		entry->automapURI=ut_persist_zval(ztmp TSRMLS_CC);
+		ut_ezval_ptr_dtor(&ztmp TSRMLS_CC);
 	}
 
 	if ((FIND_HKEY(opt_ht, mount_script, &zpp) == SUCCESS)
 		&& (ZVAL_IS_STRING(*zpp))) {
 		ALLOC_INIT_ZVAL(ztmp);
 		PHK_Mgr_uri(mnt, *zpp, ztmp TSRMLS_CC);
-		entry->mount_script_uri=ut_persist_zval(ztmp);
-		ut_ezval_ptr_dtor(&ztmp);
+		entry->mount_script_uri=ut_persist_zval(ztmp TSRMLS_CC);
+		ut_ezval_ptr_dtor(&ztmp TSRMLS_CC);
 	}
 
 	if ((FIND_HKEY(opt_ht, umount_script, &zpp) == SUCCESS)
 		&& (ZVAL_IS_STRING(*zpp))) {
 		ALLOC_INIT_ZVAL(ztmp);
 		PHK_Mgr_uri(mnt, *zpp, ztmp TSRMLS_CC);
-		entry->umount_script_uri=ut_persist_zval(ztmp);
-		ut_ezval_ptr_dtor(&ztmp);
+		entry->umount_script_uri=ut_persist_zval(ztmp TSRMLS_CC);
+		ut_ezval_ptr_dtor(&ztmp TSRMLS_CC);
 	}
 
 	if ((FIND_HKEY(opt_ht, lib_run_script, &zpp) == SUCCESS)
 		&& (ZVAL_IS_STRING(*zpp))) {
 		ALLOC_INIT_ZVAL(ztmp);
 		PHK_Mgr_uri(mnt, *zpp, ztmp TSRMLS_CC);
-		entry->lib_run_script_uri=ut_persist_zval(ztmp);
-		ut_ezval_ptr_dtor(&ztmp);
+		entry->lib_run_script_uri=ut_persist_zval(ztmp TSRMLS_CC);
+		ut_ezval_ptr_dtor(&ztmp TSRMLS_CC);
 	}
 
 	if ((FIND_HKEY(opt_ht, cli_run_script, &zpp) == SUCCESS)
@@ -1276,9 +1274,9 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 		PHK_Mgr_uri(mnt, *zpp, ztmp TSRMLS_CC);
 		spprintf(&p, UT_PATH_MAX, "require('%s');", Z_STRVAL_P(ztmp));
 		ZVAL_STRING(ztmp2, p, 0);
-		entry->cli_run_command=ut_persist_zval(ztmp2);
-		ut_ezval_ptr_dtor(&ztmp);
-		ut_ezval_ptr_dtor(&ztmp2);
+		entry->cli_run_command=ut_persist_zval(ztmp2 TSRMLS_CC);
+		ut_ezval_ptr_dtor(&ztmp TSRMLS_CC);
+		ut_ezval_ptr_dtor(&ztmp2 TSRMLS_CC);
 	}
 
 	/* Cleanup and return */
@@ -1360,26 +1358,26 @@ static PHP_METHOD(PHK_Mgr, mimeHeader)
 /*---------------------------------------------------------------*/
 /* zval_dtor works for persistent arrays, but not for persistent strings */
 
-static void PHK_Mgr_Persistent_Data_dtor(PHK_Pdata * entry)
+static void PHK_Mgr_Persistent_Data_dtor(PHK_Pdata * entry TSRMLS_DC)
 {
-	ut_pzval_ptr_dtor(&(entry->minVersion));
+	ut_pzval_ptr_dtor(&(entry->minVersion) TSRMLS_CC);
 	/* TODO: Why do these two lines cause free() errors ? */
-	ut_pzval_ptr_dtor(&(entry->options));
-	ut_pzval_ptr_dtor(&(entry->buildInfo));
+	ut_pzval_ptr_dtor(&(entry->options) TSRMLS_CC);
+	ut_pzval_ptr_dtor(&(entry->buildInfo) TSRMLS_CC);
 
-	ut_pzval_ptr_dtor(&(entry->mime_types));
-	ut_pzval_ptr_dtor(&(entry->web_run_script));
-	ut_pzval_ptr_dtor(&(entry->plugin_class));
-	ut_pzval_ptr_dtor(&(entry->web_access));
-	ut_pzval_ptr_dtor(&(entry->min_php_version));
-	ut_pzval_ptr_dtor(&(entry->max_php_version));
+	ut_pzval_ptr_dtor(&(entry->mime_types) TSRMLS_CC);
+	ut_pzval_ptr_dtor(&(entry->web_run_script) TSRMLS_CC);
+	ut_pzval_ptr_dtor(&(entry->plugin_class) TSRMLS_CC);
+	ut_pzval_ptr_dtor(&(entry->web_access) TSRMLS_CC);
+	ut_pzval_ptr_dtor(&(entry->min_php_version) TSRMLS_CC);
+	ut_pzval_ptr_dtor(&(entry->max_php_version) TSRMLS_CC);
 
-	ut_pzval_ptr_dtor(&(entry->baseURI));
-	ut_pzval_ptr_dtor(&(entry->automapURI));
-	ut_pzval_ptr_dtor(&(entry->mount_script_uri));
-	ut_pzval_ptr_dtor(&(entry->umount_script_uri));
-	ut_pzval_ptr_dtor(&(entry->lib_run_script_uri));
-	ut_pzval_ptr_dtor(&(entry->cli_run_command));
+	ut_pzval_ptr_dtor(&(entry->baseURI) TSRMLS_CC);
+	ut_pzval_ptr_dtor(&(entry->automapURI) TSRMLS_CC);
+	ut_pzval_ptr_dtor(&(entry->mount_script_uri) TSRMLS_CC);
+	ut_pzval_ptr_dtor(&(entry->umount_script_uri) TSRMLS_CC);
+	ut_pzval_ptr_dtor(&(entry->lib_run_script_uri) TSRMLS_CC);
+	ut_pzval_ptr_dtor(&(entry->cli_run_command) TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/
