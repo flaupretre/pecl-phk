@@ -937,7 +937,7 @@ static PHP_METHOD(PHK, prolog)
 				PHK_needPhpRuntime(TSRMLS_C);
 				instance = PHK_Mgr_instance_by_mp(mp TSRMLS_CC);
 				ZVAL_LONG(ret, ut_call_user_function_long(instance
-					, ZEND_STRL("builtin_prolog"), 1, &file TSRMLS_CC));
+					, ZEND_STRL("builtinProlog"), 1, &file TSRMLS_CC));
 				return;
 			}
 		}
