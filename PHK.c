@@ -212,7 +212,7 @@ static void PHK_umount(PHK_Mnt * mp TSRMLS_DC)
 	}
 
 	if (mp->automapURI) {
-		Automap_unload(mp->automapID);
+		Automap_unload(mp->automapID TSRMLS_CC);
 	}
 }
 

@@ -26,19 +26,19 @@
 /*-- For PHP version < 5.3.0 --*/
 
 #ifndef T_NAMESPACE
-#define T_NAMESPACE ((char)-2)
+#define T_NAMESPACE (-2)
 #endif
 
 #ifndef T_NS_SEPARATOR
-#define T_NS_SEPARATOR ((char)-3)
+#define T_NS_SEPARATOR (-3)
 #endif
 
 #ifndef T_CONST
-#define T_CONST ((char)-4)
+#define T_CONST (-4)
 #endif
 
 #ifndef T_TRAIT
-#define T_TRAIT (char)-5)
+#define T_TRAIT (-5)
 #endif
 
 /* Parser states */

@@ -112,7 +112,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp
 	/* Run extended func */
 	
 	pmp=Automap_Pmap_get_or_create_extended(zapathp, zufidp
-		, ZSTRING_HASH(zufidp), NULL, flags TSRMLS_DC);
+		, ZSTRING_HASH(zufidp), NULL, flags TSRMLS_CC);
 
 	/* Cleanup */
 
@@ -205,7 +205,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 
 	ZVAL_LONG(&zlong,AUTOMAP_MAP_PROTOCOL);
 	args[0] = &zlong;
-	ut_call_user_function_array(map,ZEND_STRL("_peclGetMap"),&zdata,1,args);
+	ut_call_user_function_array(map,ZEND_STRL("_peclGetMap"),&zdata,1,args TSRMLS_CC);
 	if (EG(exception)) ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	if (!ZVAL_IS_ARRAY(&zdata)) {
 		THROW_EXCEPTION_1("%s : Automap\\Map::_peclGetMap() should return an array",Z_STRVAL_P(zpathp));
