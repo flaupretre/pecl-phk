@@ -17,9 +17,9 @@
 */
 
 /*---------------------------------------------------------------*/
-/* {{{ proto string Automap::register_failure_handler(callable callback) */
+/* {{{ proto string \Automap\Mgr::registerFailureHandler(callable callback) */
 
-static PHP_METHOD(Automap, register_failure_handler)
+static PHP_METHOD(Automap, registerFailureHandler)
 {
 	zval *zp;
 
@@ -27,21 +27,22 @@ static PHP_METHOD(Automap, register_failure_handler)
 		==FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
 
 	ENSURE_STRING(zp);
-	EALLOCATE(AUTOMAP_G(failure_handlers),(AUTOMAP_G(fh_count)+1)*sizeof(zp));
-	AUTOMAP_G(failure_handlers)[AUTOMAP_G(fh_count)++]=zp;
+	EALLOCATE(PHK_G(automap_failureHandlers),(PHK_G(automap_fh_count)+1)*sizeof(zp));
+	PHK_G(automap_failureHandlers)[PHK_G(automap_fh_count)++]=zp;
 	Z_ADDREF_P(zp);
 }
 
 /* }}} */
 /*---------------------------------------------------------------*/
+/* Failure handler receives 2 args: type and symbol */
 
-static void Automap_call_failure_handlers(char type, char *symbol, int slen TSRMLS_DC)
+static void Automap_callFailureHandlers(char type, char *symbol, int slen TSRMLS_DC)
 {
 	zval *args[2],*ztype,*zsymbol;
 	char str[2];
 	int i;
 
-	if (AUTOMAP_G(fh_count)) {
+	if (PHK_G(automap_fh_count)) {
 		str[0]=type;
 		str[1]='\0';
 		MAKE_STD_ZVAL(ztype);
@@ -50,10 +51,10 @@ static void Automap_call_failure_handlers(char type, char *symbol, int slen TSRM
 		ZVAL_STRINGL(zsymbol,symbol,slen,1);
 		args[0]=ztype;
 		args[1]=zsymbol;
-		for (i=0;i<AUTOMAP_G(fh_count);i++) {
+		for (i=0;i<PHK_G(automap_fh_count);i++) {
 			ut_call_user_function_void(NULL
-			,Z_STRVAL_P(AUTOMAP_G(failure_handlers)[i])
-			,Z_STRLEN_P(AUTOMAP_G(failure_handlers)[i])
+			,Z_STRVAL_P(PHK_G(automap_failureHandlers)[i])
+			,Z_STRLEN_P(PHK_G(automap_failureHandlers)[i])
 			,2 ,args TSRMLS_CC);
 		}
 		ut_ezval_ptr_dtor(&ztype);
@@ -62,9 +63,9 @@ static void Automap_call_failure_handlers(char type, char *symbol, int slen TSRM
 }
 
 /*---------------------------------------------------------------*/
-/* {{{ proto string Automap::register_success_handler(callable callback) */
+/* {{{ proto string \Automap\Mgr::registerSuccessHandler(callable callback) */
 
-static PHP_METHOD(Automap, register_success_handler)
+static PHP_METHOD(Automap, registerSuccessHandler)
 {
 	zval *zp;
 
@@ -72,42 +73,38 @@ static PHP_METHOD(Automap, register_success_handler)
 		==FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
 
 	ENSURE_STRING(zp);
-	EALLOCATE(AUTOMAP_G(success_handlers),(AUTOMAP_G(sh_count)+1)*sizeof(zp));
-	AUTOMAP_G(success_handlers)[AUTOMAP_G(sh_count)++]=zp;
+	EALLOCATE(PHK_G(automap_successHandlers),(PHK_G(automap_sh_count)+1)*sizeof(zp));
+	PHK_G(automap_successHandlers)[PHK_G(automap_sh_count)++]=zp;
 	Z_ADDREF_P(zp);
 }
 
 /* }}} */
 /*---------------------------------------------------------------*/
-/* Success handler API: (Automap $map, string $stype, string $symbol, string $ptype, string $path) */
+/* Success handler receives 2 args : An export of the successful entry, and
+*  the load ID of the map where the symbol was found. */
 
-static void Automap_call_success_handlers(Automap_Mnt *mp
+static void Automap_callSuccessHandlers(Automap_Mnt *mp
 	,Automap_Pmap_Entry *pep TSRMLS_DC)
 {
-	zval *args[3],*zstype,*zsname;
-	char str[2];
+	zval *args[2],*entry_zp,*id_zp;
 	int i;
 
-	if (AUTOMAP_G(sh_count)) {
-		str[0]=pep->stype;
-		str[1]='\0';
-		MAKE_STD_ZVAL(zstype);
-		ZVAL_STRINGL(zstype,str,1,1);
-		Automap_instance_by_mp(mp TSRMLS_CC);
-		MAKE_STD_ZVAL(zsname);
-		ZVAL_COPY_VALUE(zsname,&(pep->zsname));
-		zval_copy_ctor(zsname);
-		args[0]=zstype;
-		args[1]=zsname;
-		args[2]=mp->instance;
-		for (i=0;i<AUTOMAP_G(sh_count);i++) {
+	if (PHK_G(automap_sh_count)) {
+		ALLOC_INIT_ZVAL(entry_zp);
+		Automap_Pmap_exportEntry(pep,entry_zp TSRMLS_CC);
+		args[0]=entry_zp;
+		ALLOC_INIT_ZVAL(id_zp);
+		ZVAL_LONG(id_zp,mp->id);
+		args[1]=id_zp;
+		for (i=0;i<PHK_G(automap_sh_count);i++) {
+			DBG_MSG1("Calling success handler #%d",i);
 			ut_call_user_function_void(NULL
-			,Z_STRVAL_P(AUTOMAP_G(success_handlers)[i])
-			,Z_STRLEN_P(AUTOMAP_G(success_handlers)[i])
-			,3,args TSRMLS_CC);
+				,Z_STRVAL_P(PHK_G(automap_successHandlers)[i])
+				,Z_STRLEN_P(PHK_G(automap_successHandlers)[i])
+				,2,args TSRMLS_CC);
 		}
-		ut_ezval_ptr_dtor(&zstype);
-		ut_ezval_ptr_dtor(&zsname);
+		ut_ezval_ptr_dtor(&entry_zp);
+		ut_ezval_ptr_dtor(&id_zp);
 	}
 }
 
@@ -129,9 +126,9 @@ return SUCCESS;
 
 static int RINIT_Automap_Handlers(TSRMLS_D)
 {
-	AUTOMAP_G(fh_count)=AUTOMAP_G(sh_count)=0;
-	AUTOMAP_G(failure_handlers)=NULL;
-	AUTOMAP_G(success_handlers)=NULL;
+	PHK_G(automap_fh_count)=PHK_G(automap_sh_count)=0;
+	PHK_G(automap_failureHandlers)=NULL;
+	PHK_G(automap_successHandlers)=NULL;
 
 	return SUCCESS;
 }
@@ -142,20 +139,20 @@ static int RSHUTDOWN_Automap_Handlers(TSRMLS_D)
 {
 	int i;
 
-	if (AUTOMAP_G(fh_count)) {
-		for (i=0;i<AUTOMAP_G(fh_count);i++) {
-			ut_ezval_ptr_dtor(AUTOMAP_G(failure_handlers)+i);
+	if (PHK_G(automap_fh_count)) {
+		for (i=0;i<PHK_G(automap_fh_count);i++) {
+			ut_ezval_ptr_dtor(PHK_G(automap_failureHandlers)+i);
 		}
-		EALLOCATE(AUTOMAP_G(failure_handlers),0);
-		AUTOMAP_G(fh_count)=0;
+		EALLOCATE(PHK_G(automap_failureHandlers),0);
+		PHK_G(automap_fh_count)=0;
 	}
 
-	if (AUTOMAP_G(sh_count)) {
-		for (i=0;i<AUTOMAP_G(sh_count);i++) {
-			ut_ezval_ptr_dtor(AUTOMAP_G(success_handlers)+i);
+	if (PHK_G(automap_sh_count)) {
+		for (i=0;i<PHK_G(automap_sh_count);i++) {
+			ut_ezval_ptr_dtor(PHK_G(automap_successHandlers)+i);
 		}
-		EALLOCATE(AUTOMAP_G(success_handlers),0);
-		AUTOMAP_G(sh_count)=0;
+		EALLOCATE(PHK_G(automap_successHandlers),0);
+		PHK_G(automap_sh_count)=0;
 	}
 
 	return SUCCESS;

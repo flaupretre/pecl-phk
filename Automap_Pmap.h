@@ -21,54 +21,41 @@
 
 /*---------------------------------------------------------------*/
 
-#define AUTOMAP_MAGIC "AUTOMAP  M\024\010\6\3"
+#define AUTOMAP_MAP_PROTOCOL	1
 
 /*---------------------------------------------------------------*/
 
 typedef struct {				/* Persistent */
-	char stype;
-	zval zsname;
-	char ftype;
-	zval zfpath;
+	char stype;					/* Symbol type */
+	zval zsname;				/* Symbol name (case sensitive) */
+	char ftype;					/* Target type */
+	zval zfapath;				/* Absolute target path */
 } Automap_Pmap_Entry;
 
 typedef struct {				/* Persistent */
-	zval *zmnt;					/* (String zval *) */
-	ulong mnt_hash;
-	zval *zmin_version;			/* Map requires at least this runtime version (String) */
-	zval *zversion;				/* Map was created with this creator version (String) */
-	zval *zoptions;				/* Array */
 	zval *zsymbols;				/* Array of Automap_Pmap_Entry structures */
 } Automap_Pmap;
 
 /*---------------------------------------------------------------*/
 /* Persistent data */
 
-static HashTable ptab;
+static HashTable pmap_array;	/* Key=UFID, Value=(Automap_ptab *) */
 
-StaticMutexDeclare(ptab);
+StaticMutexDeclare(pmap_array);
 
 /*============================================================================*/
 
-static Automap_Pmap *Automap_Pmap_get(zval *zmntp, ulong hash TSRMLS_DC);
-
-static int Automap_Pmap_create_entry(zval **zpp
-#if PHP_API_VERSION >= 20090626
-		/* PHP 5.3+ requires this */
-	TSRMLS_DC
-#endif
-	, int num_args, va_list va, zend_hash_key *hash_key
-#if PHP_API_VERSION < 20090626
-	TSRMLS_DC
-#endif
-	);
-
-static Automap_Pmap *Automap_Pmap_get_or_create(zval *zpathp, zval *zmntp
-	, ulong hash TSRMLS_DC);
+static Automap_Pmap *Automap_Pmap_get(zval *zufidp, ulong hash TSRMLS_DC);
+static int Automap_Pmap_create_entry(zval **zpp, zval **zsymbols TSRMLS_DC);
+static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp
+	, long flags TSRMLS_DC);
+static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
+	, zval *zufidp, ulong hash, zval *zbasePathp_arg, long flags TSRMLS_DC);
 static void Automap_Pmap_dtor(Automap_Pmap *pmp);
-static void Automap_Pmap_Entry_dtor(Automap_Pmap_Entry *pmep);
+static void Automap_Pmap_Entry_dtor(Automap_Pmap_Entry *pep);
 static Automap_Pmap_Entry *Automap_Pmap_find_key(Automap_Pmap *pmp
 	, zval *zkey, ulong hash TSRMLS_DC);
+static void Automap_Pmap_exportEntry(Automap_Pmap_Entry *pep, zval *zp TSRMLS_DC);
 
 static int MINIT_Automap_Pmap(TSRMLS_D);
 static int MSHUTDOWN_Automap_Pmap(TSRMLS_D);

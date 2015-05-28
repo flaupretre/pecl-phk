@@ -17,37 +17,16 @@
 */
 
 /*---------------------------------------------------------------*/
+/* In case of error, free mem allocated by ut_pathUniqueID() */
 
-static PHP_METHOD(Automap, min_map_version)
+static void Automap_ufid(zval *path, zval **zufidpp TSRMLS_DC)
 {
-	RETVAL_STRING(AUTOMAP_MIN_MAP_VERSION,1);
+	ut_pathUniqueID('m', path, zufidpp, NULL TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/
-/* In case of error, free mem allocated by ut_path_unique_id() */
 
-static void Automap_path_id(zval * path, zval **id_zp TSRMLS_DC)
-{
-	ut_path_unique_id('m', path, id_zp, NULL TSRMLS_CC);
-}
-
-/*---------------------------------------------------------------*/
-/* {{{ proto string Automap::path_id(string path) */
-
-static PHP_METHOD(Automap, path_id)
-{
-	zval *path;
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &path) == FAILURE)
-		EXCEPTION_ABORT("Cannot parse parameters");
-
-	Automap_path_id(path, &return_value TSRMLS_CC);
-}
-
-/* }}} */
-/*---------------------------------------------------------------*/
-
-static int Automap_symbol_is_defined(char type, char *symbol
+static int Automap_symbolIsDefined(char type, char *symbol
 	, unsigned int slen TSRMLS_DC)
 {
 	char *p;
@@ -89,27 +68,9 @@ static int Automap_symbol_is_defined(char type, char *symbol
 /*---------------------------------------------------------------*/
 /* {{{ proto bool PHK::using accelerator() */
 
-static PHP_METHOD(Automap, using_accelerator)
+static PHP_METHOD(Automap, usingAccelerator)
 {
 	RETVAL_TRUE;
-}
-
-/* }}} */
-/*---------------------------------------------------------------*/
-/* {{{ proto void Automap::accel_techinfo() */
-
-static PHP_METHOD(Automap, accel_techinfo)
-{
-	if (sapi_module.phpinfo_as_text) {
-		php_printf("Using Automap Accelerator: Yes\n");
-		php_printf("Accelerator Version: %s\n", PHP_AUTOMAP_VERSION);
-	} else {
-		php_printf("<table border=0>");
-		php_printf("<tr><td>Using Automap Accelerator:&nbsp;</td><td>Yes</td></tr>");
-		php_printf("<tr><td>Accelerator Version:&nbsp;</td><td>%s</td></tr>",
-			 PHP_AUTOMAP_VERSION);
-		php_printf("</table>");
-	}
 }
 
 /* }}} */

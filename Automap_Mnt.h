@@ -25,31 +25,32 @@
 
 typedef struct _Automap_Mnt {	/* Per request */
 	Automap_Pmap *map;			/* Persistent map */
-	int mnt_count;				/* Allows to mount/umount the same map */
-	zval *instance;				/* Automap object (NULL until created) */
-	zval *zpath;				/* Map file path (String zval) */
-	zval *zbase;				/* Map base directory (String zval) */
-	ulong flags;				/* (Long zval) */
-	int order;
+	zval *map_object;			/* Automap_Map instance (NULL until created) */
+	zval *zpath;				/* Map file absolute path (String zval) */
+	ulong flags;				/* Load flags */
+	long id;					/* Map ID (index in map_array) */
 } Automap_Mnt;
+
+/* Load flags */
+
+#define AUTOMAP_FLAG_NO_AUTOLOAD	1
+#define AUTOMAP_FLAG_CRC_CHECK		2
+#define AUTOMAP_FLAG_PECL_LOAD		4
 
 /*============================================================================*/
 
 static void Automap_Mnt_dtor(Automap_Mnt *mp);
 static void Automap_Mnt_remove(Automap_Mnt *mp TSRMLS_DC);
-static Automap_Mnt *Automap_Mnt_create(Automap_Pmap *pmp, zval *zpathp, zval *zbasep
-	, ulong flags TSRMLS_DC);
-static Automap_Mnt *Automap_Mnt_get(zval *mnt, ulong hash, int exception TSRMLS_DC);
-static PHP_METHOD(Automap, is_mounted);
-ZEND_DLEXPORT void Automap_Mnt_validate(zval * mnt, ulong hash TSRMLS_DC);
-static PHP_METHOD(Automap, validate);
-ZEND_DLEXPORT Automap_Mnt *Automap_Mnt_mount(zval * path, zval * base_dir,
-									   zval * mnt, ulong flags TSRMLS_DC);
-static PHP_METHOD(Automap, mount);
-ZEND_DLEXPORT void Automap_umount(zval *mnt, ulong hash TSRMLS_DC);
-static PHP_METHOD(Automap, umount);
-static PHP_METHOD(Automap, mnt_list);
-static char *Automap_Mnt_abs_path(Automap_Mnt *mp, Automap_Pmap_Entry *pep, int *lenp TSRMLS_DC);
+static Automap_Mnt *Automap_Mnt_get(long id, int exception TSRMLS_DC);
+static PHP_METHOD(Automap, isActiveID);
+static void Automap_Mnt_array_add(Automap_Mnt *mp TSRMLS_DC);
+static Automap_Mnt *Automap_Mnt_load_extended(zval *zpathp, zval *zufidp
+	, ulong hash, zval *zbasep, Automap_Pmap *pmp, long flags TSRMLS_DC);
+static Automap_Mnt *Automap_Mnt_load(zval *zpathp, long flags TSRMLS_DC);
+static PHP_METHOD(Automap, load);
+static void Automap_unload(long id TSRMLS_DC);
+static PHP_METHOD(Automap, unload);
+static PHP_METHOD(Automap, activeIDs);
 static int Automap_Mnt_resolve_key(Automap_Mnt *mp, zval *zkey, ulong hash TSRMLS_DC);
 
 static int MINIT_Automap_Mnt(TSRMLS_D);
