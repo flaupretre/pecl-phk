@@ -141,9 +141,12 @@ static PHP_METHOD(PHK_Cache, cacheID)
 
 static PHP_METHOD(PHK_Cache, setCacheMaxSize)
 {
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "l", &cache_maxsize)
-		== FAILURE)
-		EXCEPTION_ABORT("Cannot parse parameters");
+	long tmp;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "l", &tmp)
+ 		== FAILURE)
+ 		EXCEPTION_ABORT("Cannot parse parameters");
+	cache_maxsize = (int)tmp;
 }
 
 /* }}} */
