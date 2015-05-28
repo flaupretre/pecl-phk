@@ -2,15 +2,20 @@
 <package packagerversion="1.5.4" version="2.0" xmlns="http://pear.php.net/dtd/package-2.0" xmlns:tasks="http://pear.php.net/dtd/tasks-1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://pear.php.net/dtd/tasks-1.0 http://pear.php.net/dtd/tasks-1.0.xsd http://pear.php.net/dtd/package-2.0 http://pear.php.net/dtd/package-2.0.xsd">
  <name>phk</name>
  <channel>pecl.php.net</channel>
- <summary>PHK and Automap accelerator</summary>
+ <summary>An optional accelerator for Automap and PHK</summary>
  <description>
- PHK is a PHP-oriented package/archive system. Basically, it can be considered
- as a PHP-oriented equivalent of the Java jar format. As jar, PHK allows to
- distribute and run a library or an application as a single file.
- 
- Automap is a fast map-based autoloader.
+An optional accelerator for Automap and PHK.
 
- This extension boosts runtime performance when using PHK and/or Automap.
+Automap (http://automap.tekwire.net) is a fast map-based autoloader.
+
+PHK (http://phk.tekwire.net) is a PHP-oriented package/archive system.
+
+This extension does not provide any new feature, it just provides a dramatic
+increase in performance when using Automap and/or PHK.
+
+Note that there is no 'Automap' PECL extension anymore. The PHK extension now
+includes it. So, this is the one you need, even if using Automap out of PHK
+packages.
  </description>
  <lead>
   <name>Francois Laupretre</name>
@@ -18,11 +23,11 @@
   <email>francois@php.net</email>
   <active>yes</active>
  </lead>
- <date>2012-06-13</date>
- <time>12:00:00</time>
+ <date>2015-05-27</date>
+ <time>00:00:00</time>
  <version>
-  <release>2.1.0</release>
-  <api>2.1.0</api>
+  <release>3.0.0</release>
+  <api>3.0.0</api>
  </version>
  <stability>
   <release>beta</release>
@@ -30,7 +35,7 @@
  </stability>
  <license uri="http://www.php.net/license">PHP License</license>
  <notes>
-Tested with PHP versions 5.1.0 to 5.4.3
+PHP 5.x only
  </notes>
  <contents>
   <dir baseinstalldir="/" name="/">
@@ -38,37 +43,40 @@ Tested with PHP versions 5.1.0 to 5.4.3
     <file name="001_PHK_ACCEL_VERSION.phpt" role="test"/>
     <file name="002_techinfo.phpt" role="test"/>
    </dir> <!-- /tests -->
-   <file name="config.m4" role="src"/>
-   <file name="config.w32" role="src"/>
-   <file name="CREDITS" role="doc"/>
-   <file name="LICENSE" role="doc"/>
+   <file name="Automap_Class.c" role="src" />
+   <file name="Automap_Class.h" role="src" />
    <file name="Automap_Handlers.c" role="src" />
    <file name="Automap_Handlers.h" role="src" />
-   <file name="Automap_Instance.c" role="src" />
-   <file name="Automap_Instance.h" role="src" />
    <file name="Automap_Key.c" role="src" />
    <file name="Automap_Key.h" role="src" />
    <file name="Automap_Loader.c" role="src" />
    <file name="Automap_Loader.h" role="src" />
    <file name="Automap_Mnt.c" role="src" />
    <file name="Automap_Mnt.h" role="src" />
+   <file name="Automap_Parser.c" role="src" />
+   <file name="Automap_Parser.h" role="src" />
    <file name="Automap_Pmap.c" role="src" />
    <file name="Automap_Pmap.h" role="src" />
    <file name="Automap_Type.c" role="src" />
    <file name="Automap_Type.h" role="src" />
    <file name="Automap_Util.c" role="src" />
    <file name="Automap_Util.h" role="src" />
+   <file name="cleanup" role="src"/>
+   <file name="config.m4" role="src"/>
+   <file name="config.w32" role="src"/>
+   <file name="CREDITS" role="doc"/>
+   <file name="LICENSE" role="doc"/>
    <file name="PHK.c" role="src"/>
    <file name="PHK.h" role="src"/>
    <file name="PHK_Cache.c" role="src"/>
    <file name="PHK_Cache.h" role="src"/>
-   <file name="PHK_Stream.c" role="src"/>
-   <file name="PHK_Stream.h" role="src"/>
    <file name="PHK_Mgr.c" role="src"/>
    <file name="PHK_Mgr.h" role="src"/>
-   <file name="php_phk.c" role="src"/>
+   <file name="PHK_Stream.c" role="src"/>
+   <file name="PHK_Stream.h" role="src"/>
    <file name="php_phk.c" role="src"/>
    <file name="php_phk.h" role="src"/>
+   <file name="README.md" role="doc"/>
    <file name="utils.c" role="src"/>
    <file name="utils.h" role="src"/>
   </dir> <!-- / -->
@@ -76,7 +84,7 @@ Tested with PHP versions 5.1.0 to 5.4.3
  <dependencies>
   <required>
    <php>
-    <min>5.1.0</min>
+    <min>5.3.0</min>
    </php>
    <pearinstaller>
     <min>1.4.0b1</min>

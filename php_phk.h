@@ -16,6 +16,7 @@
   +----------------------------------------------------------------------+
 */
 
+/* Uncomment to display debug messages */
 /* #define PHK_DEBUG */
 
 #ifndef __PHP_PHK_H
@@ -36,6 +37,7 @@
 #endif
 
 #include <stdio.h>
+#include <fcntl.h>
 
 #ifdef HAVE_SYS_TYPES_H
 #	include <sys/types.h>
@@ -87,36 +89,36 @@
 #include "zend_hash.h"
 #include "zend_objects_API.h"
 #include "zend_operators.h"
-#include "TSRM/tsrm_virtual_cwd.h"
 
 #include "utils.h"
 
 #include "Automap_Handlers.h"
-#include "Automap_Instance.h"
+#include "Automap_Class.h"
 #include "Automap_Key.h"
 #include "Automap_Loader.h"
 #include "Automap_Pmap.h"
 #include "Automap_Mnt.h"
 #include "Automap_Type.h"
 #include "Automap_Util.h"
+#include "Automap_Parser.h"
 #include "PHK_Cache.h"
 #include "PHK_Stream.h"
 #include "PHK_Mgr.h"
 #include "PHK.h"
 
+#if ZEND_EXTENSION_API_NO >= PHP_5_5_X_API_NO
+#include "zend_virtual_cwd.h"
+#else
+#include "TSRM/tsrm_virtual_cwd.h"
+#endif
+
 /*---------------------------------------------------------------*/
 
-#define PHP_PHK_VERSION "2.1.0" /* The extension version */
+#define PHP_PHK_VERSION "3.0.0" /* The extension version */
 
-#define AUTOMAP_RUNTIME_VERSION "2.1.0"
+/* Version to compare to package's required runtime version */
 
-#define AUTOMAP_API "2.1.0"
-
-#define AUTOMAP_MIN_MAP_VERSION "1.1.0"
-
-#define PHK_ACCEL_VERSION "2.1.0"
-
-#define PHK_ACCEL_MIN_VERSION "2.1.0"
+#define PHK_ACCEL_VERSION "3.0.0"
 
 #define PHP_PHK_EXTNAME "phk"
 
@@ -126,20 +128,7 @@ zend_module_entry phk_module_entry;
 
 /*---------------------------------------------------------------*/
 
-static DECLARE_CZVAL(false);
-static DECLARE_CZVAL(true);
-static DECLARE_CZVAL(null);
-
-static DECLARE_CZVAL(Automap);
-static DECLARE_CZVAL(spl_autoload_register);
-static DECLARE_CZVAL(Automap__autoload_hook);
-
 /* Hash keys */
-
-static DECLARE_HKEY(map);
-static DECLARE_HKEY(options);
-static DECLARE_HKEY(automap);
-static DECLARE_HKEY(mp_property_name);
 
 static DECLARE_HKEY(no_cache);
 static DECLARE_HKEY(no_opcode_cache);
@@ -153,20 +142,20 @@ static DECLARE_HKEY(min_php_version);
 static DECLARE_HKEY(max_php_version);
 static DECLARE_HKEY(mime_types);
 static DECLARE_HKEY(web_run_script);
-static DECLARE_HKEY(mp_property_name);
+static DECLARE_HKEY(PHK_mp_property_name);
 static DECLARE_HKEY(web_main_redirect);
 static DECLARE_HKEY(_PHK_path);
 static DECLARE_HKEY(ORIG_PATH_INFO);
-static DECLARE_HKEY(phk_backend);
+static DECLARE_HKEY(phk_backend_class);
 static DECLARE_HKEY(lib_run_script);
 static DECLARE_HKEY(cli_run_script);
 static DECLARE_HKEY(auto_umount);
 static DECLARE_HKEY(argc);
 static DECLARE_HKEY(argv);
 static DECLARE_HKEY(automap);
-static DECLARE_HKEY(phk_stream_backend);
+static DECLARE_HKEY(phk_stream_backend_class_lc);
 static DECLARE_HKEY(eaccelerator_get);
-static DECLARE_HKEY(phk);
+static DECLARE_HKEY(phk_class_lc);
 
 /*============================================================================*/
 
@@ -174,19 +163,18 @@ ZEND_BEGIN_MODULE_GLOBALS(phk)
 
 /*-- Automap --*/
 
-HashTable mnttab;
-Automap_Mnt **mount_order; /* Array of (Automap_Mnt *)|NULL */
-int mcount;						/* Size of the mount_order table */
+Automap_Mnt **map_array;	/* Array of (Automap_Mnt *)|NULL, index = map ID */
+int map_count;				/* Size of map_array */
 
-zval **failure_handlers;
-int fh_count;					/* Failure handler count */
+zval **automap_failureHandlers;
+int automap_fh_count;					/* Failure handler count */
 
-zval **success_handlers;
-int sh_count;					/* Success handler count */
+zval **automap_successHandlers;
+int automap_sh_count;					/* Success handler count */
 
 /*-- PHK --*/
 
-HashTable *mtab;		/* PHK_Mgr - Null until initialized */
+HashTable *mtab;		/* PHK\Mgr - Null until initialized */
 PHK_Mnt  **mount_order;	/* Array of (PHK_Mnt *)|NULL */
 int mcount;				/* Size of the mount_order table */
 
@@ -196,7 +184,7 @@ char root_package[UT_PATH_MAX + 1];
 
 int php_runtime_is_loaded;
 
-zval *mime_table;
+zval *mimeTable;
 
 ZEND_END_MODULE_GLOBALS(phk)
 
@@ -208,10 +196,11 @@ ZEND_END_MODULE_GLOBALS(phk)
 
 /*---------------------------------------------------------------*/
 
-/* We need a private property here, so that it cannot be accessed nor
-   modified by a malicious PHP script */
+/* We need private properties here, so that they cannot be accessed nor
+   modified by a malicious PHP script.
+   Private properties are stored as '\0<classname>\0<property>'. */
 
-#define MP_PROPERTY_NAME "\0\0m"
+#define PHK_MP_PROPERTY_NAME "\0PHK\0m"
 
 /*============================================================================*/
 #endif /* __PHP_PHK_H */

@@ -22,20 +22,20 @@
 /*---------------------------------------------------------------*/
 
 #define AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(_name) \
-	static PHP_METHOD(Automap, get_ ## _name); \
-	static PHP_METHOD(Automap, require_ ## _name); \
+	static PHP_METHOD(Automap, get ## _name); \
+	static PHP_METHOD(Automap, require ## _name); \
 
 /*============================================================================*/
 
-static PHP_METHOD(Automap, autoload_hook);
+static PHP_METHOD(Automap, autoloadHook);
 static void Automap_Loader_register_hook(TSRMLS_D);
-ZEND_DLEXPORT int Automap_resolve_symbol(char type, char *symbol, int slen, int autoload
+static int Automap_resolve_symbol(char type, char *symbol, int slen, int autoload
 	, int exception TSRMLS_DC);
 
-AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(function)
-AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(constant)
-AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(class)
-AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(extension)
+AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(Function)
+AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(Constant)
+AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(Class)
+AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(Extension)
 
 static int MINIT_Automap_Loader(TSRMLS_D);
 static int MSHUTDOWN_Automap_Loader(TSRMLS_D);

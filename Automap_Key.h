@@ -22,7 +22,6 @@
 /*============================================================================*/
 
 static void Automap_key(char type, char *symbol, unsigned long len, zval *ret TSRMLS_DC);
-static PHP_METHOD(Automap, key);
 
 static int MINIT_Automap_Key(TSRMLS_D);
 static int MSHUTDOWN_Automap_Key(TSRMLS_D);

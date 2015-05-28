@@ -17,9 +17,9 @@
 */
 
 /*---------------------------------------------------------------*/
-/* {{{ proto void Automap::autoload_hook(string symbol [, string type ]) */
+/* {{{ proto void \Automap\Mgr::autoloadHook(string symbol [, string type ]) */
 
-static PHP_METHOD(Automap, autoload_hook)
+static PHP_METHOD(Automap, autoloadHook)
 {
 	char *symbol,*type;
 	int slen,tlen;
@@ -29,24 +29,24 @@ static PHP_METHOD(Automap, autoload_hook)
 	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "s|s",&symbol, &slen
 		,&type,&tlen)==FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
 
-	DBG_MSG1("Starting Automap::autoload_hook(%s)",symbol);
+	DBG_MSG1("Starting \\Automap\\Mgr::autoloadHook(%s)",symbol);
 
 	Automap_resolve_symbol((type ? (*type) : AUTOMAP_T_CLASS), symbol
 		, slen, 1, 0 TSRMLS_CC);
 
-	DBG_MSG("Ending Automap::autoload_hook");
+	DBG_MSG("Ending \\Automap\\Mgr::autoloadHook");
 }
 
 /* }}} */
 /*---------------------------------------------------------------*/
-/* Run  spl_autoload_register('Automap::autoload_hook'); */
+/* Run  spl_autoload_register('\Automap\Mgr::autoloadHook'); */
 
 static void Automap_Loader_register_hook(TSRMLS_D)
 {
 	zval *zp;
 
 	MAKE_STD_ZVAL(zp);
-	ZVAL_STRINGL(zp,"Automap::autoload_hook",22,1);
+	ZVAL_STRINGL(zp,"Automap\\Mgr::autoloadHook",25,1);
 	ut_call_user_function_void(NULL,ZEND_STRL("spl_autoload_register"),1,&zp TSRMLS_CC);
 	ut_ezval_ptr_dtor(&zp);
 }
@@ -54,7 +54,7 @@ static void Automap_Loader_register_hook(TSRMLS_D)
 /*---------------------------------------------------------------*/
 /* Returns SUCCESS/FAILURE */
 
-ZEND_DLEXPORT int Automap_resolve_symbol(char type, char *symbol, int slen, int autoload
+static int Automap_resolve_symbol(char type, char *symbol, int slen, int autoload
 	, int exception TSRMLS_DC)
 {
 	zval *zkey;
@@ -66,11 +66,11 @@ ZEND_DLEXPORT int Automap_resolve_symbol(char type, char *symbol, int slen, int 
 	DBG_MSG2("Starting Automap_resolve_symbol(%c,%s)",type,symbol);
 
 	/* If executed from the autoloader, no need to check for symbol existence */
-	if ((!autoload) && Automap_symbol_is_defined(type,symbol,slen TSRMLS_CC)) {
+	if ((!autoload) && Automap_symbolIsDefined(type,symbol,slen TSRMLS_CC)) {
 		return 1;
 	}
 
-	if ((i=AUTOMAP_G(mcount))==0) return 0;
+	if ((i=PHK_G(map_count))==0) return 0;
 
 	ALLOC_INIT_ZVAL(zkey);
 	Automap_key(type,symbol,slen,zkey TSRMLS_CC);
@@ -78,19 +78,19 @@ ZEND_DLEXPORT int Automap_resolve_symbol(char type, char *symbol, int slen, int 
 	hash=ZSTRING_HASH(zkey);
 
 	while ((--i) >= 0) {
-		mp=AUTOMAP_G(mount_order)[i];
+		mp=PHK_G(map_array)[i];
 		if (!mp) continue;
 		if (Automap_Mnt_resolve_key(mp, zkey, hash TSRMLS_CC)==SUCCESS) {
-			DBG_MSG2("Found key %s in map %s",Z_STRVAL_P(zkey),Z_STRVAL_P(mp->map->zmnt));
+			DBG_MSG2("Found key %s in map %d",Z_STRVAL_P(zkey),mp->id);
 			ut_ezval_ptr_dtor(&zkey);
 			return SUCCESS;
 		}
 	}
 
-	Automap_call_failure_handlers(type, symbol, slen TSRMLS_CC);
+	Automap_callFailureHandlers(type, symbol, slen TSRMLS_CC);
 
 	if ((exception)&&(!EG(exception))) {
-		ts=Automap_type_to_string(type TSRMLS_CC);
+		ts=Automap_typeToString(type TSRMLS_CC);
 		THROW_EXCEPTION_2("Automap: Unknown %s: %s",ts,symbol);
 	}
 
@@ -107,7 +107,7 @@ ZEND_DLEXPORT int Automap_resolve_symbol(char type, char *symbol, int slen, int 
 	AUTOMAP_GET_REQUIRE_FUNCTION(_name,_type,require,1)
 
 #define AUTOMAP_GET_REQUIRE_FUNCTION(_name,_type,_gtype,_exception) \
-	static PHP_METHOD(Automap, _gtype ## _ ## _name) \
+	static PHP_METHOD(Automap, _gtype ## _name) \
 	{ \
 		char *symbol; \
 		int slen; \
@@ -119,15 +119,15 @@ ZEND_DLEXPORT int Automap_resolve_symbol(char type, char *symbol, int slen, int 
 			, 0, _exception TSRMLS_CC)==SUCCESS); \
 	}
 
-AUTOMAP_GET_FUNCTION(function,AUTOMAP_T_FUNCTION)
-AUTOMAP_GET_FUNCTION(constant,AUTOMAP_T_CONSTANT)
-AUTOMAP_GET_FUNCTION(class,AUTOMAP_T_CLASS)
-AUTOMAP_GET_FUNCTION(extension,AUTOMAP_T_EXTENSION)
+AUTOMAP_GET_FUNCTION(Function,AUTOMAP_T_FUNCTION)
+AUTOMAP_GET_FUNCTION(Constant,AUTOMAP_T_CONSTANT)
+AUTOMAP_GET_FUNCTION(Class,AUTOMAP_T_CLASS)
+AUTOMAP_GET_FUNCTION(Extension,AUTOMAP_T_EXTENSION)
 
-AUTOMAP_REQUIRE_FUNCTION(function,AUTOMAP_T_FUNCTION)
-AUTOMAP_REQUIRE_FUNCTION(constant,AUTOMAP_T_CONSTANT)
-AUTOMAP_REQUIRE_FUNCTION(class,AUTOMAP_T_CLASS)
-AUTOMAP_REQUIRE_FUNCTION(extension,AUTOMAP_T_EXTENSION)
+AUTOMAP_REQUIRE_FUNCTION(Function,AUTOMAP_T_FUNCTION)
+AUTOMAP_REQUIRE_FUNCTION(Constant,AUTOMAP_T_CONSTANT)
+AUTOMAP_REQUIRE_FUNCTION(Class,AUTOMAP_T_CLASS)
+AUTOMAP_REQUIRE_FUNCTION(Extension,AUTOMAP_T_EXTENSION)
 
 /*===============================================================*/
 
