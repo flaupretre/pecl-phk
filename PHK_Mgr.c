@@ -362,7 +362,7 @@ static void PHK_Mgr_mntList(zval * ret TSRMLS_DC)
 	if (PHK_G(mtab)) {
 		zend_hash_internal_pointer_reset_ex(PHK_G(mtab), &pos);
 		while (zend_hash_get_current_key_ex(PHK_G(mtab), &mnt_p, &mnt_len
-			, &dummy, 1, &pos) != HASH_KEY_NON_EXISTANT) {
+			, &dummy, 0, &pos) != HASH_KEY_NON_EXISTANT) {
 			add_next_index_stringl(ret, mnt_p, mnt_len - 1, 1);
 			zend_hash_move_forward_ex(PHK_G(mtab), &pos);
 		}
@@ -682,10 +682,11 @@ static void PHK_Mgr_topLevelPath(zval * zpath, zval * ret TSRMLS_DC)
 		zval_dtor(&zmnt);
 		zpath=mp->path;
 	}
-	
+
 	zval_dtor(ret);
-	(*ret)=(*zpath);
-	zval_copy_ctor(ret);
+	/* Don't know why but using zval_copy_ctor() to set zpath into ret
+	   creates a memory leak ! So, using another way... */
+	ZVAL_STRINGL(ret,Z_STRVAL_P(zpath),Z_STRLEN_P(zpath),1);
 }
 
 /* }}} */
@@ -1085,6 +1086,7 @@ static PHK_Pdata *PHK_Mgr_get_pdata(
 	
 #define RETURN_FROM_PHK_GET_OR_CREATE_PERSISTENT_DATA(_ret) \
 	{ \
+	CLEANUP_PHK_GET_OR_CREATE_PERSISTENT_DATA(); \
 	MutexUnlock(persistent_mtab); \
 	return _ret; \
 	}
@@ -1282,8 +1284,6 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 	}
 
 	/* Cleanup and return */
-
-	CLEANUP_PHK_GET_OR_CREATE_PERSISTENT_DATA();
 
 	RETURN_FROM_PHK_GET_OR_CREATE_PERSISTENT_DATA(entry);
 }
