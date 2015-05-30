@@ -396,6 +396,23 @@ static int webAccessAllowed(PHK_Mnt * mp, zval * path TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
+/* {{{ proto string PHK::webAccessAllowed(string path) */
+
+static PHP_METHOD(PHK, webAccessAllowed)
+{
+	zval *path;
+
+	PHK_GET_INSTANCE_DATA(webAccessAllowed)
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &path) ==
+		FAILURE)
+		EXCEPTION_ABORT("Cannot parse parameters");
+
+	RETURN_BOOL(webAccessAllowed(mp, path TSRMLS_CC));
+}
+
+/* }}} */
+/*---------------------------------------------------------------*/
 
 static char *gotoMain(PHK_Mnt * mp TSRMLS_DC)
 {
@@ -698,6 +715,17 @@ static void PHK_crcCheck(PHK_Mnt * mp TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
+/* {{{ proto bool PHK::crcCheck() */
+
+static PHP_METHOD(PHK, crcCheck)
+{
+	PHK_GET_INSTANCE_DATA(crcCheck)
+	
+	PHK_crcCheck(mp TSRMLS_CC);
+}
+
+/* }}} */
+/*---------------------------------------------------------------*/
 /* {{{ proto bool PHK::acceleratorIsPresent() */
 
 static PHP_METHOD(PHK, acceleratorIsPresent)
@@ -998,11 +1026,13 @@ static zend_function_entry PHK_functions[] = {
 	PHP_ME(PHK, automapID, UT_noarg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, option, UT_1arg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, parentMnt, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(PHK, webAccessAllowed, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, webTunnel, UT_noarg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, mimeHeader, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, mimeType, UT_1arg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, isPHPSourcePath, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, proxy, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(PHK, crcCheck, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, plugin, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, acceleratorIsPresent, UT_noarg_arginfo,
 		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
