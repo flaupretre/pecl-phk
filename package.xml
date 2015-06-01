@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<package packagerversion="1.5.4" version="2.0" xmlns="http://pear.php.net/dtd/package-2.0" xmlns:tasks="http://pear.php.net/dtd/tasks-1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://pear.php.net/dtd/tasks-1.0 http://pear.php.net/dtd/tasks-1.0.xsd http://pear.php.net/dtd/package-2.0 http://pear.php.net/dtd/package-2.0.xsd">
+<package version="2.0" xmlns="http://pear.php.net/dtd/package-2.0"
+		xmlns:tasks="http://pear.php.net/dtd/tasks-1.0"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://pear.php.net/dtd/tasks-1.0
+			http://pear.php.net/dtd/tasks-1.0.xsd
+			http://pear.php.net/dtd/package-2.0
+			http://pear.php.net/dtd/package-2.0.xsd">
  <name>phk</name>
  <channel>pecl.php.net</channel>
  <summary>An optional accelerator for Automap and PHK</summary>
@@ -33,7 +39,7 @@ packages.
   <release>beta</release>
   <api>beta</api>
  </stability>
- <license uri="http://www.php.net/license">PHP License</license>
+ <license uri="http://www.php.net/license/3_01.txt">PHP License</license>
  <notes>
 PHP 5.x only
  </notes>
@@ -93,4 +99,41 @@ PHP 5.x only
  </dependencies>
  <providesextension>phk</providesextension>
  <extsrcrelease/>
+ <changelog>
+  <release>
+   <version>
+    <release>3.0.1</release>
+    <api>3.0.1</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <date>2015-06-01</date>
+   <license uri="http://www.php.net/license/3_01.txt">PHP License</license>
+   <notes>
+ * Accept stream-wrapped PHK packages (needed for composer)
+ * Fix minor mem leaks
+ * Implement missing auxiliary methods
+   </notes>
+  </release>
+  <release>
+   <version>
+    <release>3.0.0</release>
+    <api>3.0.0</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <date>2015-05-28</date>
+   <license uri="http://www.php.net/license/3_01.txt">PHP License</license>
+   <notes>
+ * Merge Automap extension and optimize
+ * Adapt to PHK 3.0.0 namespaces and class/method renaming
+ * Add parse accelerating functions
+ * Make Automap fully case-sensitive
+   </notes>
+  </release>
+ </changelog>
 </package>
