@@ -8,5 +8,5 @@ var_dump(PHK_ACCEL_VERSION);
 ?>
 ===DONE===
 --EXPECT--
-string(5) "3.0.0"
+string(5) "3.0.1"
 ===DONE===
