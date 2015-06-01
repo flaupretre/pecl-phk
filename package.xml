@@ -90,14 +90,6 @@ PHP 5.x only
     <min>1.4.0b1</min>
    </pearinstaller>
   </required>
-  <optional>
-   <extension>
-    <name>bz2</name>
-   </extension>
-   <extension>
-    <name>zlib</name>
-   </extension>
-  </optional>
  </dependencies>
  <providesextension>phk</providesextension>
  <extsrcrelease/>
