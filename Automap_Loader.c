@@ -81,7 +81,7 @@ static int Automap_resolve_symbol(char type, char *symbol, int slen, int autoloa
 		mp=PHK_G(map_array)[i];
 		if (!mp) continue;
 		if (Automap_Mnt_resolve_key(mp, zkey, hash TSRMLS_CC)==SUCCESS) {
-			DBG_MSG2("Found key %s in map %d",Z_STRVAL_P(zkey),mp->id);
+			DBG_MSG2("Found key %s in map %ld",Z_STRVAL_P(zkey),mp->id);
 			ut_ezval_ptr_dtor(&zkey);
 			return SUCCESS;
 		}
