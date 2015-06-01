@@ -28,9 +28,10 @@ static void PHK_set_mp_property(zval * obj, int order TSRMLS_DC)
 
 static void PHK_needPhpRuntime(TSRMLS_D)
 {
-	FILE *fp;
-	int size, offset,nb_read;
-	char buf1[242], *buf=NULL;
+	int size, offset;
+	char *buf1=NULL, *buf=NULL;
+	php_stream *stream;
+	long len;
 
 	if (PHK_G(php_runtime_is_loaded)) return;
 
@@ -45,29 +46,42 @@ static void PHK_needPhpRuntime(TSRMLS_D)
 
 	DBG_MSG1("Loading PHP runtime code from %s", PHK_G(root_package));
 
-	if (!(fp = fopen(PHK_G(root_package), "rb")))
+	/* Cannot use fopen() as we must support stream-wrapped paths */
+
+	stream = php_stream_open_wrapper_ex(PHK_G(root_package), "rb",0,NULL, NULL);
+	if (!stream) {
 		EXCEPTION_ABORT_1
 			("Cannot load PHP runtime code - Unable to open file %s",
 			 PHK_G(root_package));
+	}
 
-	nb_read=fread(buf1, 1, 241, fp);
-	if (nb_read != 241)	EXCEPTION_ABORT("Cannot load PHP runtime code - Cannot get offset/size");
+	if ((len = php_stream_copy_to_mem(stream, &buf1, 241, 0)) != 241) {
+		EALLOCATE(buf1, 0);
+		EXCEPTION_ABORT("Cannot load PHP runtime code - Cannot get offset/size");
+	}
+
 	buf1[224]='\0'; /* Avoids valgrind warning */
 	sscanf(buf1 + 212, "%d", &offset);
 	buf1[239]='\0'; /* Avoids valgrind warning */
 	sscanf(buf1 + 227, "%d", &size);
+	EALLOCATE(buf1, 0);
 
-	EALLOCATE(buf, size + 1);
+	if (php_stream_seek(stream, offset, SEEK_SET) < 0) {
+		EALLOCATE(buf,0);
+		EXCEPTION_ABORT_1("Cannot load PHP runtime code - Cannot seek (offset=%d)",offset);
+	}
 
-	fseek(fp, offset, SEEK_SET);
-	nb_read=fread(buf, 1, size, fp);
-	if (nb_read != size) EXCEPTION_ABORT("Cannot load PHP runtime code - Cannot get code");
-	fclose(fp);
+	if ((len = php_stream_copy_to_mem(stream, &buf, size, 0)) != size) {
+		EALLOCATE(buf,0);
+		EXCEPTION_ABORT("Cannot load PHP runtime code - Cannot get code");
+	}
+
+	php_stream_close(stream);
+
 	buf[size] = '\0';
 	zend_eval_string(buf, NULL, "PHK runtime code (PHP)" TSRMLS_CC);
 
 	EALLOCATE(buf,0);
-
 	PHK_G(php_runtime_is_loaded) = 1;
 }
 
@@ -396,6 +410,23 @@ static int webAccessAllowed(PHK_Mnt * mp, zval * path TSRMLS_DC)
 }
 
 /*---------------------------------------------------------------*/
+/* {{{ proto string PHK::webAccessAllowed(string path) */
+
+static PHP_METHOD(PHK, webAccessAllowed)
+{
+	zval *path;
+
+	PHK_GET_INSTANCE_DATA(webAccessAllowed)
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z", &path) ==
+		FAILURE)
+		EXCEPTION_ABORT("Cannot parse parameters");
+
+	RETURN_BOOL(webAccessAllowed(mp, path TSRMLS_CC));
+}
+
+/* }}} */
+/*---------------------------------------------------------------*/
 
 static char *gotoMain(PHK_Mnt * mp TSRMLS_DC)
 {
@@ -590,7 +621,7 @@ static PHP_METHOD(PHK, mimeHeader)
 
 static void PHK_mimeType(zval *ret, PHK_Mnt * mp, zval * path TSRMLS_DC)
 {
-	zval *suffix, **zpp;
+	zval *suffix, **zpp=NULL;
 
 	ut_ezval_dtor(ret);
 	INIT_PZVAL(ret);
@@ -697,6 +728,17 @@ static void PHK_crcCheck(PHK_Mnt * mp TSRMLS_DC)
 		ZEND_STRL("crcCheck"), 0, NULL TSRMLS_CC);
 }
 
+/*---------------------------------------------------------------*/
+/* {{{ proto bool PHK::crcCheck() */
+
+static PHP_METHOD(PHK, crcCheck)
+{
+	PHK_GET_INSTANCE_DATA(crcCheck)
+	
+	PHK_crcCheck(mp TSRMLS_CC);
+}
+
+/* }}} */
 /*---------------------------------------------------------------*/
 /* {{{ proto bool PHK::acceleratorIsPresent() */
 
@@ -998,11 +1040,13 @@ static zend_function_entry PHK_functions[] = {
 	PHP_ME(PHK, automapID, UT_noarg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, option, UT_1arg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, parentMnt, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(PHK, webAccessAllowed, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, webTunnel, UT_noarg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, mimeHeader, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, mimeType, UT_1arg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, isPHPSourcePath, UT_1arg_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, proxy, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(PHK, crcCheck, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, plugin, UT_noarg_ref_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(PHK, acceleratorIsPresent, UT_noarg_arginfo,
 		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -1050,7 +1094,7 @@ static void shutdown_mimeTable(TSRMLS_D)
 
 static void set_constants(zend_class_entry * ce)
 {
-	UT_DECLARE_STRING_CONSTANT(PHP_PHK_VERSION,"VERSION");
+	UT_DECLARE_STRING_CONSTANT(PHP_PHK_VERSION,"RUNTIME_VERSION");
 
 	UT_DECLARE_LONG_CONSTANT(PHK_FLAG_CRC_CHECK,"CRC_CHECK");
 	UT_DECLARE_LONG_CONSTANT(PHK_FLAG_NO_MOUNT_SCRIPT,"NO_MOUNT_SCRIPT");
@@ -1058,7 +1102,7 @@ static void set_constants(zend_class_entry * ce)
 }
 
 /*---------------------------------------------------------------*/
-/* Module initialization                                         */
+/* Module initialization										 */
 
 static int MINIT_PHK(TSRMLS_D)
 {
@@ -1077,7 +1121,7 @@ static int MINIT_PHK(TSRMLS_D)
 }
 
 /*---------------------------------------------------------------*/
-/* Module shutdown                                               */
+/* Module shutdown												 */
 
 static int MSHUTDOWN_PHK(TSRMLS_D)
 {

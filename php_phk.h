@@ -114,11 +114,11 @@
 
 /*---------------------------------------------------------------*/
 
-#define PHP_PHK_VERSION "3.0.0" /* The extension version */
+#define PHP_PHK_VERSION "3.0.1" /* The extension version */
 
 /* Version to compare to package's required runtime version */
 
-#define PHK_ACCEL_VERSION "3.0.0"
+#define PHK_ACCEL_VERSION "3.0.1"
 
 #define PHP_PHK_EXTNAME "phk"
 
