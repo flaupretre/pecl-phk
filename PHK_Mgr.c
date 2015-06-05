@@ -1435,6 +1435,15 @@ static int MINIT_PHK_Mgr(TSRMLS_D)
 {
 	zend_class_entry ce;
 
+	/* Abort PHP if version is not 5.3.0+ */
+
+	if (php_version_compare(PHP_VERSION, PHK_PHP_MIN_VERSION) < 0) {
+		php_error_docref(NULL TSRMLS_CC, E_CORE_ERROR
+			, "PHK requires PHP version %s or more (current: %s)"
+			, PHK_PHP_MIN_VERSION, PHP_VERSION);
+		exit(1);
+	}
+
 	/*--- Init class */
 
 	INIT_CLASS_ENTRY(ce, "PHK\\Mgr", PHK_Mgr_functions);

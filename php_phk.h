@@ -120,6 +120,10 @@
 
 #define PHK_ACCEL_VERSION "3.0.1"
 
+/* Minimal version of PHP required to run this extension */
+
+#define PHK_PHP_MIN_VERSION "5.3.0"
+
 #define PHP_PHK_EXTNAME "phk"
 
 zend_module_entry phk_module_entry;
