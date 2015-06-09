@@ -126,9 +126,11 @@ return SUCCESS;
 
 static int RINIT_Automap_Handlers(TSRMLS_D)
 {
-	PHK_G(automap_fh_count)=PHK_G(automap_sh_count)=0;
-	PHK_G(automap_failureHandlers)=NULL;
-	PHK_G(automap_successHandlers)=NULL;
+	if (PHK_G(ext_is_enabled)) {
+		PHK_G(automap_fh_count)=PHK_G(automap_sh_count)=0;
+		PHK_G(automap_failureHandlers)=NULL;
+		PHK_G(automap_successHandlers)=NULL;
+	}
 
 	return SUCCESS;
 }
@@ -139,20 +141,22 @@ static int RSHUTDOWN_Automap_Handlers(TSRMLS_D)
 {
 	int i;
 
-	if (PHK_G(automap_fh_count)) {
-		for (i=0;i<PHK_G(automap_fh_count);i++) {
-			ut_ezval_ptr_dtor(PHK_G(automap_failureHandlers)+i);
+	if (PHK_G(ext_is_enabled)) {
+		if (PHK_G(automap_fh_count)) {
+			for (i=0;i<PHK_G(automap_fh_count);i++) {
+				ut_ezval_ptr_dtor(PHK_G(automap_failureHandlers)+i);
+			}
+			EALLOCATE(PHK_G(automap_failureHandlers),0);
+			PHK_G(automap_fh_count)=0;
 		}
-		EALLOCATE(PHK_G(automap_failureHandlers),0);
-		PHK_G(automap_fh_count)=0;
-	}
 
-	if (PHK_G(automap_sh_count)) {
-		for (i=0;i<PHK_G(automap_sh_count);i++) {
-			ut_ezval_ptr_dtor(PHK_G(automap_successHandlers)+i);
+		if (PHK_G(automap_sh_count)) {
+			for (i=0;i<PHK_G(automap_sh_count);i++) {
+				ut_ezval_ptr_dtor(PHK_G(automap_successHandlers)+i);
+			}
+			EALLOCATE(PHK_G(automap_successHandlers),0);
+			PHK_G(automap_sh_count)=0;
 		}
-		EALLOCATE(PHK_G(automap_successHandlers),0);
-		PHK_G(automap_sh_count)=0;
 	}
 
 	return SUCCESS;

@@ -1108,14 +1108,16 @@ static int MINIT_PHK(TSRMLS_D)
 {
 	zend_class_entry ce, *entry;
 
-	/*--- Init class, declare properties and set class constants*/
+	if (PHK_G(ext_is_enabled)) {
+		/*--- Init class, declare properties and set class constants*/
 
-	INIT_CLASS_ENTRY(ce, "PHK", PHK_functions);
-	entry = zend_register_internal_class(&ce TSRMLS_CC);
+		INIT_CLASS_ENTRY(ce, "PHK", PHK_functions);
+		entry = zend_register_internal_class(&ce TSRMLS_CC);
 
-	zend_declare_property_null(entry,"m",1,ZEND_ACC_PRIVATE TSRMLS_CC);
+		zend_declare_property_null(entry,"m",1,ZEND_ACC_PRIVATE TSRMLS_CC);
 
-	set_constants(entry);
+		set_constants(entry);
+	}
 
 	return SUCCESS;
 }
@@ -1132,9 +1134,10 @@ static int MSHUTDOWN_PHK(TSRMLS_D)
 
 static inline int RINIT_PHK(TSRMLS_D)
 {
-	PHK_G(root_package)[0] = '\0';
-
-	PHK_G(php_runtime_is_loaded) = 0;
+	if (PHK_G(ext_is_enabled)) {
+		PHK_G(root_package)[0] = '\0';
+		PHK_G(php_runtime_is_loaded) = 0;
+	}
 
 	return SUCCESS;
 }
@@ -1143,7 +1146,10 @@ static inline int RINIT_PHK(TSRMLS_D)
 
 static inline int RSHUTDOWN_PHK(TSRMLS_D)
 {
-	shutdown_mimeTable(TSRMLS_C);
+	if (PHK_G(ext_is_enabled)) {
+		shutdown_mimeTable(TSRMLS_C);
+	}
+
 	return SUCCESS;
 }
 

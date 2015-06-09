@@ -888,12 +888,14 @@ static int MINIT_PHK_Stream(TSRMLS_D)
 {
 	zend_class_entry ce;
 
-	php_register_url_stream_wrapper("phk", &php_stream_phk_wrapper TSRMLS_CC);
+	if (PHK_G(ext_is_enabled)) {
+		php_register_url_stream_wrapper("phk", &php_stream_phk_wrapper TSRMLS_CC);
 
-	/*-- Define PHK_Stream class */
+		/*-- Define PHK_Stream class */
 
-	INIT_CLASS_ENTRY(ce, "PHK\\Stream\\Wrapper", PHK_Stream_functions);
-	zend_register_internal_class(&ce TSRMLS_CC);
+		INIT_CLASS_ENTRY(ce, "PHK\\Stream\\Wrapper", PHK_Stream_functions);
+		zend_register_internal_class(&ce TSRMLS_CC);
+	}
 
 	return SUCCESS;
 }
@@ -903,7 +905,9 @@ static int MINIT_PHK_Stream(TSRMLS_D)
 
 static int MSHUTDOWN_PHK_Stream(TSRMLS_D)
 {
-	php_unregister_url_stream_wrapper("phk" TSRMLS_CC);
+	if (PHK_G(ext_is_enabled)) {
+		php_unregister_url_stream_wrapper("phk" TSRMLS_CC);
+	}
 
 	return SUCCESS;
 }
@@ -912,7 +916,9 @@ static int MSHUTDOWN_PHK_Stream(TSRMLS_D)
 
 static inline int RINIT_PHK_Stream(TSRMLS_D)
 {
-	clear_last_cached_opcode(TSRMLS_C);
+	if (PHK_G(ext_is_enabled)) {
+		clear_last_cached_opcode(TSRMLS_C);
+	}
 
 	return SUCCESS;
 }

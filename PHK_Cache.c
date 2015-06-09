@@ -269,25 +269,27 @@ static int MINIT_PHK_Cache(TSRMLS_D)
 	zend_class_entry ce, *entry;
 	PHK_CACHE *cp;
 
-	/*------*/
-	/* Init class */
+	if (PHK_G(ext_is_enabled)) {
+		/*------*/
+		/* Init class */
 
-	INIT_CLASS_ENTRY(ce, "PHK\\Cache", PHK_Cache_functions);
-	entry = zend_register_internal_class(&ce TSRMLS_CC);
+		INIT_CLASS_ENTRY(ce, "PHK\\Cache", PHK_Cache_functions);
+		entry = zend_register_internal_class(&ce TSRMLS_CC);
 
-	/*------*/
-	/* Which cache system do we use ? */
+		/*------*/
+		/* Which cache system do we use ? */
 
-	cp = cache_table;
-	while (cp->name) {
-		DBG_MSG1("PHK_Cache: Should I use %s ?", cp->name);
-		if (ut_extension_loaded(cp->name, strlen(cp->name) TSRMLS_CC)
-			&& cp->init(TSRMLS_C)) {
-			cache = cp;
-			DBG_MSG1("PHK_Cache: I will use %s", cp->name);
-			break;
+		cp = cache_table;
+		while (cp->name) {
+			DBG_MSG1("PHK_Cache: Should I use %s ?", cp->name);
+			if (ut_extension_loaded(cp->name, strlen(cp->name) TSRMLS_CC)
+				&& cp->init(TSRMLS_C)) {
+				cache = cp;
+				DBG_MSG1("PHK_Cache: I will use %s", cp->name);
+				break;
+			}
+			cp++;
 		}
-		cp++;
 	}
 
 	return SUCCESS;

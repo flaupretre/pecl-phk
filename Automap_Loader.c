@@ -154,7 +154,9 @@ static int MSHUTDOWN_Automap_Loader(TSRMLS_D)
 
 static int RINIT_Automap_Loader(TSRMLS_D)
 {
-	Automap_Loader_register_hook(TSRMLS_C);
+	if (PHK_G(ext_is_enabled)) {
+		Automap_Loader_register_hook(TSRMLS_C);
+	}
 
 	return SUCCESS;
 }

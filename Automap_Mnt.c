@@ -309,12 +309,14 @@ static int MSHUTDOWN_Automap_Mnt(TSRMLS_D)
 
 static int RINIT_Automap_Mnt(TSRMLS_D)
 {
-	/* Initialize map_array with an empty slot. Allows to start numbering IDs
-	* from 1 (ID 0 is considered invalid) */
+	if (PHK_G(ext_is_enabled)) {
+		/* Initialize map_array with an empty slot. Allows to start numbering IDs
+		* from 1 (ID 0 is considered invalid) */
 
-	EALLOCATE(PHK_G(map_array),sizeof(Automap_Mnt *));
-	PHK_G(map_array)[0]=NULL;
-	PHK_G(map_count)=1;
+		EALLOCATE(PHK_G(map_array),sizeof(Automap_Mnt *));
+		PHK_G(map_array)[0]=NULL;
+		PHK_G(map_count)=1;
+	}
 
 	return SUCCESS;
 }
@@ -326,15 +328,17 @@ static int RSHUTDOWN_Automap_Mnt(TSRMLS_D)
 	int i;
 	Automap_Mnt *mp;
 
-	if (PHK_G(map_count) > 1) {
-		for (i=1;i<PHK_G(map_count);i++) { /* Slot 0 is always NULL */
-			mp=PHK_G(map_array)[i];
-			if (mp) Automap_Mnt_remove(mp TSRMLS_CC);
+	if (PHK_G(ext_is_enabled)) {
+		if (PHK_G(map_count) > 1) {
+			for (i=1;i<PHK_G(map_count);i++) { /* Slot 0 is always NULL */
+				mp=PHK_G(map_array)[i];
+				if (mp) Automap_Mnt_remove(mp TSRMLS_CC);
+			}
 		}
-	}
 
-	EALLOCATE(PHK_G(map_array),0);
-	PHK_G(map_count)=0;
+		EALLOCATE(PHK_G(map_array),0);
+		PHK_G(map_count)=0;
+	}
 
 	return SUCCESS;
 }

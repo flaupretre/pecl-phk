@@ -31,6 +31,17 @@ ZEND_DECLARE_MODULE_GLOBALS(phk)
 static int init_done=0;
 
 /*------------------------*/
+/* Ini parameters */
+
+PHP_INI_BEGIN()
+
+STD_PHP_INI_ENTRY("phk.enable_cli", "0",
+	PHP_INI_SYSTEM, OnUpdateBool, enable_cli, zend_phk_globals,
+	phk_globals)
+
+PHP_INI_END()
+
+/*------------------------*/
 
 #include "utils.c"
 
@@ -57,21 +68,25 @@ static PHP_MINFO_FUNCTION(phk)
 
 	php_info_print_table_start();
 
-	php_info_print_table_row(2, "PHK/Automap accelerator", "enabled");
+	php_info_print_table_row(2, "PHK/Automap accelerator", (PHK_G(ext_is_enabled) ? "enabled" : "disabled"));
 	php_info_print_table_row(2, "Version", PHK_ACCEL_VERSION);
-	php_info_print_table_row(2, "Cache used",PHK_Cache_cacheName(TSRMLS_C));
+	if (PHK_G(ext_is_enabled)) {
+		php_info_print_table_row(2, "Cache used",PHK_Cache_cacheName(TSRMLS_C));
 #ifdef PHK_DEBUG
-	{
-	char buf[10];
+		{
+		char buf[10];
 
-	sprintf(buf,"%d",zend_hash_num_elements(&persistent_mtab));
-	php_info_print_table_row(2, "Persistent package count",buf);
-	sprintf(buf,"%d",zend_hash_num_elements(&pmap_array));
-	php_info_print_table_row(2, "Persistent map count",buf);
-	}
+		sprintf(buf,"%d",zend_hash_num_elements(&persistent_mtab));
+		php_info_print_table_row(2, "Persistent package count",buf);
+		sprintf(buf,"%d",zend_hash_num_elements(&pmap_array));
+		php_info_print_table_row(2, "Persistent map count",buf);
+		}
 #endif
+	}
 
 	php_info_print_table_end();
+
+	DISPLAY_INI_ENTRIES();
 }
 
 /*---------------------------------------------------------------*/
@@ -192,6 +207,19 @@ static PHP_MINIT_FUNCTION(phk)
 
 	ZEND_INIT_MODULE_GLOBALS(phk, phk_globals_ctor, NULL);
 
+	REGISTER_INI_ENTRIES();
+
+	/* Determine if extension must be fully enabled (normally, the extension
+	   is not active in CLI mode because it can slow things down). The
+	   phk.enable_cli ini setting allows to force it in CLI mode. */
+
+	PHK_G(ext_is_enabled) = (
+		   (sapi_module.name[0]!='c')
+		|| (sapi_module.name[1]!='l')
+		|| (sapi_module.name[2]!='i')
+		|| (sapi_module.name[3])
+		|| (PHK_G(enable_cli)));
+
 	REGISTER_STRING_CONSTANT("PHK_ACCEL_VERSION", PHK_ACCEL_VERSION,
 							 CONST_CS | CONST_PERSISTENT);
 
@@ -217,32 +245,36 @@ static PHP_MINIT_FUNCTION(phk)
 
 static PHP_MSHUTDOWN_FUNCTION(phk)
 {
-	if (!init_done) return SUCCESS;
-
+	if (init_done) {
 #ifndef ZTS
-	phk_globals_dtor(&phk_globals TSRMLS_CC);
+		phk_globals_dtor(&phk_globals TSRMLS_CC);
 #endif
 
-	if (MSHUTDOWN_PHK(TSRMLS_C) == FAILURE) return FAILURE;
-	if (MSHUTDOWN_PHK_Mgr(TSRMLS_C) == FAILURE) return FAILURE;
-	if (MSHUTDOWN_PHK_Stream(TSRMLS_C) == FAILURE) return FAILURE;
-	if (MSHUTDOWN_PHK_Cache(TSRMLS_C) == FAILURE) return FAILURE;
-	if (MSHUTDOWN_Automap_Handlers(TSRMLS_C) == FAILURE) return FAILURE;
-	if (MSHUTDOWN_Automap_Parser(TSRMLS_C) == FAILURE) return FAILURE;
-	if (MSHUTDOWN_Automap_Util(TSRMLS_C) == FAILURE) return FAILURE;
-	if (MSHUTDOWN_Automap_Type(TSRMLS_C) == FAILURE) return FAILURE;
-	if (MSHUTDOWN_Automap_Mnt(TSRMLS_C) == FAILURE) return FAILURE;
-	if (MSHUTDOWN_Automap_Pmap(TSRMLS_C) == FAILURE) return FAILURE;
-	if (MSHUTDOWN_Automap_Loader(TSRMLS_C) == FAILURE) return FAILURE;
-	if (MSHUTDOWN_Automap_Key(TSRMLS_C) == FAILURE) return FAILURE;
-	if (MSHUTDOWN_Automap_Class(TSRMLS_C) == FAILURE) return FAILURE;
-	if (MSHUTDOWN_utils(TSRMLS_C) == FAILURE) return FAILURE;
+		if (MSHUTDOWN_PHK(TSRMLS_C) == FAILURE) return FAILURE;
+		if (MSHUTDOWN_PHK_Mgr(TSRMLS_C) == FAILURE) return FAILURE;
+		if (MSHUTDOWN_PHK_Stream(TSRMLS_C) == FAILURE) return FAILURE;
+		if (MSHUTDOWN_PHK_Cache(TSRMLS_C) == FAILURE) return FAILURE;
+		if (MSHUTDOWN_Automap_Handlers(TSRMLS_C) == FAILURE) return FAILURE;
+		if (MSHUTDOWN_Automap_Parser(TSRMLS_C) == FAILURE) return FAILURE;
+		if (MSHUTDOWN_Automap_Util(TSRMLS_C) == FAILURE) return FAILURE;
+		if (MSHUTDOWN_Automap_Type(TSRMLS_C) == FAILURE) return FAILURE;
+		if (MSHUTDOWN_Automap_Mnt(TSRMLS_C) == FAILURE) return FAILURE;
+		if (MSHUTDOWN_Automap_Pmap(TSRMLS_C) == FAILURE) return FAILURE;
+		if (MSHUTDOWN_Automap_Loader(TSRMLS_C) == FAILURE) return FAILURE;
+		if (MSHUTDOWN_Automap_Key(TSRMLS_C) == FAILURE) return FAILURE;
+		if (MSHUTDOWN_Automap_Class(TSRMLS_C) == FAILURE) return FAILURE;
+		if (MSHUTDOWN_utils(TSRMLS_C) == FAILURE) return FAILURE;
+	}
+
+	UNREGISTER_INI_ENTRIES();
 
 	return SUCCESS;
 }
 
 /*---------------------------------------------------------------*/
 /*-- Functions --*/
+
+/* These functions are always available, as they are used by the parser */
 
 static zend_function_entry phk_functions[] = {
 	PHP_NAMED_FE(Automap\\Ext\\file_get_contents,Automap_Ext_file_get_contents, UT_1arg_arginfo)

@@ -1444,14 +1444,16 @@ static int MINIT_PHK_Mgr(TSRMLS_D)
 		exit(1);
 	}
 
-	/*--- Init class */
+	if (PHK_G(ext_is_enabled)) {
+		/*--- Init class */
 
-	INIT_CLASS_ENTRY(ce, "PHK\\Mgr", PHK_Mgr_functions);
-	zend_register_internal_class(&ce TSRMLS_CC);
+		INIT_CLASS_ENTRY(ce, "PHK\\Mgr", PHK_Mgr_functions);
+		zend_register_internal_class(&ce TSRMLS_CC);
 
-	/*--- Init persistent data */
+		/*--- Init persistent data */
 
-	PHK_Mgr_init_pdata(TSRMLS_C);
+		PHK_Mgr_init_pdata(TSRMLS_C);
+	}
 
 	return SUCCESS;
 }
@@ -1461,7 +1463,9 @@ static int MINIT_PHK_Mgr(TSRMLS_D)
 
 static int MSHUTDOWN_PHK_Mgr(TSRMLS_D)
 {
-	PHK_Mgr_shutdown_pdata(TSRMLS_C);
+	if (PHK_G(ext_is_enabled)) {
+		PHK_Mgr_shutdown_pdata(TSRMLS_C);
+	}
 
 	return SUCCESS;
 }
@@ -1470,7 +1474,9 @@ static int MSHUTDOWN_PHK_Mgr(TSRMLS_D)
 
 static inline int RINIT_PHK_Mgr(TSRMLS_D)
 {
-	INIT_ZVAL(PHK_G(caching));
+	if (PHK_G(ext_is_enabled)) {
+		INIT_ZVAL(PHK_G(caching));
+	}
 
 	return SUCCESS;
 }
@@ -1479,13 +1485,15 @@ static inline int RINIT_PHK_Mgr(TSRMLS_D)
 
 static inline int RSHUTDOWN_PHK_Mgr(TSRMLS_D)
 {
-	if (PHK_G(mtab)) {
-		zend_hash_destroy(PHK_G(mtab));
-		EALLOCATE(PHK_G(mtab),0);
-	}
+	if (PHK_G(ext_is_enabled)) {
+		if (PHK_G(mtab)) {
+			zend_hash_destroy(PHK_G(mtab));
+			EALLOCATE(PHK_G(mtab),0);
+		}
 
-	EALLOCATE(PHK_G(mount_order),0);
-	PHK_G(mcount)=0;
+		EALLOCATE(PHK_G(mount_order),0);
+		PHK_G(mcount)=0;
+	}
 
 	return SUCCESS;
 }

@@ -189,6 +189,10 @@ int php_runtime_is_loaded;
 
 zval *mimeTable;
 
+zend_bool enable_cli;	/* Ini setting */
+
+int ext_is_enabled;
+
 ZEND_END_MODULE_GLOBALS(phk)
 
 #ifdef ZTS
