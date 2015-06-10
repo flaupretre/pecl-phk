@@ -1053,6 +1053,7 @@ static PHK_Pdata *PHK_Mgr_get_pdata(
 	zval * mnt, ulong hash TSRMLS_DC)
 {
 	PHK_Pdata *pmp;
+	int found;
 
 	if (!ZVAL_IS_STRING(mnt)) {
 		EXCEPTION_ABORT_RET_1(NULL,"PHK_get_pdata: Mount point should be a string (type=%s)",
@@ -1061,10 +1062,10 @@ static PHK_Pdata *PHK_Mgr_get_pdata(
 
 	if (!hash) hash = ZSTRING_HASH(mnt);
 
-	if (zend_hash_quick_find(&persistent_mtab, Z_STRVAL_P(mnt),
-			Z_STRLEN_P(mnt) + 1, hash, (void **) &pmp) != SUCCESS) return NULL;
+	found=(zend_hash_quick_find(&persistent_mtab, Z_STRVAL_P(mnt),
+			Z_STRLEN_P(mnt) + 1, hash, (void **) &pmp) == SUCCESS);
 
-	return pmp;
+	return (found ? pmp : NULL);
 }
 
 /*---------------------------------------------------------------*/
@@ -1072,9 +1073,6 @@ static PHK_Pdata *PHK_Mgr_get_pdata(
 #define INIT_PHK_GET_OR_CREATE_PERSISTENT_DATA() \
 	{ \
 	MutexLock(persistent_mtab); \
-	MAKE_STD_ZVAL(minVersion); \
-	MAKE_STD_ZVAL(options); \
-	MAKE_STD_ZVAL(buildInfo); \
 	}
 
 #define CLEANUP_PHK_GET_OR_CREATE_PERSISTENT_DATA() \
@@ -1101,7 +1099,7 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 	ulong hash TSRMLS_DC)
 {
 	PHK_Pdata tmp_entry, *entry;
-	zval *minVersion, *options, *buildInfo, *args[2], **zpp, *ztmp,*ztmp2;
+	zval *minVersion=NULL, *options=NULL, *buildInfo=NULL, *args[2], **zpp, *ztmp,*ztmp2;
 	HashTable *opt_ht;
 	char *p;
 
@@ -1127,6 +1125,7 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 	MAKE_STD_ZVAL(ztmp);
 	ZVAL_BOOL(ztmp,0);
 	args[1] = ztmp;
+	ALLOC_INIT_ZVAL(minVersion);
 	ut_call_user_function_string(NULL
 		, ZEND_STRL("PHK\\Tools\\Util::getMinVersion"), minVersion,2, args TSRMLS_CC);
 	ut_ezval_ptr_dtor(&ztmp);
@@ -1142,6 +1141,7 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 	
 	ALLOC_INIT_ZVAL(ztmp);
 	args[1] = ztmp;
+	ALLOC_INIT_ZVAL(options);
 	ut_call_user_function_array(NULL
 			, ZEND_STRL("PHK\\Tools\\Util::getOptions"), options, 2,	args TSRMLS_CC);
 	ut_ezval_ptr_dtor(&ztmp);
@@ -1190,6 +1190,7 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 	entry->options=ut_persist_zval(options);
 	opt_ht = Z_ARRVAL_P(entry->options);
 
+	ALLOC_INIT_ZVAL(buildInfo);
 	ut_call_user_function_array(NULL
 		, ZEND_STRL("PHK\\Tools\\Util::getBuildInfo"), buildInfo, 2, args TSRMLS_CC);
 	entry->buildInfo=ut_persist_zval(buildInfo);
