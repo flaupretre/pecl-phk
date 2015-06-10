@@ -57,7 +57,7 @@ static void Automap_Loader_register_hook(TSRMLS_D)
 static int Automap_resolve_symbol(char type, char *symbol, int slen, int autoload
 	, int exception TSRMLS_DC)
 {
-	zval *zkey;
+	zval zkey;
 	unsigned long hash;
 	char *ts;
 	int i;
@@ -72,17 +72,17 @@ static int Automap_resolve_symbol(char type, char *symbol, int slen, int autoloa
 
 	if ((i=PHK_G(map_count))==0) return 0;
 
-	ALLOC_INIT_ZVAL(zkey);
-	Automap_key(type,symbol,slen,zkey TSRMLS_CC);
+	INIT_ZVAL(zkey);
+	Automap_key(type,symbol,slen,&zkey TSRMLS_CC);
 
-	hash=ZSTRING_HASH(zkey);
+	hash=ZSTRING_HASH(&zkey);
 
 	while ((--i) >= 0) {
 		mp=PHK_G(map_array)[i];
 		if (!mp) continue;
-		if (Automap_Mnt_resolve_key(mp, zkey, hash TSRMLS_CC)==SUCCESS) {
-			DBG_MSG2("Found key %s in map %ld",Z_STRVAL_P(zkey),mp->id);
-			ut_ezval_ptr_dtor(&zkey);
+		if (Automap_Mnt_resolve_key(mp, &zkey, hash TSRMLS_CC)==SUCCESS) {
+			DBG_MSG2("Found key %s in map %ld",Z_STRVAL(zkey),mp->id);
+			ut_ezval_dtor(&zkey);
 			return SUCCESS;
 		}
 	}
@@ -94,7 +94,7 @@ static int Automap_resolve_symbol(char type, char *symbol, int slen, int autoloa
 		THROW_EXCEPTION_2("Automap: Unknown %s: %s",ts,symbol);
 	}
 
-	ut_ezval_ptr_dtor(&zkey);
+	ut_ezval_dtor(&zkey);
 	return FAILURE;
 }
 
