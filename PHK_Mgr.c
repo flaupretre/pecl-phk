@@ -1072,14 +1072,21 @@ static PHK_Pdata *PHK_Mgr_get_pdata(
 
 #define INIT_PHK_GET_OR_CREATE_PERSISTENT_DATA() \
 	{ \
+	INIT_ZVAL(minVersion); \
+	INIT_ZVAL(options); \
+	INIT_ZVAL(buildInfo); \
+	INIT_ZVAL(ztmp); \
+	INIT_ZVAL(ztmp2); \
 	MutexLock(persistent_mtab); \
 	}
 
 #define CLEANUP_PHK_GET_OR_CREATE_PERSISTENT_DATA() \
 	{ \
-	ut_ezval_ptr_dtor(&minVersion); \
-	ut_ezval_ptr_dtor(&options); \
-	ut_ezval_ptr_dtor(&buildInfo); \
+	ut_ezval_dtor(&minVersion); \
+	ut_ezval_dtor(&options); \
+	ut_ezval_dtor(&buildInfo); \
+	ut_ezval_dtor(&ztmp); \
+	ut_ezval_dtor(&ztmp2); \
 	}
 	
 #define RETURN_FROM_PHK_GET_OR_CREATE_PERSISTENT_DATA(_ret) \
@@ -1099,7 +1106,7 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 	ulong hash TSRMLS_DC)
 {
 	PHK_Pdata tmp_entry, *entry;
-	zval *minVersion=NULL, *options=NULL, *buildInfo=NULL, *args[2], **zpp, *ztmp,*ztmp2;
+	zval minVersion, options, buildInfo, *args[2], **zpp, ztmp,ztmp2;
 	HashTable *opt_ht;
 	char *p;
 
@@ -1122,29 +1129,22 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 	* thread/process, when the package is opened for the 1st time. */
 
 	args[0] = mnt;
-	MAKE_STD_ZVAL(ztmp);
-	ZVAL_BOOL(ztmp,0);
-	args[1] = ztmp;
-	ALLOC_INIT_ZVAL(minVersion);
+	ZVAL_FALSE(&ztmp);
+	args[1] = &ztmp;
 	ut_call_user_function_string(NULL
-		, ZEND_STRL("PHK\\Tools\\Util::getMinVersion"), minVersion,2, args TSRMLS_CC);
-	ut_ezval_ptr_dtor(&ztmp);
+		, ZEND_STRL("PHK\\Tools\\Util::getMinVersion"), &minVersion,2, args TSRMLS_CC);
 	if (EG(exception)) ABORT_PHK_GET_OR_CREATE_PERSISTENT_DATA();
 
 	/* Check minVersion */
 
-	if (php_version_compare(Z_STRVAL_P(minVersion), PHK_ACCEL_VERSION) > 0) {
+	if (php_version_compare(Z_STRVAL(minVersion), PHK_ACCEL_VERSION) > 0) {
 		THROW_EXCEPTION_1("Cannot understand this format. Requires version %s",
-							  Z_STRVAL_P(minVersion));
+							  Z_STRVAL(minVersion));
 		ABORT_PHK_GET_OR_CREATE_PERSISTENT_DATA();
 	}
 	
-	ALLOC_INIT_ZVAL(ztmp);
-	args[1] = ztmp;
-	ALLOC_INIT_ZVAL(options);
 	ut_call_user_function_array(NULL
-			, ZEND_STRL("PHK\\Tools\\Util::getOptions"), options, 2,	args TSRMLS_CC);
-	ut_ezval_ptr_dtor(&ztmp);
+			, ZEND_STRL("PHK\\Tools\\Util::getOptions"), &options, 2, args TSRMLS_CC);
 	if (EG(exception)) ABORT_PHK_GET_OR_CREATE_PERSISTENT_DATA();
 
 	/* Check that the required extensions are present or can be loaded */
@@ -1152,7 +1152,7 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 	   it is not sure to remain in the same thread. As dynamic extension
 	   loading is not supported in multithread mode, we can check it here. */
 
-	if ((FIND_HKEY(Z_ARRVAL_P(options),required_extensions,&zpp)==SUCCESS)
+	if ((FIND_HKEY(Z_ARRVAL(options),required_extensions,&zpp)==SUCCESS)
 		&& (ZVAL_IS_ARRAY(*zpp))) {
 		ut_loadExtensions(*zpp TSRMLS_CC);
 		if (EG(exception)) ABORT_PHK_GET_OR_CREATE_PERSISTENT_DATA();
@@ -1160,7 +1160,7 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 
 	/* Check that current PHP version is between min and max values, if set */
 
-	if ((FIND_HKEY(Z_ARRVAL_P(options),min_php_version,&zpp)==SUCCESS)
+	if ((FIND_HKEY(Z_ARRVAL(options),min_php_version,&zpp)==SUCCESS)
 		&& (ZVAL_IS_STRING(*zpp))) {
 		if (php_version_compare(PHP_VERSION,Z_STRVAL_PP(zpp)) < 0) {
 			THROW_EXCEPTION_1("PHP minimum supported version: %s",Z_STRVAL_PP(zpp));
@@ -1168,7 +1168,7 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 		if (EG(exception)) ABORT_PHK_GET_OR_CREATE_PERSISTENT_DATA();
 	}
 	
-	if ((FIND_HKEY(Z_ARRVAL_P(options),max_php_version,&zpp)==SUCCESS)
+	if ((FIND_HKEY(Z_ARRVAL(options),max_php_version,&zpp)==SUCCESS)
 		&& (ZVAL_IS_STRING(*zpp))) {
 		if (php_version_compare(PHP_VERSION,Z_STRVAL_PP(zpp)) > 0) {
 			THROW_EXCEPTION_1("PHP maximum supported version: %s",Z_STRVAL_PP(zpp));
@@ -1185,15 +1185,14 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 
 	entry->ctime = time(NULL);
 
-	entry->minVersion=ut_persist_zval(minVersion);
+	entry->minVersion=ut_persist_zval(&minVersion);
 
-	entry->options=ut_persist_zval(options);
+	entry->options=ut_persist_zval(&options);
 	opt_ht = Z_ARRVAL_P(entry->options);
 
-	ALLOC_INIT_ZVAL(buildInfo);
 	ut_call_user_function_array(NULL
-		, ZEND_STRL("PHK\\Tools\\Util::getBuildInfo"), buildInfo, 2, args TSRMLS_CC);
-	entry->buildInfo=ut_persist_zval(buildInfo);
+		, ZEND_STRL("PHK\\Tools\\Util::getBuildInfo"), &buildInfo, 2, args TSRMLS_CC);
+	entry->buildInfo=ut_persist_zval(&buildInfo);
 
 	/* Set shortcuts */
 
@@ -1235,53 +1234,45 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 
 	/* Pre-computed values */
 
-	ALLOC_INIT_ZVAL(ztmp);
-	compute_baseURI(mnt, ztmp TSRMLS_CC);
-	entry->baseURI=ut_persist_zval(ztmp);
-	ut_ezval_ptr_dtor(&ztmp);
-
+	compute_baseURI(mnt, &ztmp TSRMLS_CC);
+	entry->baseURI=ut_persist_zval(&ztmp);
+	ut_ezval_dtor(&ztmp);
 	if ((FIND_HKEY(Z_ARRVAL_P(entry->buildInfo), map_defined, &zpp) ==
 		 SUCCESS) && ZVAL_IS_BOOL(*zpp) && Z_BVAL_PP(zpp)) {
-		ALLOC_INIT_ZVAL(ztmp);
-		compute_automapURI(mnt, ztmp TSRMLS_CC);
-		entry->automapURI=ut_persist_zval(ztmp);
-		ut_ezval_ptr_dtor(&ztmp);
+		compute_automapURI(mnt, &ztmp TSRMLS_CC);
+		entry->automapURI=ut_persist_zval(&ztmp);
+		ut_ezval_dtor(&ztmp);
 	}
 
 	if ((FIND_HKEY(opt_ht, mount_script, &zpp) == SUCCESS)
 		&& (ZVAL_IS_STRING(*zpp))) {
-		ALLOC_INIT_ZVAL(ztmp);
-		PHK_Mgr_uri(mnt, *zpp, ztmp TSRMLS_CC);
-		entry->mount_script_uri=ut_persist_zval(ztmp);
-		ut_ezval_ptr_dtor(&ztmp);
+		PHK_Mgr_uri(mnt, *zpp, &ztmp TSRMLS_CC);
+		entry->mount_script_uri=ut_persist_zval(&ztmp);
+		ut_ezval_dtor(&ztmp);
 	}
 
 	if ((FIND_HKEY(opt_ht, umount_script, &zpp) == SUCCESS)
 		&& (ZVAL_IS_STRING(*zpp))) {
-		ALLOC_INIT_ZVAL(ztmp);
-		PHK_Mgr_uri(mnt, *zpp, ztmp TSRMLS_CC);
-		entry->umount_script_uri=ut_persist_zval(ztmp);
-		ut_ezval_ptr_dtor(&ztmp);
+		PHK_Mgr_uri(mnt, *zpp, &ztmp TSRMLS_CC);
+		entry->umount_script_uri=ut_persist_zval(&ztmp);
+		ut_ezval_dtor(&ztmp);
 	}
 
 	if ((FIND_HKEY(opt_ht, lib_run_script, &zpp) == SUCCESS)
 		&& (ZVAL_IS_STRING(*zpp))) {
-		ALLOC_INIT_ZVAL(ztmp);
-		PHK_Mgr_uri(mnt, *zpp, ztmp TSRMLS_CC);
-		entry->lib_run_script_uri=ut_persist_zval(ztmp);
-		ut_ezval_ptr_dtor(&ztmp);
+		PHK_Mgr_uri(mnt, *zpp, &ztmp TSRMLS_CC);
+		entry->lib_run_script_uri=ut_persist_zval(&ztmp);
+		ut_ezval_dtor(&ztmp);
 	}
 
 	if ((FIND_HKEY(opt_ht, cli_run_script, &zpp) == SUCCESS)
 		&& (ZVAL_IS_STRING(*zpp))) {
-		ALLOC_INIT_ZVAL(ztmp);
-		ALLOC_INIT_ZVAL(ztmp2);
-		PHK_Mgr_uri(mnt, *zpp, ztmp TSRMLS_CC);
-		spprintf(&p, UT_PATH_MAX, "require('%s');", Z_STRVAL_P(ztmp));
-		ZVAL_STRING(ztmp2, p, 0);
-		entry->cli_run_command=ut_persist_zval(ztmp2);
-		ut_ezval_ptr_dtor(&ztmp);
-		ut_ezval_ptr_dtor(&ztmp2);
+		PHK_Mgr_uri(mnt, *zpp, &ztmp TSRMLS_CC);
+		spprintf(&p, UT_PATH_MAX, "require('%s');", Z_STRVAL(ztmp));
+		ZVAL_STRING(&ztmp2, p, 0);
+		entry->cli_run_command=ut_persist_zval(&ztmp2);
+		ut_ezval_dtor(&ztmp);
+		ut_ezval_dtor(&ztmp2);
 	}
 
 	/* Cleanup and return */
