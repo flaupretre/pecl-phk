@@ -16,8 +16,6 @@
   +----------------------------------------------------------------------+
 */
 
-#define ALLOCATE
-
 #include "php_phk.h"
 
 /*------------------------*/
@@ -25,6 +23,9 @@
 ZEND_DECLARE_MODULE_GLOBALS(phk)
 
 #ifdef COMPILE_DL_PHK
+#	ifdef PHPNG
+		ZEND_TSRMLS_CACHE_DEFINE;
+#	endif
 	ZEND_GET_MODULE(phk)
 #endif
 
@@ -94,6 +95,10 @@ static PHP_MINFO_FUNCTION(phk)
 
 static void phk_globals_ctor(zend_phk_globals * globals TSRMLS_DC)
 {
+#if defined(PHPNG) && defined(COMPILE_DL_PHK) && defined(ZTS)
+	ZEND_TSRMLS_CACHE_UPDATE;
+#endif
+
 	CLEAR_DATA(*globals); /* Init everything to 0/NULL */
 }
 

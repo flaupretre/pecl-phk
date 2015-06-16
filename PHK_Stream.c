@@ -23,17 +23,9 @@ static PHK_STREAM_DATA *new_dp(int show_errors)
 	PHK_STREAM_DATA *dp;
 
 	dp = ut_eallocate(NULL,sizeof(PHK_STREAM_DATA));
+	CLEAR_DATA(dp);
 
 	dp->show_errors = show_errors;
-
-	dp->offset = 0;
-	ALLOC_INIT_ZVAL(dp->z_data);
-
-	dp->parse_done = 0;
-	ALLOC_INIT_ZVAL(dp->z_command);
-	ALLOC_INIT_ZVAL(dp->z_params);
-	ALLOC_INIT_ZVAL(dp->z_mnt);
-	ALLOC_INIT_ZVAL(dp->z_path);
 
 	return dp;
 }
@@ -42,15 +34,17 @@ static PHK_STREAM_DATA *new_dp(int show_errors)
 
 static void free_dp(PHK_STREAM_DATA ** dpp)
 {
-	if ((!dpp) || (!(*dpp))) return;
+	PHK_STREAM_DATA *dp;
 
-	ut_ezval_ptr_dtor(&((*dpp)->z_command));
-	ut_ezval_ptr_dtor(&((*dpp)->z_params));
-	ut_ezval_ptr_dtor(&((*dpp)->z_mnt));
-	ut_ezval_ptr_dtor(&((*dpp)->z_path));
-	ut_ezval_ptr_dtor(&((*dpp)->z_data));
+	if ((!dpp) || (!(dp=*dpp))) return;
 
-	EALLOCATE(*dpp,0);
+	if (dp->command) zend_string_release(dp->command);
+	if (dp->z_params) ut_ezval_dtor(dp->z_params);
+	if (dp->mnt) zend_string_release(dp->mnt);
+	if (dp->path) zend_string_release(dp->path);
+	if (dp->data) zend_string_release(dp->data);
+
+	EALLOCATE(dp,0);
 }
 
 /*--------------------*/
@@ -92,16 +86,22 @@ static int is_last_cached_opcode(const char *path, int len TSRMLS_DC)
 #define INIT_PHK_STREAM_GET_FILE() \
 	{ \
 	ut_ezval_dtor(ret_p); \
-	ALLOC_INIT_ZVAL(key); \
+	key=ret=NULL; \
+	INIT_ZVAL(zmnt); \
+	INIT_ZVAL(zcommand); \
+	INIT_ZVAL(zpath); \
 	ALLOC_INIT_ZVAL(can_cache); \
 	ALLOC_INIT_ZVAL(tmp); \
 	}
 
 #define CLEANUP_PHK_STREAM_GET_FILE() \
 	{ \
-	ut_ezval_ptr_dtor(&key); \
+	if (key) zend_string_release(key); \
 	ut_ezval_ptr_dtor(&can_cache); \
 	ut_ezval_ptr_dtor(&tmp); \
+	ut_ezval_dtor(&zmnt); \
+	ut_ezval_dtor(&zcommand); \
+	ut_ezval_dtor(&zpath); \
 	}
 
 #define ABORT_PHK_STREAM_GET_FILE() \
@@ -111,28 +111,28 @@ static int is_last_cached_opcode(const char *path, int len TSRMLS_DC)
 	return; \
 	}
 
-static void PHK_Stream_getFile(int dir, zval * ret_p, zval * uri_p,
-								zval * mnt_p, zval * command_p,
-								zval * params_p, zval * path_p,
-								zval * cache_p TSRMLS_DC)
+static void PHK_Stream_getFile(int dir, zval * ret_p, zend_string *uri,
+								zend_string * mnt, zend_string *command,
+								zval * zparams, zend_string *path,
+								zval * zcache TSRMLS_DC)
 {
-	zval *key, *can_cache, *tmp, *args[5];
+	zval *can_cache, *tmp, *args[5], zmnt, zcommand, zpath;
+	zend_string *key, *ret;
 	int do_cache;
 
 	INIT_PHK_STREAM_GET_FILE();
 
 	/*-- Compute cache key */
 
-	PHK_Cache_cacheID("node", 4, Z_STRVAL_P(uri_p), Z_STRLEN_P(uri_p),
-					   key TSRMLS_CC);
+	key=PHK_Cache_cacheID("node", 4, uri TSRMLS_CC);
 
 	/*-- Search in cache */
 
-	PHK_Cache_get(key, ret_p TSRMLS_CC);
-	if (Z_TYPE_P(ret_p) == IS_NULL) {	/* Cache miss - slow path */
+	ret=PHK_Cache_get(key TSRMLS_CC);
+	if (!ret) {	/* Cache miss - slow path */
 		PHK_needPhpRuntime(TSRMLS_C);
 
-		args[0] = mnt_p;
+		args[0] = mnt;
 		args[1] = command_p;
 		args[2] = params_p;
 		args[3] = path_p;
@@ -207,14 +207,14 @@ static size_t PHK_Stream_read(php_stream * stream, char *buf,
 	PHK_STREAM_DATA *dp = stream->abstract;
 	int max;
 
-	max = Z_STRLEN_P(dp->z_data) - (dp->offset);
+	max = Z_STRLEN_P(dp->data) - (dp->offset);
 	if (max < 0) max = 0;	/* Should not happen */
 	if (count > (size_t) max) count = (size_t) max;
 
-	if (count) memmove(buf, Z_STRVAL_P(dp->z_data) + dp->offset, count);
+	if (count) memmove(buf, Z_STRVAL_P(dp->data) + dp->offset, count);
 
 	dp->offset += count;
-	if (dp->offset == Z_STRLEN_P(dp->z_data)) stream->eof = 1;
+	if (dp->offset == Z_STRLEN_P(dp->data)) stream->eof = 1;
 
 	return count;
 }
@@ -256,16 +256,16 @@ static int PHK_Stream_seek(php_stream * stream, off_t offset, int whence,
 		  break;
 
 	  case SEEK_END:
-		  dp->offset = Z_STRLEN_P(dp->z_data) + offset;
+		  dp->offset = Z_STRLEN_P(dp->data) + offset;
 		  break;
 	}
 
-	if (dp->offset > Z_STRLEN_P(dp->z_data)) dp->offset = Z_STRLEN_P(dp->z_data);
+	if (dp->offset > Z_STRLEN_P(dp->data)) dp->offset = Z_STRLEN_P(dp->data);
 	if (dp->offset < 0) dp->offset = 0;
 
 	dp->offset = dp->offset;
 	if (newoffset) (*newoffset) = dp->offset;
-	if (dp->offset == Z_STRLEN_P(dp->z_data)) stream->eof = 1;
+	if (dp->offset == Z_STRLEN_P(dp->data)) stream->eof = 1;
 
 	return 0;
 }
@@ -326,9 +326,9 @@ static int do_stat(php_stream_wrapper * wrapper, const char *uri,
 	if (!dp->parse_done) {
 		DBG_MSG("do_stat: Parsing uri");
 		ZVAL_STRINGL(z_uri, uri, uri_len, 1);
-		PHK_Stream_parseURI(z_uri, dp->z_command
-							   , dp->z_params, dp->z_mnt,
-							   dp->z_path TSRMLS_CC);
+		PHK_Stream_parseURI(z_uri, dp->command
+							   , dp->params, dp->mnt,
+							   dp->path TSRMLS_CC);
 		if (EG(exception)) {
 			DBG_MSG("do_stat:Invalid uri");
 			php_stream_wrapper_log_error(wrapper,
@@ -341,11 +341,11 @@ static int do_stat(php_stream_wrapper * wrapper, const char *uri,
 
 	/*-- Validate the mount point (because data can be cached) */
 
-		if (Z_TYPE_P(dp->z_mnt) != IS_NULL) {
-			(void) PHK_Mgr_get_mnt(dp->z_mnt, 0, 1 TSRMLS_CC);
+		if (Z_TYPE_P(dp->mnt) != IS_NULL) {
+			(void) PHK_Mgr_get_mnt(dp->mnt, 0, 1 TSRMLS_CC);
 			if (EG(exception)) {
 				DBG_MSG1("do_stat: Invalid mount point (%s)",
-						 Z_STRVAL_P(dp->z_mnt));
+						 Z_STRVAL_P(dp->mnt));
 				ABORT_PHK_STREAM_DO_STAT();
 			}
 		}
@@ -365,10 +365,10 @@ static int do_stat(php_stream_wrapper * wrapper, const char *uri,
 		PHK_needPhpRuntime(TSRMLS_C);
 
 		ZVAL_TRUE(z_cache);
-		args[0] = dp->z_mnt;
-		args[1] = dp->z_command;
-		args[2] = dp->z_params;
-		args[3] = dp->z_path;
+		args[0] = dp->mnt;
+		args[1] = dp->command;
+		args[2] = dp->params;
+		args[3] = dp->path;
 		args[4] = z_cache;
 		args[5] = z_mode;
 		args[6] = z_size;
@@ -419,8 +419,8 @@ static int do_stat(php_stream_wrapper * wrapper, const char *uri,
 
 		if (zend_is_true(z_cache)
 			&& (!is_last_cached_opcode(Z_STRVAL_P(z_uri), Z_STRLEN_P(z_uri) TSRMLS_CC))
-			&& PHK_Mgr_cacheEnabled(dp->z_mnt, 0, dp->z_command
-				, dp->z_params, dp->z_path TSRMLS_CC))
+			&& PHK_Mgr_cacheEnabled(dp->mnt, 0, dp->command
+				, dp->params, dp->path TSRMLS_CC))
 			PHK_Cache_set(z_key, z_ssb TSRMLS_CC);
 	} else {
 		if (Z_STRLEN_P(z_ssb) == 0) found = 0;	/* Negative hit */
@@ -430,7 +430,7 @@ static int do_stat(php_stream_wrapper * wrapper, const char *uri,
 	else {
 		php_stream_wrapper_log_error(wrapper, dp->show_errors TSRMLS_CC,
 									 "%s: File not found",
-									 Z_STRVAL_P(dp->z_path));
+									 Z_STRVAL_P(dp->path));
 		ABORT_PHK_STREAM_DO_STAT();
 	}
 
@@ -462,7 +462,7 @@ static size_t PHK_Stream_readdir(php_stream * stream, char *buf,
 	HashTable *ht;
 	zval **z_tmp_pp;
 
-	ht = Z_ARRVAL_P(dp->z_data);
+	ht = Z_ARRVAL_P(dp->data);
 
 	if (zend_hash_get_current_data(ht, (void **) (&z_tmp_pp)) == FAILURE) {
 		stream->eof = 1;
@@ -486,7 +486,7 @@ static int PHK_Stream_seekdir(php_stream * stream, off_t offset,
 	PHK_STREAM_DATA *dp = stream->abstract;
 	HashTable *ht;
 
-	ht = Z_ARRVAL_P(dp->z_data);
+	ht = Z_ARRVAL_P(dp->data);
 	if ((whence == SEEK_SET) && (offset == 0)) {	/* rewinddir */
 		zend_hash_internal_pointer_reset(ht);
 		stream->eof = (zend_hash_has_more_elements(ht) == SUCCESS);
@@ -587,8 +587,8 @@ static php_stream *PHK_Stream_generic_open(int dir
 
 	/*-- Parse the URI */
 
-	PHK_Stream_parseURI(z_uri, dp->z_command, dp->z_params
-						   , dp->z_mnt, dp->z_path TSRMLS_CC);
+	PHK_Stream_parseURI(z_uri, dp->command, dp->params
+						   , dp->mnt, dp->path TSRMLS_CC);
 	if (EG(exception)) {
 		DBG_MSG("generic_open:Invalid uri");
 		php_stream_wrapper_log_error(wrapper, options TSRMLS_CC,
@@ -600,29 +600,29 @@ static php_stream *PHK_Stream_generic_open(int dir
 
 	/*-- Validate the mount point (because data can be cached) */
 
-	if (Z_TYPE_P(dp->z_mnt) != IS_NULL) {
-		(void) PHK_Mgr_get_mnt(dp->z_mnt, 0, 1 TSRMLS_CC);
+	if (Z_TYPE_P(dp->mnt) != IS_NULL) {
+		(void) PHK_Mgr_get_mnt(dp->mnt, 0, 1 TSRMLS_CC);
 		if (EG(exception)) {
-			DBG_MSG1("generic_open: Invalid mount point (%s)", Z_STRVAL_P(dp->z_mnt));
+			DBG_MSG1("generic_open: Invalid mount point (%s)", Z_STRVAL_P(dp->mnt));
 			ABORT_PHK_STREAM_OPEN();
 		}
 	}
 
-	PHK_Stream_getFile(dir, dp->z_data, z_uri, dp->z_mnt,
-						dp->z_command
-						, dp->z_params, dp->z_path, NULL TSRMLS_CC);
+	PHK_Stream_getFile(dir, dp->data, z_uri, dp->mnt,
+						dp->command
+						, dp->params, dp->path, NULL TSRMLS_CC);
 
-	if (EG(exception) || ZVAL_IS_NULL(dp->z_data)) {
+	if (EG(exception) || ZVAL_IS_NULL(dp->data)) {
 		DBG_MSG1("generic_open(%s): file not found", uri);
 		php_stream_wrapper_log_error(wrapper, options TSRMLS_CC,
-			"%s: File not found", Z_STRVAL_P(dp->z_path));
+			"%s: File not found", Z_STRVAL_P(dp->path));
 		ABORT_PHK_STREAM_OPEN();
 	}
 
 	if (!dir) dp->offset = 0;	/*-- Initialize offset */
 	else {
-		/*DBG_MSG1("Nb entries: %d",zend_hash_num_elements(Z_ARRVAL(dp->z_data))); */
-		zend_hash_internal_pointer_reset(Z_ARRVAL_P(dp->z_data));
+		/*DBG_MSG1("Nb entries: %d",zend_hash_num_elements(Z_ARRVAL(dp->data))); */
+		zend_hash_internal_pointer_reset(Z_ARRVAL_P(dp->data));
 	}
 
 	if (opened_path) (*opened_path) = estrdup(uri);

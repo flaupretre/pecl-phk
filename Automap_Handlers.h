@@ -25,7 +25,7 @@
 /*============================================================================*/
 
 static PHP_METHOD(Automap, registerFailureHandler);
-static void Automap_callFailureHandlers(char type, char *symbol, int slen TSRMLS_DC);
+static void Automap_callFailureHandlers(char type, zend_string *symbol TSRMLS_DC);
 static PHP_METHOD(Automap, registerSuccessHandler);
 static void Automap_callSuccessHandlers(Automap_Mnt *mp,Automap_Pmap_Entry *pep
 	TSRMLS_DC);

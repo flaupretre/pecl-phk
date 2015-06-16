@@ -17,47 +17,47 @@
 */
 
 /*---------------------------------------------------------------*/
-/* In case of error, free mem allocated by ut_pathUniqueID() */
 
-static void Automap_ufid(zval *path, zval **zufidpp TSRMLS_DC)
+static zend_string *Automap_ufid(zend_string *path TSRMLS_DC)
 {
-	ut_pathUniqueID('m', path, zufidpp, NULL TSRMLS_CC);
+	return ut_pathUniqueID('m', path, NULL TSRMLS_CC);
 }
 
 /*---------------------------------------------------------------*/
 
-static int Automap_symbolIsDefined(char type, char *symbol
-	, unsigned int slen TSRMLS_DC)
+static int Automap_symbol_is_defined(char type, zend_string *symbol TSRMLS_DC)
 {
 	char *p;
 	int status;
 	zval dummy_zp;
 
-	if (!slen) return 0;
+	if (ZSTR_LEN(symbol)==0) return 0;
 
 	if (type==AUTOMAP_T_CONSTANT) p=NULL;
-	else p=zend_str_tolower_dup(symbol,slen);
+	else p=zend_str_tolower_dup(ZSTR_VAL(symbol),ZSTR_LEN(symbol));
 
 	status=0;
 	switch(type) {
 		case AUTOMAP_T_CONSTANT:
-			status=zend_get_constant(symbol,slen,&dummy_zp TSRMLS_CC);
+#ifdef PHPNG
+			status=(zend_get_constant(symbol) != NULL);
+#else
+			status=zend_get_constant(ZSTR_VAL(symbol),ZSTR_LEN(symbol),&dummy_zp TSRMLS_CC);
 			if (status) zval_dtor(&dummy_zp);
+#endif
 			break;
 
 		case AUTOMAP_T_FUNCTION:
-			status=zend_hash_exists(EG(function_table),p,slen+1);
+			status=zend_hash_exists(EG(function_table),p,ZSTR_LEN(symbol)+1);
 			break;
 
 		case AUTOMAP_T_CLASS: /* Also works for interfaces and traits */
-			status=zend_hash_exists(EG(class_table),p,slen+1);
+			status=zend_hash_exists(EG(class_table),p,ZSTR_LEN(symbol)+1);
 			break;
 
 		case AUTOMAP_T_EXTENSION:
-			status=ut_extension_loaded(p,slen TSRMLS_CC);
+			status=ut_extension_loaded(p,ZSTR_LEN(symbol) TSRMLS_CC);
 			break;
-
-
 	}
 
 	if (p) efree(p);
@@ -70,7 +70,7 @@ static int Automap_symbolIsDefined(char type, char *symbol
 
 static PHP_METHOD(Automap, usingAccelerator)
 {
-	RETVAL_TRUE;
+	RETVAL_BOOL(PHK_G(ext_is_enabled));
 }
 
 /* }}} */

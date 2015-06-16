@@ -90,6 +90,7 @@
 #include "zend_objects_API.h"
 #include "zend_operators.h"
 
+#include "compat.h"
 #include "utils.h"
 
 #include "Automap_Handlers.h"
@@ -196,7 +197,14 @@ int ext_is_enabled;
 ZEND_END_MODULE_GLOBALS(phk)
 
 #ifdef ZTS
-#	define PHK_G(v) TSRMG(phk_globals_id, zend_phk_globals *, v)
+#	ifdef PHPNG
+#		define PHK_G(v) ZEND_TSRMG(phk_globals_id, zend_phk_globals *, v)
+#		ifdef COMPILE_DL_EXTNAME
+			ZEND_TSRMLS_CACHE_EXTERN;
+#		endif
+#	else
+#		define PHK_G(v) TSRMG(phk_globals_id, zend_phk_globals *, v)
+#	endif
 #else
 #	define PHK_G(v) (phk_globals.v)
 #endif

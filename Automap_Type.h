@@ -49,9 +49,9 @@ static automap_type_string automap_type_strings[]={
 
 /*---------------------------------------------------------------*/
 
-static char *Automap_typeToString(char type TSRMLS_DC);
+static char *Automap_type_to_string(char type TSRMLS_DC);
 static PHP_METHOD(Automap, typeToString);
-static char Automap_stringToType(char *string TSRMLS_DC);
+static char Automap_string_to_type(char *string TSRMLS_DC);
 static PHP_METHOD(Automap, stringToType);
 
 static int MINIT_Automap_Type(TSRMLS_D);

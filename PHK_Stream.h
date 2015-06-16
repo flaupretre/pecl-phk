@@ -24,12 +24,12 @@
 typedef struct {
 	int offset;
 	int show_errors;
-	zval *z_data;
+	zend_string *data;
 	int parse_done;
-	zval *z_mnt;
-	zval *z_command;
-	zval *z_params;
-	zval *z_path;
+	zend_string *mnt;
+	zend_string *command;
+	zval * z_params;
+	zend_string *path;
 } PHK_STREAM_DATA;
 
 static char last_cached_opcode_string[UT_PATH_MAX + 1];

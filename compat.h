@@ -1,6 +1,6 @@
 /*
   +----------------------------------------------------------------------+
-  | Automap extension <http://automap.tekwire.net>                       |
+  | Compatibility macros for different PHP versions                      |
   +----------------------------------------------------------------------+
   | Copyright (c) 2005-2007 The PHP Group                                |
   +----------------------------------------------------------------------+
@@ -16,17 +16,14 @@
   +----------------------------------------------------------------------+
 */
 
-#ifndef __AUTOMAP_KEY_H
-#define __AUTOMAP_KEY_H
+#ifndef _COMPAT_H
+#define _COMPAT_H
 
-/*============================================================================*/
-
-static zend_string *Automap_key(char type, zend_string *symbol TSRMLS_DC);
-
-static int MINIT_Automap_Key(TSRMLS_D);
-static int MSHUTDOWN_Automap_Key(TSRMLS_D);
-static int RINIT_Automap_Key(TSRMLS_D);
-static int RSHUTDOWN_Automap_Key(TSRMLS_D);
-
-/*============================================================================*/
+#if PHP_MAJOR_VERSION >= 7
+#define PHPNG
 #endif
+
+#include "compat_misc.h"
+#include "compat_zend_string.h"
+
+#endif /* _COMPAT_H */

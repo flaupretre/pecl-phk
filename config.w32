@@ -3,5 +3,5 @@
 ARG_ENABLE("phk", "enable the PHK accelerator", "no");
 
 if (PHP_PHK != "no") {
-        EXTENSION("phk", "php_phk.c");
+        EXTENSION("phk", "php_phk.c", PHP_PHK_SHARED, "/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
 }

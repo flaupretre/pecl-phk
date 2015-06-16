@@ -19,23 +19,27 @@
 /*---------------------------------------------------------------*/
 /* Starting with version 3.0, Automap is fully case-sensitive. This allows for
    higher performance and cleaner code */
+/* This function a newly-allocated zend_string (which must be released) */
 
-static void Automap_key(char type, char *symbol, unsigned long len
-	, zval *ret TSRMLS_DC)
+static zend_string *Automap_key(char type, zend_string *symbol TSRMLS_DC)
 {
-	char *p;
-
-	while((*symbol)=='\\') {
-		symbol++;
+	char *p,*start;
+	int len;
+	zend_string *ret;
+	
+	len=ZSTR_LEN(symbol);
+	start=ZSTR_VAL(symbol);
+	while((*start)=='\\') {
+		start++;
 		len--;
 	}
 
-	p=ut_eallocate(NULL,len+2);
-	p[0]=type;
-	memmove(p+1,symbol,len+1);
+	ret=zend_string_alloc(len+1, 0);
+	p=ZSTR_VAL(ret);
+	*(p++)=type;
+	memcpy(p,start,len+1);
 
-	INIT_ZVAL(*ret);
-	ZVAL_STRINGL(ret,p,len+1,0);
+	return ret;
 }
 
 /*===============================================================*/

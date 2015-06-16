@@ -23,7 +23,7 @@
 static void Automap_Mnt_dtor(Automap_Mnt *mp)
 {
 	ut_ezval_ptr_dtor(&(mp->map_object));
-	ut_ezval_ptr_dtor(&(mp->zpath));
+	zend_string_release(mp->path);
 }
 
 /*---------------------------------------------------------------*/
@@ -79,15 +79,14 @@ static void Automap_Mnt_array_add(Automap_Mnt *mp TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 /* On entry:
-* - zpathp is an absolute path
-* - zufidp is the unique file identifier for zpathp
-* - hash is the hashcode of zufidp
-* - zbasep is the base path to use when creating pmp if null
+* - path is an absolute path
+* - ufid is the unique file identifier for zpathp
+* - base_path is the base path to use when creating pmp if null
 * - If non null, pmp points to the Pmap to use (used by PHK to speed up loading)
 */
 
-static Automap_Mnt *Automap_Mnt_load_extended(zval *zpathp, zval *zufidp
-	, ulong hash, zval *zbasep, Automap_Pmap *pmp, long flags TSRMLS_DC)
+static Automap_Mnt *Automap_Mnt_load_extended(zend_string *path, zend_string *ufid
+	, zend_string *base_path, Automap_Pmap *pmp, long flags TSRMLS_DC)
 {
 	Automap_Mnt *mp;
 
@@ -95,8 +94,8 @@ static Automap_Mnt *Automap_Mnt_load_extended(zval *zpathp, zval *zufidp
 
 	mp=NULL;
 
-	if (!pmp) pmp=Automap_Pmap_get_or_create_extended(zpathp, zufidp
-		, hash, zbasep, flags TSRMLS_CC);
+	if (!pmp) pmp=Automap_Pmap_get_or_create_extended(path, ufid, base_path
+		, flags TSRMLS_CC);
 	if (!pmp) return NULL;
 
 	/* Allocate and fill Automap_Mnt slot */
@@ -106,8 +105,7 @@ static Automap_Mnt *Automap_Mnt_load_extended(zval *zpathp, zval *zufidp
 
 	mp->map=pmp;
 
-	ALLOC_INIT_ZVAL(mp->zpath);
-	ZVAL_STRINGL(mp->zpath,Z_STRVAL_P(zpathp),Z_STRLEN_P(zpathp),1);
+	mp->path=zend_string_dup(path,0);
 	mp->flags=flags;
 	
 	Automap_Mnt_array_add(mp TSRMLS_CC);
@@ -116,27 +114,22 @@ static Automap_Mnt *Automap_Mnt_load_extended(zval *zpathp, zval *zufidp
 
 /*---------------------------------------------------------------*/
 
-static Automap_Mnt *Automap_Mnt_load(zval *zpathp, long flags TSRMLS_DC)
+static Automap_Mnt *Automap_Mnt_load(zend_string *path, long flags TSRMLS_DC)
 {
 	Automap_Mnt *mp;
 	Automap_Pmap *pmp;
-	char *p;
-	int len;
-	zval *zapathp;
+	zend_string *zsp;
 
 	DBG_MSG("Starting Automap_Mnt_load");
 
 	mp=NULL;
 	pmp=NULL;
 
-	if (!ZVAL_IS_STRING(zpathp)) convert_to_string(zpathp);
 	/* Make path absolute */
-	p=ut_mkAbsolutePath(Z_STRVAL_P(zpathp),Z_STRLEN_P(zpathp),&len,0 TSRMLS_CC);
-	MAKE_STD_ZVAL(zapathp);
-	ZVAL_STRINGL(zapathp, p, len, 0);
+	zsp=ut_mkAbsolutePath(path, 0 TSRMLS_CC);
 	
-	if (!(pmp=Automap_Pmap_get_or_create(zapathp, flags TSRMLS_CC))) {
-		ut_ezval_ptr_dtor(&zapathp);
+	if (!(pmp=Automap_Pmap_get_or_create(zsp, flags TSRMLS_CC))) {
+		zend_string_release(zsp);
 		return NULL;
 	}
 
@@ -146,7 +139,7 @@ static Automap_Mnt *Automap_Mnt_load(zval *zpathp, long flags TSRMLS_DC)
 	CLEAR_DATA(*mp);	/* Init everything to 0/NULL */
 
 	mp->map=pmp;
-	mp->zpath=zapathp;
+	mp->path=zsp;
 	mp->flags=flags;
 
 	Automap_Mnt_array_add(mp TSRMLS_CC);
@@ -164,16 +157,20 @@ static Automap_Mnt *Automap_Mnt_load(zval *zpathp, long flags TSRMLS_DC)
 
 static PHP_METHOD(Automap, load)
 {
-	zval *path;
+	char *path;
+	int path_len;
+	zend_string *zs;
 	long flags;
 	Automap_Mnt *mp;
 
 	flags = 0;
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "z|l", &path
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "s|l", &path, &path_len
 		, &flags) == FAILURE)
 			EXCEPTION_ABORT("Cannot parse parameters");
 
-	mp = Automap_Mnt_load(path, flags TSRMLS_CC);
+	zs=zend_string_init(path,path_len,0);
+	mp = Automap_Mnt_load(zs, flags TSRMLS_CC);
+	zend_string_release(zs);
 
 	if (EG(exception)) return;
 	RETVAL_LONG(mp->id);
@@ -240,7 +237,7 @@ static PHP_METHOD(Automap, activeIDs)
 	return _ret; \
 	}
 
-static int Automap_Mnt_resolve_key(Automap_Mnt *mp, zval *zkey, ulong hash TSRMLS_DC)
+static int Automap_Mnt_resolve_key(Automap_Mnt *mp, zend_string *key TSRMLS_DC)
 {
 	char ftype,*req_str;
 	int id;
@@ -252,13 +249,13 @@ static int Automap_Mnt_resolve_key(Automap_Mnt *mp, zval *zkey, ulong hash TSRML
 	if (mp->flags & AUTOMAP_FLAG_NO_AUTOLOAD) return FAILURE;
 
 	pmp=mp->map;
-	if (!(pep=Automap_Pmap_find_key(pmp,zkey,hash TSRMLS_CC))) {
+	if (!(pep=Automap_Pmap_find_key(pmp,key TSRMLS_CC))) {
 		return FAILURE;
 	}
 
 	switch(ftype=pep->ftype) {
 		case AUTOMAP_F_EXTENSION:
-			ut_loadExtension_file(&(pep->zfapath) TSRMLS_CC);
+			ut_load_extension_file(pep->fapath TSRMLS_CC);
 			if (EG(exception)) RETURN_AUTOMAP_MNT_RESOLVE_KEY(FAILURE);
 			Automap_callSuccessHandlers(mp,pep TSRMLS_CC);
 			RETURN_AUTOMAP_MNT_RESOLVE_KEY(SUCCESS);
@@ -266,7 +263,7 @@ static int Automap_Mnt_resolve_key(Automap_Mnt *mp, zval *zkey, ulong hash TSRML
 
 		case AUTOMAP_F_SCRIPT:
 			/* Compute "require '<absolute path>';" */
-			spprintf(&req_str,1024,"require '%s';",Z_STRVAL(pep->zfapath));
+			spprintf(&req_str,1024,"require '%s';",ZSTR_VAL(pep->fapath));
 			DBG_MSG1("eval : %s",req_str);
 			zend_eval_string(req_str,NULL,req_str TSRMLS_CC);
 			Automap_callSuccessHandlers(mp,pep TSRMLS_CC);
@@ -274,15 +271,14 @@ static int Automap_Mnt_resolve_key(Automap_Mnt *mp, zval *zkey, ulong hash TSRML
 			break;
 
 		case AUTOMAP_F_PACKAGE:	/* Symbol is in a package */
-			id=PHK_Mgr_mount_from_Automap(&(pep->zfapath),0 TSRMLS_CC);
+			id=PHK_Mgr_mount_from_Automap(pep->fapath,0 TSRMLS_CC);
 			if (!id) {
 				THROW_EXCEPTION_1("%s : Package inclusion should load a map"
-					,Z_STRVAL(pep->zfapath));
+					,ZSTR_VAL(pep->fapath));
 				RETURN_AUTOMAP_MNT_RESOLVE_KEY(FAILURE);
 			}
 			RETURN_AUTOMAP_MNT_RESOLVE_KEY(
-				Automap_Mnt_resolve_key(PHK_G(map_array)[id], zkey
-					, hash TSRMLS_CC));
+				Automap_Mnt_resolve_key(PHK_G(map_array)[id], key TSRMLS_CC));
 			break;
 
 		default:	/* Unknown target type (never happens in a valid map */

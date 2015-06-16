@@ -89,11 +89,6 @@ static void Automap_Parser_addSymbol(zval *arr,char type,char *ns,int nslen
 
 /*---------------------------------------------------------------*/
 
-#define INIT_AUTOMAP_PARSE_TOKENS() \
-	{ \
-	INIT_ZVAL(ztokens); \
-	}
-
 #define CLEANUP_AUTOMAP_PARSE_TOKENS() \
 	{ \
 	ut_ezval_dtor(&ztokens); \
@@ -117,7 +112,7 @@ static void Automap_parseTokens(zval *zbuf, int skip_blocks, zval *ret TSRMLS_DC
 	int block_level,nalen,nslen,tnum,tvlen;
 	char ns[AUTOMAP_SYMBOL_MAX],*tvalue,schar;
 	char state;
-	zval ztokens,**ztoken, *args[1], **zpp;
+	zval ztokens,**ztoken, **zpp;
 	HashTable *ht_tokens,*ht;
 
 	array_init(ret);
@@ -126,10 +121,9 @@ static void Automap_parseTokens(zval *zbuf, int skip_blocks, zval *ret TSRMLS_DC
 	state=AUTOMAP_ST_OUT;
 	nalen=nslen=0;
 
-	/* Loop on token_get_all() result */
+	/* Loop on results from token_get_all() */
 
-	args[0]=zbuf;
-	ut_call_user_function_array(NULL,"token_get_all",13,&ztokens,1,args TSRMLS_CC);
+	ut_call_user_function_array(NULL,ZEND_STRL("token_get_all"), &ztokens, 1, zbuf TSRMLS_CC);
 	if (EG(exception)) ABORT_AUTOMAP_PARSE_TOKENS();
 	if (!ZVAL_IS_ARRAY(&ztokens)) {
 		THROW_EXCEPTION("token_get_all() should return an array");

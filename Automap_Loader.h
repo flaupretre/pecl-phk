@@ -29,7 +29,7 @@
 
 static PHP_METHOD(Automap, autoloadHook);
 static void Automap_Loader_register_hook(TSRMLS_D);
-static int Automap_resolve_symbol(char type, char *symbol, int slen, int autoload
+static int Automap_resolve_symbol(char type, zend_string *symbol, int autoload
 	, int exception TSRMLS_DC);
 
 AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(Function)

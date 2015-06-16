@@ -27,16 +27,17 @@ static PHP_METHOD(Automap, __construct) {}
 
 static zval *Automap_map_object_by_mp(Automap_Mnt *mp TSRMLS_DC)
 {
-	zval *args[2],*flags_zp;
+	zval *args[2],zflags,ztemp;
 	
 	if (!mp->map_object) {
-		args[0]=mp->zpath;
-		MAKE_STD_ZVAL(flags_zp);
-		ZVAL_LONG(flags_zp,mp->flags);
-		args[1]=flags_zp;
+		INIT_ZVAL(ztemp);
+		ZVAL_STR(&ztemp,mp->path);
+		args[0]= &ztemp;
+		INIT_ZVAL(zflags);
+		ZVAL_LONG(&zflags,mp->flags);
+		args[1]=&zflags;
 		mp->map_object=ut_new_instance(ZEND_STRL("Automap\\Map"), YES, 2
 			, args TSRMLS_CC);
-		ut_ezval_ptr_dtor(&flags_zp);
 	}
 
 	return mp->map_object;
