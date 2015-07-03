@@ -34,9 +34,14 @@ static PHP_NAMED_FUNCTION(Automap_Ext_file_get_contents)
 		EXCEPTION_ABORT_1("%s: Cannot open file",path);
 	}
 	fstat(fileno(fp),&st);
-	if (!S_ISREG(st.st_mode)) EXCEPTION_ABORT_1("%s: File is not a regular file",path);
+	if (!S_ISREG(st.st_mode)) {
+		fclose(fp);
+		EXCEPTION_ABORT_1("%s: File is not a regular file",path);
+	}
 	EALLOCATE(buf,st.st_size+1);
-	while (!fread(buf,st.st_size,1,fp)) {}
+	if (st.st_size) {
+		while (!fread(buf,st.st_size,1,fp)) {}
+	}
 	buf[st.st_size]='\0';
 	fclose(fp);
 	RETVAL_STRINGL(buf,st.st_size,0);

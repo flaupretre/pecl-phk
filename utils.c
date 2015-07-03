@@ -226,9 +226,9 @@ UT_SYMBOL void ut_dbg_print_time()
 	sec=tp.tv_sec-_ut_base_tp.tv_sec;
 	if (ut_is_web()) php_printf("<br>");
 	php_printf("<");
-	if (sec) php_printf("%ld/",sec);
-	php_printf("%ld> : ",tp.tv_usec-_ut_base_tp.tv_usec);
-	(void)gettimeofday(&_ut_base_tp,&tz);
+	if (sec) php_printf("(%ld s) ",sec);
+	else php_printf("(%ld µs) ",(tp.tv_usec-_ut_base_tp.tv_usec));
+	memmove(&_ut_base_tp,&tp,sizeof(tp));
 #endif
 }
 

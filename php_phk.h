@@ -120,6 +120,10 @@
 
 #define PHK_ACCEL_VERSION "3.0.1"
 
+/* Minimal version of PHP required to run this extension */
+
+#define PHK_PHP_MIN_VERSION "5.3.0"
+
 #define PHP_PHK_EXTNAME "phk"
 
 zend_module_entry phk_module_entry;
@@ -184,6 +188,10 @@ char root_package[UT_PATH_MAX + 1];
 int php_runtime_is_loaded;
 
 zval *mimeTable;
+
+zend_bool enable_cli;	/* Ini setting */
+
+int ext_is_enabled;
 
 ZEND_END_MODULE_GLOBALS(phk)
 

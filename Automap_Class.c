@@ -160,10 +160,12 @@ static int MINIT_Automap_Class(TSRMLS_D)
 {
 	zend_class_entry ce, *entry;
 
-	INIT_CLASS_ENTRY(ce, "Automap\\Mgr", Automap_functions);
-	entry = zend_register_internal_class(&ce TSRMLS_CC);
+	if (PHK_G(ext_is_enabled)) {
+		INIT_CLASS_ENTRY(ce, "Automap\\Mgr", Automap_functions);
+		entry = zend_register_internal_class(&ce TSRMLS_CC);
 
-	Automap_Class_set_constants(entry);
+		Automap_Class_set_constants(entry);
+	}
 
 	return SUCCESS;
 }

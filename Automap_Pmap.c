@@ -287,8 +287,10 @@ static void Automap_Pmap_exportEntry(Automap_Pmap_Entry *pep, zval *zp TSRMLS_DC
 
 static int MINIT_Automap_Pmap(TSRMLS_D)
 {
-	MutexSetup(pmap_array);
-	zend_hash_init(&pmap_array, 16, NULL,(dtor_func_t) Automap_Pmap_dtor, 1);
+	if (PHK_G(ext_is_enabled)) {
+		MutexSetup(pmap_array);
+		zend_hash_init(&pmap_array, 16, NULL,(dtor_func_t) Automap_Pmap_dtor, 1);
+	}
 
 	return SUCCESS;
 }
@@ -297,8 +299,10 @@ static int MINIT_Automap_Pmap(TSRMLS_D)
 
 static int MSHUTDOWN_Automap_Pmap(TSRMLS_D)
 {
-	zend_hash_destroy(&pmap_array);
-	MutexShutdown(pmap_array);
+	if (PHK_G(ext_is_enabled)) {
+		zend_hash_destroy(&pmap_array);
+		MutexShutdown(pmap_array);
+	}
 
 	return SUCCESS;
 }
