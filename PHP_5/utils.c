@@ -258,24 +258,33 @@ UT_SYMBOL void ut_decref(zval *zp)
 }
 
 /*---------*/
-/* Free persistent zval content and reset it */
+/* Free zval content and reset it */
 
-UT_SYMBOL void ut_pzval_dtor(zval *zp)
+UT_SYMBOL void ut_pezval_dtor(zval *zp, int persistent)
 {
-	switch (Z_TYPE_P(zp) & IS_CONSTANT_TYPE_MASK) {
-	  case IS_STRING:
-	  case IS_CONSTANT:
-		  free(Z_STRVAL_P(zp));
-		  break;
+	if (persistent) {
+		switch (Z_TYPE_P(zp) & IS_CONSTANT_TYPE_MASK) {
+		  case IS_STRING:
+		  case IS_CONSTANT:
+			  pefree(Z_STRVAL_P(zp), persistent);
+			  break;
 
-	  case IS_ARRAY:
-	  case IS_CONSTANT_ARRAY:
-		  zend_hash_destroy(Z_ARRVAL_P(zp));
-		  free(Z_ARRVAL_P(zp));
-		  break;
+		  case IS_ARRAY:
+		  case IS_CONSTANT_ARRAY:
+			  zend_hash_destroy(Z_ARRVAL_P(zp));
+			  pefree(Z_ARRVAL_P(zp), persistent);
+			  break;
+		}
+	} else {
+		zval_dtor(zp);
 	}
 	INIT_ZVAL(*zp);
 }
+
+/*---------*/
+
+UT_SYMBOL void ut_ezval_dtor(zval *zp) { ut_pezval_dtor(zp,0); }
+UT_SYMBOL void ut_pzval_dtor(zval *zp) { ut_pezval_dtor(zp,1); }
 
 /*---------*/
 /* clear the zval pointer */
@@ -366,7 +375,7 @@ UT_SYMBOL zval *ut_persist_zval(zval * zsp)
 /*---------------------------------------------------------------*/
 
 UT_SYMBOL zval *ut_new_instance(char *class_name, int class_name_len,
-	int construct, int nb_args,	zval * args TSRMLS_DC)
+	int construct, int nb_args,	zval ** args TSRMLS_DC)
 {
 	zend_class_entry **ce;
 	zval *instance;
@@ -394,25 +403,25 @@ UT_SYMBOL zval *ut_new_instance(char *class_name, int class_name_len,
 /*---------------------------------------------------------------*/
 
 UT_SYMBOL void ut_call_user_function_void(zval *obj_zp, char *func,
-	int func_len, int nb_args, zval * args TSRMLS_DC)
+	int func_len, int nb_args, zval ** args TSRMLS_DC)
 {
 	zval *ret;
 
 	ALLOC_INIT_ZVAL(ret);
-	ut_call_str_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
+	ut_call_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
 	ut_ezval_ptr_dtor(&ret);		/* Discard return value */
 }
 
 /*---------------------------------------------------------------*/
 
 UT_SYMBOL int ut_call_user_function_bool(zval * obj_zp, char *func,
-	int func_len, int nb_args, zval * args TSRMLS_DC)
+	int func_len, int nb_args, zval ** args TSRMLS_DC)
 {
 	zval *ret;
 	int result;
 
 	ALLOC_INIT_ZVAL(ret);
-	ut_call_str_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
+	ut_call_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
 	result = zend_is_true(ret);
 	ut_ezval_ptr_dtor(&ret);
 
@@ -422,13 +431,13 @@ UT_SYMBOL int ut_call_user_function_bool(zval * obj_zp, char *func,
 /*---------------------------------------------------------------*/
 
 UT_SYMBOL long ut_call_user_function_long(zval *obj_zp, char *func,
-	int func_len, int nb_args, zval * args TSRMLS_DC)
+	int func_len, int nb_args, zval ** args TSRMLS_DC)
 {
 	zval *ret;
 	long result;
 
 	ALLOC_INIT_ZVAL(ret);
-	ut_call_str_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
+	ut_call_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
 
 	ENSURE_LONG(ret);
 	result=Z_LVAL_P(ret);
@@ -440,9 +449,9 @@ UT_SYMBOL long ut_call_user_function_long(zval *obj_zp, char *func,
 /*---------------------------------------------------------------*/
 
 UT_SYMBOL void ut_call_user_function_string(zval *obj_zp, char *func,
-	int func_len, zval * ret, int nb_args, zval * args TSRMLS_DC)
+	int func_len, zval * ret, int nb_args, zval ** args TSRMLS_DC)
 {
-	ut_call_str_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
+	ut_call_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
 	if (EG(exception)) return;
 
 	ENSURE_STRING(ret);
@@ -451,9 +460,9 @@ UT_SYMBOL void ut_call_user_function_string(zval *obj_zp, char *func,
 /*---------------------------------------------------------------*/
 
 UT_SYMBOL void ut_call_user_function_array(zval * obj_zp, char *func,
-	int func_len, zval * ret, int nb_args, zval * args TSRMLS_DC)
+	int func_len, zval * ret, int nb_args, zval ** args TSRMLS_DC)
 {
-	ut_call_str_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
+	ut_call_user_function(obj_zp, func, func_len, ret, nb_args, args TSRMLS_CC);
 	if (EG(exception)) return;
 
 	if (!ZVAL_IS_ARRAY(ret)) {
@@ -464,47 +473,62 @@ UT_SYMBOL void ut_call_user_function_array(zval * obj_zp, char *func,
 
 /*---------------------------------------------------------------*/
 
-UT_SYMBOL void ut_call_str_user_function(zval *obj_zp, char *func,
-	int func_len, zval *ret, int nb_args, zval * args TSRMLS_DC)
+UT_SYMBOL void ut_call_user_function(zval *obj_zp, char *func,
+	int func_len, zval *ret, int nb_args, zval ** args TSRMLS_DC)
 {
 	int status;
 	zval *func_zp;
 
+#if ZEND_MODULE_API_NO <= 20050922
+/* PHP version 5.1 doesn't accept 'class::function' as func_zp (static method).
+It requires passing the class name as a string zval in obj_zp, and the method
+name in func_zp. Unfortunately, this mechanism is rejected by PHP 5.3, which
+requires a null obj_zp and a string 'class::function' in func_zp. This function
+always receives 'class::function' and makes it compatible with old versions.
+Note: I am not sure of the ZEND_MODULE_API value where this behavior changed. If
+it is wrong, let me know. The only thing I know is that it changed between 5.1.6
+and 5.3.9 */
+
+	char *p,*op,*p2;
+	int clen;
+
 	MAKE_STD_ZVAL(func_zp);
-	ZVAL_STRINGL(func_zp,func,func_len,1);
-
-	status=ut_call_zval_user_function(obj_zp, func_zp, ret, nb_args, args TSRMLS_CC);
-	ut_ezval_ptr_dtor(&func_zp);
-}
-
-/*---------------------------------------------------------------*/
-
-UT_SYMBOL void ut_call_zval_user_function(zval *obj_zp, zval *func_zp,
-	zval *ret, int nb_args, zval *args TSRMLS_DC)
-{
-	int status;
-
-#ifndef PHPNG
-	{
-		zval **_args=NULL;
-		int i;
-
-		if (nb_args) {
-			_args=eallocate(NULL,nb_args * sizeof(*_args));
-			for (i=0;i<nb_args;i++) _args[i] = &(args[i]);
+	clen=0;
+	if (!obj_zp) { /* Only on static calls */
+		for (op=p=func;;p++) {
+			if (!(*p)) break;
+			if (((*p)==':')&&((*(p+1))==':')) {
+				clen=p-op;
+				break;
+			}
 		}
-		status=call_user_function(EG(function_table), &obj_zp, func_zp, ret, nb_args,
-			_args TSRMLS_CC);
-		(void)eallocate(_args,0);
+	}	
+	if (clen) {
+		p2=ut_eduplicate(op,clen+1);
+		p2[clen]='\0';
+		MAKE_STD_ZVAL(obj_zp);
+		ZVAL_STRINGL(obj_zp,p2,clen,0);
+		ZVAL_STRINGL(func_zp,op+clen+2,func_len-clen-2,1);
+	} else {
+		ZVAL_STRINGL(func_zp,func,func_len,1);	/* Default */
 	}
 #else
-	status=call_user_function(EG(function_table), obj_zp, func_zp, ret, nb_args,
+	MAKE_STD_ZVAL(func_zp);
+	ZVAL_STRINGL(func_zp,func,func_len,1);
+#endif
+
+	status=call_user_function(EG(function_table), &obj_zp, func_zp, ret, nb_args,
 		args TSRMLS_CC);
+	ut_ezval_ptr_dtor(&func_zp);
+
+#if ZEND_MODULE_API_NO <= 20050922
+	if (clen) {
+		ut_ezval_ptr_dtor(&obj_zp);
+	}
 #endif
 
 	if (status!=SUCCESS) {
-		THROW_EXCEPTION_1("call_user_function(func=%s) failed"
-			,((Z_TYPE_P(func_zp) == IS_STRING) ? Z_STRVAL_P(func_zp) : "array"));
+		THROW_EXCEPTION_1("call_user_function(func=%s) failed",func);
 	}
 }
 
@@ -521,7 +545,7 @@ UT_SYMBOL int ut_extension_loaded(char *name, int len TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-UT_SYMBOL void ut_load_extension_file(zval *file TSRMLS_DC)
+UT_SYMBOL void ut_loadExtension_file(zval *file TSRMLS_DC)
 {
 	if (!ut_call_user_function_bool(NULL,ZEND_STRL("dl"),1,&file TSRMLS_CC)) {
 		THROW_EXCEPTION_1("%s: Cannot load extension",Z_STRVAL_P(file));
@@ -536,7 +560,7 @@ UT_SYMBOL void ut_load_extension_file(zval *file TSRMLS_DC)
 #define _UT_LE_PREFIX
 #endif
 
-UT_SYMBOL void ut_load_extension(char *name, int len TSRMLS_DC)
+UT_SYMBOL void ut_loadExtension(char *name, int len TSRMLS_DC)
 {
 	zval *zp;
 	char *p;
@@ -547,21 +571,21 @@ UT_SYMBOL void ut_load_extension(char *name, int len TSRMLS_DC)
 	MAKE_STD_ZVAL(zp);
 	ZVAL_STRING(zp,p,0);
 
-	ut_load_extension_file(zp TSRMLS_CC);
+	ut_loadExtension_file(zp TSRMLS_CC);
 
 	ut_ezval_ptr_dtor(&zp);
 }
 
 /*---------------------------------------------------------------*/
 
-UT_SYMBOL void ut_load_extensions(zval * extensions TSRMLS_DC)
+UT_SYMBOL void ut_loadExtensions(zval * extensions TSRMLS_DC)
 {
 	HashTable *ht;
 	HashPosition pos;
 	zval **zpp;
 
 	if (!ZVAL_IS_ARRAY(extensions)) {
-		THROW_EXCEPTION("ut_load_extensions: argument should be an array");
+		THROW_EXCEPTION("ut_loadExtensions: argument should be an array");
 		return;
 	}
 
@@ -571,7 +595,7 @@ UT_SYMBOL void ut_load_extensions(zval * extensions TSRMLS_DC)
 	while (zend_hash_get_current_data_ex(ht, (void **) (&zpp), &pos) ==
 		   SUCCESS) {
 		if (ZVAL_IS_STRING(*zpp)) {
-			ut_load_extension(Z_STRVAL_PP(zpp),Z_STRLEN_PP(zpp) TSRMLS_CC);
+			ut_loadExtension(Z_STRVAL_PP(zpp),Z_STRLEN_PP(zpp) TSRMLS_CC);
 			if (EG(exception)) return;
 		}
 		zend_hash_move_forward_ex(ht, &pos);
@@ -647,7 +671,7 @@ UT_SYMBOL void ut_exit(int status TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-UT_SYMBOL zval *_ut_SERVER_element(zend_string * hkey TSRMLS_DC)
+UT_SYMBOL zval *_ut_SERVER_element(HKEY_STRUCT * hkey TSRMLS_DC)
 {
 	zval **array, **token;
 	int status;
@@ -660,13 +684,14 @@ UT_SYMBOL zval *_ut_SERVER_element(zend_string * hkey TSRMLS_DC)
 	if (!ZVAL_IS_ARRAY(*array))
 		EXCEPTION_ABORT_RET(NULL,"_SERVER: symbol is not of type array");
 
-	status=FIND_ZSTRING(Z_ARRVAL_PP(array), hkey, &token);
+	status=zend_hash_quick_find(Z_ARRVAL_PP(array), hkey->string, hkey->len
+		, hkey->hash, (void **) (&token));
 	return (status == SUCCESS) ? (*token) : NULL;
 }
 
 /*---------------------------------------------------------------*/
 
-UT_SYMBOL zval *_ut_REQUEST_element(zend_string * hkey TSRMLS_DC)
+UT_SYMBOL zval *_ut_REQUEST_element(HKEY_STRUCT * hkey TSRMLS_DC)
 {
 	zval **array, **token;
 	int status;
@@ -679,7 +704,8 @@ UT_SYMBOL zval *_ut_REQUEST_element(zend_string * hkey TSRMLS_DC)
 	if (!ZVAL_IS_ARRAY(*array))
 		EXCEPTION_ABORT_RET(NULL,"_REQUEST: symbol is not of type array");
 
-	status=FIND_ZSTRING(Z_ARRVAL_PP(array), hkey, &token);
+	status=zend_hash_quick_find(Z_ARRVAL_PP(array), hkey->string, hkey->len
+		, hkey->hash, (void **) (&token));
 	return (status == SUCCESS) ? (*token) : NULL;
 }
 

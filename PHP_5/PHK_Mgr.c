@@ -1154,7 +1154,7 @@ static PHK_Pdata *PHK_Mgr_get_or_create_pdata(zval * mnt,
 
 	if ((FIND_HKEY(Z_ARRVAL(options),required_extensions,&zpp)==SUCCESS)
 		&& (ZVAL_IS_ARRAY(*zpp))) {
-		ut_load_extensions(*zpp TSRMLS_CC);
+		ut_loadExtensions(*zpp TSRMLS_CC);
 		if (EG(exception)) ABORT_PHK_GET_OR_CREATE_PERSISTENT_DATA();
 	}
 

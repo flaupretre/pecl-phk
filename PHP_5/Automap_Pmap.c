@@ -23,61 +23,73 @@
 
 /*---------------------------------------------------------------*/
 
-static Automap_Pmap *Automap_Pmap_get(zend_string *ufid TSRMLS_DC)
+static Automap_Pmap *Automap_Pmap_get(zval *zufidp, ulong hash TSRMLS_DC)
 {
-	Automap_Pmap **pmpp;
+	Automap_Pmap *pmp;
 	int found;
 
-	found = (FIND_ZSTRING(&pmap_array, ufid, (void **) &pmpp) == SUCCESS);
-	return (found ? (*pmpp) : NULL);
+	if (!ZVAL_IS_STRING(zufidp)) {
+		EXCEPTION_ABORT_RET_1(NULL,"Automap_Pmap_get: UFID should be a string (type=%s)",
+							  zend_zval_type_name(zufidp));
+	}
+
+	if (!hash) hash = ZSTRING_HASH(zufidp);
+
+	found = (zend_hash_quick_find(&pmap_array, Z_STRVAL_P(zufidp),
+		Z_STRLEN_P(zufidp) + 1, hash, (void **) &pmp) == SUCCESS);
+	return (found ? pmp : NULL);
 }
 
 /*---------------------------------------------------------------*/
 /* Callback only - Used by Automap_Pmap_get_or_create() */
 /* zpp : Return from Automap_Map::_peclGetMap(): array(stype,symbol,ptype,path) */
 
-static int Automap_Pmap_create_entry(zval **zpp, HashTable *zsymbols TSRMLS_DC)
+static int Automap_Pmap_create_entry(zval **zpp, zval **zsymbols	TSRMLS_DC)
 	{
-	Automap_Pmap_Entry *entry;
-	zval **zitem;
+	Automap_Pmap_Entry tmp_entry;
+	zval zkey,**zitem;
 	HashTable *htp;
-	zend_string *key;
+	char *p;
 
 	if (!ZVAL_IS_ARRAY(*zpp)) {
 		EXCEPTION_ABORT_RET_1(ZEND_HASH_APPLY_STOP,"Automap_Pmap_create_entry: Invalid entry (should be an array) %d",Z_TYPE_PP(zpp));
 	}
-
-	entry=ut_pallocate(NULL,sizeof(*entry));
+	INIT_ZVAL(tmp_entry.zsname);
+	INIT_ZVAL(tmp_entry.zfapath);
 
 	/* Symbol type */
 
 	htp=Z_ARRVAL_PP(zpp);
 	zend_hash_index_find(htp,0,(void **)(&zitem));
-	entry->stype=Z_STRVAL_PP(zitem)[0];
+	tmp_entry.stype=Z_STRVAL_PP(zitem)[0];
 
 	/* Symbol name */
 
 	zend_hash_move_forward(htp);
 	zend_hash_get_current_data(htp,(void **)(&zitem));
-	entry->sname=zend_string_init(Z_STRVAL_PP(zitem),Z_STRLEN_PP(zitem),1);
+	p=ut_pduplicate(Z_STRVAL_PP(zitem),Z_STRLEN_PP(zitem)+1);
+	ZVAL_STRINGL(&(tmp_entry.zsname),p,Z_STRLEN_PP(zitem),0);
 	
 	/* Target type */
 
 	zend_hash_move_forward(htp);
 	zend_hash_get_current_data(htp,(void **)(&zitem));
-	entry->ftype=Z_STRVAL_PP(zitem)[0];
+	tmp_entry.ftype=Z_STRVAL_PP(zitem)[0];
 
 	/* Target name */
 
 	zend_hash_move_forward(htp);
 	zend_hash_get_current_data(htp,(void **)(&zitem));
-	entry->fapath=zend_string_init(Z_STRVAL_PP(zitem),Z_STRLEN_PP(zitem),1);
+	p=ut_pduplicate(Z_STRVAL_PP(zitem),Z_STRLEN_PP(zitem)+1);
+	ZVAL_STRINGL(&(tmp_entry.zfapath),p,Z_STRLEN_PP(zitem),0);
 
 	/* Store entry in map */
 
-	key=Automap_key(entry->stype, entry->sname TSRMLS_CC);
-	zend_hash_update(zsymbols,ZSTR_VAL(key),ZSTR_LEN(key) + 1, entry, sizeof(entry),NULL);
-	zend_string_release(key);
+	Automap_key(tmp_entry.stype, Z_STRVAL(tmp_entry.zsname)
+		, Z_STRLEN(tmp_entry.zsname), &zkey TSRMLS_CC);
+	zend_hash_update(Z_ARRVAL_PP(zsymbols),Z_STRVAL(zkey)
+				,Z_STRLEN(zkey)+1,&tmp_entry,sizeof(tmp_entry),NULL);
+	zval_dtor(&zkey);
 
 	return ZEND_HASH_APPLY_KEEP;
 }
@@ -86,23 +98,25 @@ static int Automap_Pmap_create_entry(zval **zpp, HashTable *zsymbols TSRMLS_DC)
 /* Used for regular files only */
 /* On entry, zapathp is an absolute path */
 
-static Automap_Pmap *Automap_Pmap_get_or_create(zend_string *path, long flags TSRMLS_DC)
+static Automap_Pmap *Automap_Pmap_get_or_create(zval *zapathp
+	, long flags TSRMLS_DC)
 {
-	zend_string *ufid;
+	zval *zufidp;
 	Automap_Pmap *pmp;
 
 	/* Compute UFID (Unique File ID) */
 
-	ufid=Automap_ufid(path TSRMLS_CC);
+	Automap_ufid(zapathp, &zufidp TSRMLS_CC);
 	if (EG(exception)) return NULL;
 
 	/* Run extended func */
 	
-	pmp=Automap_Pmap_get_or_create_extended(path, ufid, NULL, flags TSRMLS_CC);
+	pmp=Automap_Pmap_get_or_create_extended(zapathp, zufidp
+		, ZSTRING_HASH(zufidp), NULL, flags TSRMLS_CC);
 
 	/* Cleanup */
 
-	zend_string_release(ufid);
+	ut_ezval_ptr_dtor(&zufidp);
 
 	return pmp;
 }
@@ -115,12 +129,14 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zend_string *path, long flags TS
 	INIT_ZVAL(zdata); \
 	INIT_ZVAL(zlong); \
 	INIT_ZVAL(znull); \
-	pmp=NULL; \
+	CLEAR_DATA(tmp_map); \
 	}
 
 #define CLEANUP_AUTOMAP_PMAP_GET_OR_CREATE() \
 	{ \
 	ut_ezval_dtor(&zdata); \
+	ut_ezval_dtor(&zlong); \
+	ut_ezval_dtor(&znull); \
 	}
 
 #define RETURN_FROM_AUTOMAP_PMAP_GET_OR_CREATE(_ret) \
@@ -132,41 +148,45 @@ static Automap_Pmap *Automap_Pmap_get_or_create(zend_string *path, long flags TS
 
 #define ABORT_AUTOMAP_PMAP_GET_OR_CREATE() \
 	{ \
-	Automap_Pmap_dtor(&pmp); \
+	Automap_Pmap_dtor(&tmp_map); \
 	RETURN_FROM_AUTOMAP_PMAP_GET_OR_CREATE(NULL); \
 	}
 
 /* On entry :
-* - path is an absolute path
-* - ufid is non null
+* - zpathp is an absolute path
+* - zufidp is non null
+* - hash is non null
 * - If buf is non null, it contains the map data (don't read from path)
-* - If base_path_arg is non null, it is the final absolute base
+* - If zbasePathp_arg is non null, it is the final absolute base
 *       path (with trailing separator)
-* - If base_path_arg is null, the value must be computed from the file path and
+* - If zbasePathp_arg is null, the value must be computed from the file path and
 *       content
 */
 
-static Automap_Pmap *Automap_Pmap_get_or_create_extended(zend_string *path
-	,zend_string *ufid, zend_string *base_path_arg, long flags TSRMLS_DC)
+static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
+	,zval *zufidp, ulong hash, zval *zbasePathp_arg, long flags TSRMLS_DC)
 {
-	Automap_Pmap *pmp;
-	zval zdata, *args[3], zlong, *map, znull, zpath, zbase;
+	Automap_Pmap tmp_map, *pmp;
+	zval zdata, *args[3], zlong, *map, znull;
+	HashTable *htp;
 
-	DBG_MSG1("Entering Automap_Pmap_get_or_create_extended(%s)",ZSTR_VAL(path));
+	DBG_MSG1("Entering Automap_Pmap_get_or_create_extended(%s)",Z_STRVAL_P(zpathp));
 
 	AUTOMAP_LOCK_pmap_array();
 
-	pmp=Automap_Pmap_get(ufid TSRMLS_CC);
+	pmp=Automap_Pmap_get(zufidp, hash TSRMLS_CC);
 	if (pmp) { /* Already exists */
 		AUTOMAP_UNLOCK_pmap_array(); \
-		DBG_MSG2("Automap_Pmap cache hit (path=%s,ufid=%s)",ZSTR_VAL(path),ZSTR_VAL(ufid));
+		DBG_MSG2("Automap_Pmap cache hit (path=%s,ufid=%s)",Z_STRVAL_P(zpathp)
+			,Z_STRVAL_P(zufidp));
 		return pmp; \
 	}
 
 	/* Map is not in Pmap cache -> load it using \Automap\Map (PHP) */
 	/*-- Slow path --*/
 
-	DBG_MSG2("Automap_Pmap cache miss (path=%s,ufid=%s)",ZSTR_VAL(path),ZSTR_VAL(ufid));
+	DBG_MSG2("Automap_Pmap cache miss (path=%s,ufid=%s)",Z_STRVAL_P(zpathp)
+			,Z_STRVAL_P(zufidp));
 
 	INIT_AUTOMAP_PMAP_GET_OR_CREATE();
 
@@ -174,14 +194,10 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zend_string *path
 
 	/* Instantiate \Automap\Map (load the map file) */
 
-	INIT_ZVAL(zpath);
-	ZVAL_STR(&zpath,path);
-	args[0] = &zpath;
+	args[0] = zpathp;
 	ZVAL_LONG(&zlong,flags|AUTOMAP_FLAG_CRC_CHECK|AUTOMAP_FLAG_PECL_LOAD);
 	args[1] = &zlong;
-	INIT_ZVAL(zbase);
-	if (base_path_arg) ZVAL_STR(&zbase,base_path_arg);
-	args[2] = &zbase;
+	args[2] = (zbasePathp_arg ? zbasePathp_arg : (&znull));
 	map=ut_new_instance(ZEND_STRL("Automap\\Map"), YES, 3, args TSRMLS_CC);
 	if (EG(exception)) ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 
@@ -192,7 +208,7 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zend_string *path
 	ut_call_user_function_array(map,ZEND_STRL("_peclGetMap"),&zdata,1,args TSRMLS_CC);
 	if (EG(exception)) ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	if (!ZVAL_IS_ARRAY(&zdata)) {
-		THROW_EXCEPTION_1("%s : Automap\\Map::_peclGetMap() should return an array",ZSTR_VAL(path));
+		THROW_EXCEPTION_1("%s : Automap\\Map::_peclGetMap() should return an array",Z_STRVAL_P(zpathp));
 		ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	}
 	
@@ -200,17 +216,20 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zend_string *path
 	
 	/* Move data to persistent storage */
 
-	pmp=(Automap_Pmap *)ut_pallocate(NULL,sizeof(*pmp));
-	zend_hash_init(&(pmp->zsymbols),zend_hash_num_elements(Z_ARRVAL(zdata)),NULL
+	htp=(HashTable *)ut_pallocate(NULL,sizeof(HashTable));
+	zend_hash_init(htp,zend_hash_num_elements(Z_ARRVAL(zdata)),NULL
 		,(dtor_func_t)Automap_Pmap_Entry_dtor,1);
+	ALLOC_INIT_PERMANENT_ZVAL(tmp_map.zsymbols);
+	ZVAL_ARRAY(tmp_map.zsymbols,htp);
 	zend_hash_apply_with_argument(Z_ARRVAL(zdata)
 		,(apply_func_arg_t)Automap_Pmap_create_entry
-		, (void *)(&(pmp->zsymbols)) TSRMLS_CC);
+		, (void *)(&tmp_map.zsymbols) TSRMLS_CC);
 	if (EG(exception)) ABORT_AUTOMAP_PMAP_GET_OR_CREATE();
 	
 	/* Create slot */
 
-	zend_hash_quick_update(&pmap_array, _ZSTR_VALUES(ufid), &pmp, sizeof(pmp), NULL);
+	zend_hash_quick_update(&pmap_array, Z_STRVAL_P(zufidp), Z_STRLEN_P(zufidp) + 1
+		, hash, &tmp_map, sizeof(tmp_map), (void **) &pmp);
 
 	/* Cleanup and return */
 
@@ -219,45 +238,37 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zend_string *path
 
 /*---------------------------------------------------------------*/
 
-static void Automap_Pmap_dtor(Automap_Pmap **pmpp)
+static void Automap_Pmap_dtor(Automap_Pmap *pmp)
 {
-	Automap_Pmap *pmp;
-	
-	pmp = (*pmpp);
-	zend_hash_destroy(&(pmp->zsymbols));
-	ut_pallocate(pmp,0);
+	ut_pzval_ptr_dtor(&(pmp->zsymbols));
 }
 
 /*---------------------------------------------------------------*/
 
-static void Automap_Pmap_Entry_dtor(Automap_Pmap_Entry **pepp)
+static void Automap_Pmap_Entry_dtor(Automap_Pmap_Entry *pep)
 {
-	Automap_Pmap_Entry *pep;
-	
-	pep = (*pepp);
-	zend_string_release(pep->sname);
-	zend_string_release(pep->fapath);
-	ut_pallocate(pep,0);
+	ut_pzval_dtor(&(pep->zsname));
+	ut_pzval_dtor(&(pep->zfapath));
 }
 
 /*---------------------------------------------------------------*/
-/* Returns NULL on failure */
+/* Returns SUCCESS/FAILURE */
 /* Fast path */
 
 static Automap_Pmap_Entry *Automap_Pmap_find_key(Automap_Pmap *pmp
-	, zend_string *key TSRMLS_DC)
+	, zval *zkey, ulong hash TSRMLS_DC)
 {
-	Automap_Pmap_Entry **pepp;
-	int status;
+	Automap_Pmap_Entry *pep;
 
-	pepp=(Automap_Pmap_Entry **)NULL;
-	status=FIND_ZSTRING(&(pmp->zsymbols),key,(void **)(&pepp));
-	return ((status==SUCCESS) ? (*pepp) : NULL);
+	pep=(Automap_Pmap_Entry *)NULL;
+	zend_hash_quick_find(Z_ARRVAL_P(pmp->zsymbols),Z_STRVAL_P(zkey)
+		,Z_STRLEN_P(zkey)+1,hash,(void **)(&pep));
+	return pep;
 }
 
 /*---------------------------------------------------------------*/
 
-static void Automap_Pmap_export_entry(Automap_Pmap_Entry *pep, zval *zp TSRMLS_DC)
+static void Automap_Pmap_exportEntry(Automap_Pmap_Entry *pep, zval *zp TSRMLS_DC)
 {
 	char str[2];
 
@@ -266,10 +277,10 @@ static void Automap_Pmap_export_entry(Automap_Pmap_Entry *pep, zval *zp TSRMLS_D
 
 	str[0]=pep->stype;
 	add_assoc_stringl(zp,"stype",str,1,1);
-	add_assoc_stringl(zp,"symbol",ZSTR_VAL(pep->sname),ZSTR_LEN(pep->sname),1);
+	add_assoc_stringl(zp,"symbol",Z_STRVAL(pep->zsname),Z_STRLEN(pep->zsname),1);
 	str[0]=pep->ftype;
 	add_assoc_stringl(zp,"ptype",str,1,1);
-	add_assoc_stringl(zp,"path",ZSTR_VAL(pep->fapath),ZSTR_LEN(pep->fapath),1);
+	add_assoc_stringl(zp,"path",Z_STRVAL(pep->zfapath),Z_STRLEN(pep->zfapath),1);
 }
 
 /*===============================================================*/

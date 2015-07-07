@@ -16,57 +16,48 @@
   +----------------------------------------------------------------------+
 */
 
+#ifndef __AUTOMAP_TYPE_H
+#define __AUTOMAP_TYPE_H
+
 /*---------------------------------------------------------------*/
-/* Starting with version 3.0, Automap is fully case-sensitive. This allows for
-   higher performance and cleaner code */
-/* This function a newly-allocated zend_string (which must be released) */
+/* Key types */
 
-static zend_string *Automap_key(char type, zend_string *symbol TSRMLS_DC)
-{
-	char *p,*start;
-	int len;
-	zend_string *ret;
-	
-	len=ZSTR_LEN(symbol);
-	start=ZSTR_VAL(symbol);
-	while((*start)=='\\') {
-		start++;
-		len--;
-	}
+#define AUTOMAP_T_FUNCTION	'F'
+#define AUTOMAP_T_CONSTANT	'C'
+#define AUTOMAP_T_CLASS		'L'
+#define AUTOMAP_T_EXTENSION	'E'
 
-	ret=zend_string_alloc(len+1, 0);
-	p=ZSTR_VAL(ret);
-	*(p++)=type;
-	memcpy(p,start,len+1);
+#define AUTOMAP_F_SCRIPT	'S'
+#define AUTOMAP_F_EXTENSION	'X'
+#define AUTOMAP_F_PACKAGE	'P'
 
-	return ret;
-}
+typedef struct {
+	char type;
+	char *string;
+} automap_type_string;
 
-/*===============================================================*/
-
-static int MINIT_Automap_Key(TSRMLS_D)
-{
-	return SUCCESS;
-}
+static automap_type_string automap_type_strings[]={
+	{ AUTOMAP_T_FUNCTION,	"function" },
+	{ AUTOMAP_T_CONSTANT,	"constant" },
+	{ AUTOMAP_T_CLASS, 		"class" },
+	{ AUTOMAP_T_EXTENSION,	"extension" },
+	{ AUTOMAP_F_SCRIPT,		"script" },
+	{ AUTOMAP_F_EXTENSION,	"extension file" },
+	{ AUTOMAP_F_PACKAGE,	"package" },
+	{ '\0', NULL }
+};
 
 /*---------------------------------------------------------------*/
 
-static int MSHUTDOWN_Automap_Key(TSRMLS_D)
-{
-	return SUCCESS;
-}
+static char *Automap_typeToString(char type TSRMLS_DC);
+static PHP_METHOD(Automap, typeToString);
+static char Automap_stringToType(char *string TSRMLS_DC);
+static PHP_METHOD(Automap, stringToType);
+
+static int MINIT_Automap_Type(TSRMLS_D);
+static int MSHUTDOWN_Automap_Type(TSRMLS_D);
+static int RINIT_Automap_Type(TSRMLS_D);
+static int RSHUTDOWN_Automap_Type(TSRMLS_D);
 
 /*---------------------------------------------------------------*/
-
-static int RINIT_Automap_Key(TSRMLS_D)
-{
-	return SUCCESS;
-}
-/*---------------------------------------------------------------*/
-
-static int RSHUTDOWN_Automap_Key(TSRMLS_D)
-{
-	return SUCCESS;
-}
-
-/*===============================================================*/
+#endif

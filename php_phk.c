@@ -23,7 +23,7 @@
 ZEND_DECLARE_MODULE_GLOBALS(phk)
 
 #ifdef COMPILE_DL_PHK
-#	ifdef PHPNG
+#	ifdef PHP_7
 		ZEND_TSRMLS_CACHE_DEFINE;
 #	endif
 	ZEND_GET_MODULE(phk)
@@ -44,22 +44,37 @@ PHP_INI_END()
 
 /*------------------------*/
 
-#include "utils.c"
-
-#include "Automap_Handlers.c"
-#include "Automap_Class.c"
-#include "Automap_Key.c"
-#include "Automap_Loader.c"
-#include "Automap_Mnt.c"
-#include "Automap_Pmap.c"
-#include "Automap_Type.c"
-#include "Automap_Util.c"
-#include "Automap_Parser.c"
-
-#include "PHK_Cache.c"
-#include "PHK_Stream.c"
-#include "PHK_Mgr.c"
-#include "PHK.c"
+#ifdef PHP_7
+#	include "PHP_7/utils.c"
+#	include "PHP_7/Automap_Handlers.c"
+#	include "PHP_7/Automap_Class.c"
+#	include "PHP_7/Automap_Key.c"
+#	include "PHP_7/Automap_Loader.c"
+#	include "PHP_7/Automap_Mnt.c"
+#	include "PHP_7/Automap_Pmap.c"
+#	include "PHP_7/Automap_Type.c"
+#	include "PHP_7/Automap_Util.c"
+#	include "PHP_7/Automap_Parser.c"
+#	include "PHP_7/PHK_Cache.c"
+#	include "PHP_7/PHK_Stream.c"
+#	include "PHP_7/PHK_Mgr.c"
+#	include "PHP_7/PHK.c"
+#else
+#	include "PHP_5/utils.c"
+#	include "PHP_5/Automap_Handlers.c"
+#	include "PHP_5/Automap_Class.c"
+#	include "PHP_5/Automap_Key.c"
+#	include "PHP_5/Automap_Loader.c"
+#	include "PHP_5/Automap_Mnt.c"
+#	include "PHP_5/Automap_Pmap.c"
+#	include "PHP_5/Automap_Type.c"
+#	include "PHP_5/Automap_Util.c"
+#	include "PHP_5/Automap_Parser.c"
+#	include "PHP_5/PHK_Cache.c"
+#	include "PHP_5/PHK_Stream.c"
+#	include "PHP_5/PHK_Mgr.c"
+#	include "PHP_5/PHK.c"
+#endif
 
 /*---------------------------------------------------------------*/
 /* phpinfo() output                                              */
@@ -95,7 +110,7 @@ static PHP_MINFO_FUNCTION(phk)
 
 static void phk_globals_ctor(zend_phk_globals * globals TSRMLS_DC)
 {
-#if defined(PHPNG) && defined(COMPILE_DL_PHK) && defined(ZTS)
+#if defined(PHP_7) && defined(COMPILE_DL_PHK) && defined(ZTS)
 	ZEND_TSRMLS_CACHE_UPDATE;
 #endif
 

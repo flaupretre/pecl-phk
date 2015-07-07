@@ -16,48 +16,31 @@
   +----------------------------------------------------------------------+
 */
 
-#ifndef __AUTOMAP_TYPE_H
-#define __AUTOMAP_TYPE_H
-
-/*---------------------------------------------------------------*/
-/* Key types */
-
-#define AUTOMAP_T_FUNCTION	'F'
-#define AUTOMAP_T_CONSTANT	'C'
-#define AUTOMAP_T_CLASS		'L'
-#define AUTOMAP_T_EXTENSION	'E'
-
-#define AUTOMAP_F_SCRIPT	'S'
-#define AUTOMAP_F_EXTENSION	'X'
-#define AUTOMAP_F_PACKAGE	'P'
-
-typedef struct {
-	char type;
-	char *string;
-} automap_type_string;
-
-static automap_type_string automap_type_strings[]={
-	{ AUTOMAP_T_FUNCTION,	"function" },
-	{ AUTOMAP_T_CONSTANT,	"constant" },
-	{ AUTOMAP_T_CLASS, 		"class" },
-	{ AUTOMAP_T_EXTENSION,	"extension" },
-	{ AUTOMAP_F_SCRIPT,		"script" },
-	{ AUTOMAP_F_EXTENSION,	"extension file" },
-	{ AUTOMAP_F_PACKAGE,	"package" },
-	{ '\0', NULL }
-};
+#ifndef __AUTOMAP_LOADER_H
+#define __AUTOMAP_LOADER_H
 
 /*---------------------------------------------------------------*/
 
-static char *Automap_type_to_string(char type TSRMLS_DC);
-static PHP_METHOD(Automap, typeToString);
-static char Automap_string_to_type(char *string TSRMLS_DC);
-static PHP_METHOD(Automap, stringToType);
+#define AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(_name) \
+	static PHP_METHOD(Automap, get ## _name); \
+	static PHP_METHOD(Automap, require ## _name); \
 
-static int MINIT_Automap_Type(TSRMLS_D);
-static int MSHUTDOWN_Automap_Type(TSRMLS_D);
-static int RINIT_Automap_Type(TSRMLS_D);
-static int RSHUTDOWN_Automap_Type(TSRMLS_D);
+/*============================================================================*/
 
-/*---------------------------------------------------------------*/
+static PHP_METHOD(Automap, autoloadHook);
+static void Automap_Loader_register_hook(TSRMLS_D);
+static int Automap_resolve_symbol(char type, char *symbol, int slen, int autoload
+	, int exception TSRMLS_DC);
+
+AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(Function)
+AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(Constant)
+AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(Class)
+AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(Extension)
+
+static int MINIT_Automap_Loader(TSRMLS_D);
+static int MSHUTDOWN_Automap_Loader(TSRMLS_D);
+static int RINIT_Automap_Loader(TSRMLS_D);
+static int RSHUTDOWN_Automap_Loader(TSRMLS_D);
+
+/*============================================================================*/
 #endif

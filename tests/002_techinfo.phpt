@@ -2,6 +2,8 @@
 _phk_techinfo
 --SKIPIF--
 <?php if (!extension_loaded("phk")) print "skip"; ?>
+--INI--
+phk.enable_cli=1
 --FILE--
 <?php
 PHK::accelTechInfo();

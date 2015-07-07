@@ -17,89 +17,86 @@
 */
 
 /*---------------------------------------------------------------*/
+/* In case of error, free mem allocated by ut_pathUniqueID() */
 
-static char *Automap_type_to_string(char type TSRMLS_DC)
+static void Automap_ufid(zval *path, zval **zufidpp TSRMLS_DC)
 {
-	automap_type_string *sp;
+	ut_pathUniqueID('m', path, zufidpp, NULL TSRMLS_CC);
+}
 
-	for (sp=automap_type_strings;sp->type;sp++) {
-		if (sp->type == type) return sp->string;
+/*---------------------------------------------------------------*/
+
+static int Automap_symbolIsDefined(char type, char *symbol
+	, unsigned int slen TSRMLS_DC)
+{
+	char *p;
+	int status;
+	zval dummy_zp;
+
+	if (!slen) return 0;
+
+	if (type==AUTOMAP_T_CONSTANT) p=NULL;
+	else p=zend_str_tolower_dup(symbol,slen);
+
+	status=0;
+	switch(type) {
+		case AUTOMAP_T_CONSTANT:
+			status=zend_get_constant(symbol,slen,&dummy_zp TSRMLS_CC);
+			if (status) zval_dtor(&dummy_zp);
+			break;
+
+		case AUTOMAP_T_FUNCTION:
+			status=zend_hash_exists(EG(function_table),p,slen+1);
+			break;
+
+		case AUTOMAP_T_CLASS: /* Also works for interfaces and traits */
+			status=zend_hash_exists(EG(class_table),p,slen+1);
+			break;
+
+		case AUTOMAP_T_EXTENSION:
+			status=ut_extension_loaded(p,slen TSRMLS_CC);
+			break;
+
+
 	}
 
-	THROW_EXCEPTION_1("%c : Invalid type", type);
-	return NULL;
+	if (p) efree(p);
+
+	return status;
 }
 
 /*---------------------------------------------------------------*/
-/* {{{ proto string \Automap\Mgr::typeToString(string type) */
+/* {{{ proto bool PHK::using accelerator() */
 
-static PHP_METHOD(Automap, typeToString)
+static PHP_METHOD(Automap, usingAccelerator)
 {
-	char *type,*p;
-	int tlen;
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "s", &type,&tlen) ==
-		FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
-
-	if (!(p=Automap_type_to_string(*type TSRMLS_CC))) return;
-	RETURN_STRING(p,1);
-}
-
-/* }}} */
-/*---------------------------------------------------------------*/
-
-static char Automap_string_to_type(char *string TSRMLS_DC)
-{
-	automap_type_string *sp;
-
-	for (sp=automap_type_strings;sp->type;sp++) {
-		if (!strcmp(sp->string,string)) return sp->type;
-	}
-
-	THROW_EXCEPTION_1("%s : Invalid type", string);
-	return '\0';
-}
-
-/*---------------------------------------------------------------*/
-/* {{{ proto string \Automap\Mgr::stringToType(string str) */
-
-static PHP_METHOD(Automap, stringToType)
-{
-	char *string,c[2];
-	int slen;
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "s", &string,&slen) ==
-		FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
-
-	if (!(c[0]=Automap_string_to_type(string TSRMLS_CC))) return;
-	c[1]='\0';
-	RETURN_STRINGL(c,1,1);
+	RETVAL_TRUE;
 }
 
 /* }}} */
 /*===============================================================*/
 
-static int MINIT_Automap_Type(TSRMLS_D)
+static int MINIT_Automap_Util(TSRMLS_D)
 {
 	return SUCCESS;
 }
 
 /*---------------------------------------------------------------*/
 
-static int MSHUTDOWN_Automap_Type(TSRMLS_D)
+static int MSHUTDOWN_Automap_Util(TSRMLS_D)
 {
-	return SUCCESS;
+return SUCCESS;
 }
 
 /*---------------------------------------------------------------*/
 
-static int RINIT_Automap_Type(TSRMLS_D)
+static int RINIT_Automap_Util(TSRMLS_D)
 {
 	return SUCCESS;
 }
 /*---------------------------------------------------------------*/
 
-static int RSHUTDOWN_Automap_Type(TSRMLS_D)
+static int RSHUTDOWN_Automap_Util(TSRMLS_D)
 {
 	return SUCCESS;
 }

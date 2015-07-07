@@ -28,12 +28,14 @@
 
 /*============================================================================*/
 
-#include "compat.h"
-
 #include "php.h"
 #include "zend_exceptions.h"
 #include "zend_hash.h"
 #include "TSRM/TSRM.h"
+
+#ifndef NULL
+#	define NULL (char *)0
+#endif
 
 #ifdef UT_PRIVATE_SYMBOLS
 #	define UT_SYMBOL static
@@ -42,42 +44,140 @@
 #endif
 
 /*----------------*/
-/* The ancestor of zend_string :), now using zend_string */
-/* These strings have a constant value and are persistent */
+/* Compatibility macros - Allow using these macros with PHP 5.1 and more */
+
+#ifndef Z_ADDREF
+#define Z_ADDREF_P(_zp)		ZVAL_ADDREF(_zp)
+#define Z_ADDREF(_z)		Z_ADDREF_P(&(_z))
+#define Z_ADDREF_PP(ppz)	Z_ADDREF_P(*(ppz))
+#endif
+
+#ifndef Z_DELREF_P
+#define Z_DELREF_P(_zp)		ZVAL_DELREF(_zp)
+#define Z_DELREF(_z)		Z_DELREF_P(&(_z))
+#define Z_DELREF_PP(ppz)	Z_DELREF_P(*(ppz))
+#endif
+
+#ifndef Z_REFCOUNT_P
+#define Z_REFCOUNT_P(_zp)	ZVAL_REFCOUNT(_zp)
+#define Z_REFCOUNT_PP(_zpp)	ZVAL_REFCOUNT(*(_zpp))
+#endif
+
+#ifndef Z_UNSET_ISREF_P
+#define Z_UNSET_ISREF_P(_zp)	{ (_zp)->is_ref=0; }
+#endif
+
+#ifndef ZVAL_COPY_VALUE
+#define ZVAL_COPY_VALUE(z, v) \
+	do { \
+		(z)->value = (v)->value; \
+		Z_TYPE_P(z) = Z_TYPE_P(v); \
+	} while (0)
+#endif
+
+#ifndef ALLOC_PERMANENT_ZVAL
+#define ALLOC_PERMANENT_ZVAL(z)		{ z=ut_pallocate(NULL, sizeof(zval)); }
+#endif
+
+#ifndef GC_REMOVE_ZVAL_FROM_BUFFER
+#define GC_REMOVE_ZVAL_FROM_BUFFER(z)
+#endif
+
+#ifndef INIT_PZVAL_COPY
+#define INIT_PZVAL_COPY(z, v) \
+	do { \
+		INIT_PZVAL(z); \
+		ZVAL_COPY_VALUE(z, v); \
+	} while (0)
+#endif
+
+#ifndef IS_CONSTANT_ARRAY
+#define IS_CONSTANT_ARRAY IS_CONSTANT_AST
+#endif
+
+#ifndef IS_CONSTANT_TYPE_MASK
+#define IS_CONSTANT_TYPE_MASK (~IS_CONSTANT_INDEX)
+#endif
+
+/*----------------*/
+/* The ancestor of zend_string :) */
+
+typedef struct {
+	char *string;
+	unsigned int len;
+	ulong hash;
+} HKEY_STRUCT;
 
 #define HKEY(name) ( hkey_ ## name )
 
-#define DECLARE_HKEY(name)	zend_string *HKEY(name)
+#define HKEY_STRING(name)	HKEY(name).string
+#define HKEY_LEN(name)		HKEY(name).len
+#define HKEY_HASH(name)		HKEY(name).hash
+
+#define DECLARE_HKEY(name)	HKEY_STRUCT HKEY(name)
 
 #define INIT_HKEY(name) INIT_HKEY_VALUE(name, #name)
 
 #define INIT_HKEY_VALUE(name,value) \
 	{ \
-	HKEY(name)=zend_string_init(value,sizeof(value)-1,1); \
-	(void)ZSTR_HASH(HKEY(name)); \
+	HKEY_STRING(name)= value ; \
+	HKEY_LEN(name)=sizeof( value ); \
+	HKEY_HASH(name)=zend_get_hash_value(HKEY_STRING(name),HKEY_LEN(name)); \
 	}
 
-#define _ZSTR_VALUES(zsp) ZSTR_VAL(zsp), ZSTR_LEN(zsp)+1, ZSTR_HASH(zsp)
+#define FIND_HKEY(ht,name,respp) \
+	zend_hash_quick_find(ht,HKEY_STRING(name) \
+		,HKEY_LEN(name),HKEY_HASH(name),(void **)(respp))
 
-#ifdef PHPNG
-TODO
-#else
-#	define FIND_ZSTRING(ht, zsp,respp) \
-		zend_hash_quick_find(ht,ZSTR_VALUES(zsp),(void **)(respp))
+#define HKEY_EXISTS(ht,name) \
+	zend_hash_quick_exists(ht,HKEY_STRING(name), HKEY_LEN(name),HKEY_HASH(name))
 
-#	define FIND_HKEY(ht,name,respp) FIND_ZSTRING(ht, HKEY(name), respp)
+#define SERVER_ELEMENT(name) _ut_SERVER_element(&HKEY(name) TSRMLS_CC)
 
-#	define ZSTRING_EXISTS(ht, zsp) zend_hash_quick_exists(ht,ZSTR_VALUES(zsp))
+#define REQUEST_ELEMENT(name) _ut_REQUEST_element(&HKEY(name) TSRMLS_CC)
 
-#	define HKEY_EXISTS(ht,name) ZSTRING_EXISTS(ht, HKEY(name))
-
+#ifndef MIN
+#	define MIN(a,b) (((a) < (b)) ? (a) : (b))
 #endif
 
-#define SERVER_ELEMENT(name) _ut_SERVER_element(HKEY(name) TSRMLS_CC)
-
-#define REQUEST_ELEMENT(name) _ut_REQUEST_element(HKEY(name) TSRMLS_CC)
+#ifndef MAX
+#	define MAX(a,b) (((a) > (b)) ? (a) : (b))
+#endif
 
 #define CLEAR_DATA(_v)	memset(&(_v),'\0',sizeof(_v)); \
+
+/*---------------------------------------------------------------*/
+/* (Taken from pcre/pcrelib/internal.h) */
+/* To cope with SunOS4 and other systems that lack memmove() but have bcopy(),
+define a macro for memmove() if HAVE_MEMMOVE is false, provided that HAVE_BCOPY
+is set. Otherwise, include an emulating function for those systems that have
+neither (there are some non-Unix environments where this is the case). This
+assumes that all calls to memmove are moving strings upwards in store,
+which is the case in this extension. */
+
+#if ! HAVE_MEMMOVE
+#	undef  memmove					/* some systems may have a macro */
+#	if HAVE_BCOPY
+#		define memmove(a, b, c) bcopy(b, a, c)
+#	else							/* HAVE_BCOPY */
+		static void *my_memmove(unsigned char *dest, const unsigned char *src,
+								size_t n)
+		{
+			int i;
+
+			dest += n;
+			src += n;
+			for (i = 0; i < n; ++i)
+				*(--dest) = *(--src);
+		}
+#		define memmove(a, b, c) my_memmove(a, b, c)
+#	endif	/* not HAVE_BCOPY */
+#endif		/* not HAVE_MEMMOVE */
+
+#ifdef _AIX
+#	undef PHP_SHLIB_SUFFIX
+#	define PHP_SHLIB_SUFFIX "a"
+#endif
 
 /*---------------------------------------------------------------*/
 /* Debug messages and exception mgt */
@@ -146,6 +246,9 @@ TODO
 	return _ret; \
 	}
 
+#define ZSTRING_HASH(zp) \
+	zend_get_hash_value(Z_STRVAL_P((zp)),Z_STRLEN_P((zp))+1)
+
 #define CHECK_PATH_LEN(_zp,_delta) \
 	{ \
 	if (Z_STRLEN_P((_zp)) > (PATH_MAX-_delta-1)) \
@@ -168,6 +271,30 @@ TODO
 	ALLOC_PERMANENT_ZVAL(zp); \
 	INIT_ZVAL(*zp); \
 	}
+
+#ifndef ZVAL_ARRAY /*--------------*/
+
+#define ZVAL_ARRAY(zp,ht) \
+	Z_TYPE_P(zp)=IS_ARRAY; \
+	Z_ARRVAL_P(zp)=ht;
+
+#endif /* ZVAL_ARRAY -------------- */
+
+#ifndef ZVAL_IS_ARRAY
+#define ZVAL_IS_ARRAY(zp)	(Z_TYPE_P((zp))==IS_ARRAY)
+#endif
+
+#ifndef ZVAL_IS_STRING
+#define ZVAL_IS_STRING(zp)	(Z_TYPE_P((zp))==IS_STRING)
+#endif
+
+#ifndef ZVAL_IS_LONG
+#define ZVAL_IS_LONG(zp)	(Z_TYPE_P((zp))==IS_LONG)
+#endif
+
+#ifndef ZVAL_IS_BOOL
+#define ZVAL_IS_BOOL(zp)	(Z_TYPE_P((zp))==IS_BOOL)
+#endif
 
 #define ENSURE_LONG(zp) { if (Z_TYPE_P((zp))!=IS_LONG) convert_to_long((zp)); }
 #define ENSURE_BOOL(zp) { if (Z_TYPE_P((zp))!=IS_BOOL) convert_to_boolean((zp)); }
@@ -286,26 +413,24 @@ UT_SYMBOL void ut_persistent_array_init(zval * zp);
 UT_SYMBOL void ut_persistent_copy_ctor(zval ** ztpp);
 UT_SYMBOL zval *ut_persist_zval(zval * zsp);
 UT_SYMBOL zval *ut_new_instance(char *class_name, int class_name_len,
-	int construct, int nb_args,	zval * args TSRMLS_DC);
+	int construct, int nb_args,	zval ** args TSRMLS_DC);
 UT_SYMBOL inline void ut_call_user_function_void(zval *obj_zp, char *func,
-	int func_len, int nb_args, zval * args TSRMLS_DC);
+	int func_len, int nb_args, zval ** args TSRMLS_DC);
 UT_SYMBOL inline int ut_call_user_function_bool(zval * obj_zp, char *func,
-	int func_len, int nb_args, zval * args TSRMLS_DC);
+	int func_len, int nb_args, zval ** args TSRMLS_DC);
 UT_SYMBOL inline long ut_call_user_function_long(zval *obj_zp, char *func,
-	int func_len, int nb_args, zval * args TSRMLS_DC);
+	int func_len, int nb_args, zval ** args TSRMLS_DC);
 UT_SYMBOL inline void ut_call_user_function_string(zval *obj_zp, char *func,
-	int func_len, zval * ret, int nb_args, zval * args TSRMLS_DC);
+	int func_len, zval * ret, int nb_args, zval ** args TSRMLS_DC);
 UT_SYMBOL inline void ut_call_user_function_array(zval * obj_zp, char *func,
-	int func_len, zval * ret, int nb_args, zval * args TSRMLS_DC);
-UT_SYMBOL inline void ut_call_str_user_function(zval *obj_zp, char *func,
-	int func_len, zval *ret, int nb_args, zval * args TSRMLS_DC);
-UT_SYMBOL inline void ut_call_zval_user_function(zval *obj_zp, zval *func_zp,
-	zval *ret, int nb_args, zval * args TSRMLS_DC);
+	int func_len, zval * ret, int nb_args, zval ** args TSRMLS_DC);
+UT_SYMBOL inline void ut_call_user_function(zval *obj_zp, char *func,
+	int func_len, zval *ret, int nb_args, zval ** args TSRMLS_DC);
 UT_SYMBOL int ut_extension_loaded(char *name, int len TSRMLS_DC);
-UT_SYMBOL void ut_load_extension_file(zval *file TSRMLS_DC);
-UT_SYMBOL void ut_load_extension(zend_string *name TSRMLS_DC);
-UT_SYMBOL void ut_load_extensions(zval * extensions TSRMLS_DC);
-UT_SYMBOL void ut_require(char *string, zval *ret TSRMLS_DC);
+UT_SYMBOL void ut_loadExtension_file(zval *file TSRMLS_DC);
+UT_SYMBOL void ut_loadExtension(char *name, int len TSRMLS_DC);
+UT_SYMBOL void ut_loadExtensions(zval * extensions TSRMLS_DC);
+UT_SYMBOL void ut_require(char *string, zval * ret TSRMLS_DC);
 UT_SYMBOL inline int ut_strings_are_equal(zval * zp1, zval * zp2 TSRMLS_DC);
 UT_SYMBOL void ut_header(long response_code, char *string TSRMLS_DC);
 UT_SYMBOL void ut_http403Fail(TSRMLS_D);
@@ -327,13 +452,16 @@ UT_SYMBOL char *ut_ucfirst(char *ptr, int len TSRMLS_DC);
 UT_SYMBOL void ut_repeat_printf(char c, int count TSRMLS_DC);
 UT_SYMBOL void ut_printf_pad_right(char *str, int len, int size TSRMLS_DC);
 UT_SYMBOL void ut_printf_pad_both(char *str, int len, int size TSRMLS_DC);
-UT_SYMBOL zend_string *ut_absolute_dirname(zend_string *path, int separ TSRMLS_DC);
-UT_SYMBOL zend_string *ut_dirname(zend_string *path TSRMLS_DC);
-UT_SYMBOL inline int ut_is_uri(zend_string *path TSRMLS_DC);
-UT_SYMBOL zend_string *ut_mkAbsolutePath(zend_string *path, int separ TSRMLS_DC);
+UT_SYMBOL char *ut_absolute_dirname(char *path, int len, int *reslen, int separ TSRMLS_DC);
+UT_SYMBOL char *ut_dirname(char *path, int len, int *reslen TSRMLS_DC);
+UT_SYMBOL inline int ut_is_uri(char *path, int len TSRMLS_DC);
+UT_SYMBOL char *ut_mkAbsolutePath(char *path, int len, int *reslen
+	, int separ TSRMLS_DC);
 UT_SYMBOL int ut_cut_at_space(char *p);
-UT_SYMBOL zend_string *ut_pathUniqueID(char prefix, zend_string *path, time_t *mtp  TSRMLS_DC);
-UT_SYMBOL void ut_compute_crc32(const zend_string *input, char *output TSRMLS_DC);
+UT_SYMBOL void ut_pathUniqueID(char prefix, zval * path, zval ** mnt
+	, time_t *mtp  TSRMLS_DC);
+UT_SYMBOL void ut_compute_crc32(const unsigned char *input, size_t input_len
+	, char *output TSRMLS_DC);
 
 UT_SYMBOL int MINIT_utils(TSRMLS_D);
 UT_SYMBOL int MSHUTDOWN_utils(TSRMLS_D);

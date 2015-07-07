@@ -36,7 +36,7 @@ static PHP_METHOD(Automap, registerFailureHandler)
 /*---------------------------------------------------------------*/
 /* Failure handler receives 2 args: type and symbol */
 
-static void Automap_callFailureHandlers(char type, zend_string *symbol TSRMLS_DC)
+static void Automap_callFailureHandlers(char type, char *symbol, int slen TSRMLS_DC)
 {
 	zval *args[2],*ztype,*zsymbol;
 	char str[2];
@@ -45,11 +45,11 @@ static void Automap_callFailureHandlers(char type, zend_string *symbol TSRMLS_DC
 	if (PHK_G(automap_fh_count)) {
 		str[0]=type;
 		str[1]='\0';
-		ALLOC_INIT_ZVAL(ztype);
+		MAKE_STD_ZVAL(ztype);
 		ZVAL_STRINGL(ztype,str,1,1);
+		MAKE_STD_ZVAL(zsymbol);
+		ZVAL_STRINGL(zsymbol,symbol,slen,1);
 		args[0]=ztype;
-		ALLOC_INIT_ZVAL(zsymbol);
-		ZVAL_STRINGL(zsymbol,ZSTR_VAL(symbol),ZSTR_LEN(symbol),1);
 		args[1]=zsymbol;
 		for (i=0;i<PHK_G(automap_fh_count);i++) {
 			ut_call_user_function_void(NULL
@@ -91,7 +91,7 @@ static void Automap_callSuccessHandlers(Automap_Mnt *mp
 
 	if (PHK_G(automap_sh_count)) {
 		ALLOC_INIT_ZVAL(entry_zp);
-		Automap_Pmap_export_entry(pep,entry_zp TSRMLS_CC);
+		Automap_Pmap_exportEntry(pep,entry_zp TSRMLS_CC);
 		args[0]=entry_zp;
 		ALLOC_INIT_ZVAL(id_zp);
 		ZVAL_LONG(id_zp,mp->id);

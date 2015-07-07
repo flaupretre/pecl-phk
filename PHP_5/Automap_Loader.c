@@ -23,7 +23,6 @@ static PHP_METHOD(Automap, autoloadHook)
 {
 	char *symbol,*type;
 	int slen,tlen;
-	zend_string *zs;
 
 	type=NULL;
 
@@ -32,9 +31,8 @@ static PHP_METHOD(Automap, autoloadHook)
 
 	DBG_MSG1("Starting \\Automap\\Mgr::autoloadHook(%s)",symbol);
 
-	zs=zend_string_init(symbol,slen,0);
-	Automap_resolve_symbol((type ? (*type) : AUTOMAP_T_CLASS), zs, 1, 0 TSRMLS_CC);
-	zend_string_release(zs);
+	Automap_resolve_symbol((type ? (*type) : AUTOMAP_T_CLASS), symbol
+		, slen, 1, 0 TSRMLS_CC);
 
 	DBG_MSG("Ending \\Automap\\Mgr::autoloadHook");
 }
@@ -45,53 +43,58 @@ static PHP_METHOD(Automap, autoloadHook)
 
 static void Automap_Loader_register_hook(TSRMLS_D)
 {
-	zval zv;
+	zval *zp;
 
-	INIT_ZVAL(zv);
-	ZVAL_STRINGL(&zv,ZEND_STRL("Automap\\Mgr::autoloadHook"),0);
-	ut_call_user_function_void(NULL,ZEND_STRL("spl_autoload_register"),1,&zv TSRMLS_CC);
+	MAKE_STD_ZVAL(zp);
+	ZVAL_STRINGL(zp,"Automap\\Mgr::autoloadHook",25,1);
+	ut_call_user_function_void(NULL,ZEND_STRL("spl_autoload_register"),1,&zp TSRMLS_CC);
+	ut_ezval_ptr_dtor(&zp);
 }
 
 /*---------------------------------------------------------------*/
 /* Returns SUCCESS/FAILURE */
 
-static int Automap_resolve_symbol(char type, zend_string *symbol, int autoload
+static int Automap_resolve_symbol(char type, char *symbol, int slen, int autoload
 	, int exception TSRMLS_DC)
 {
-	zend_string *key;
+	zval zkey;
+	unsigned long hash;
 	char *ts;
 	int i;
 	Automap_Mnt *mp;
 
-	DBG_MSG2("Starting Automap_resolve_symbol(%c,%s)",type,ZSTR_VAL(symbol));
+	DBG_MSG2("Starting Automap_resolve_symbol(%c,%s)",type,symbol);
 
 	/* If executed from the autoloader, no need to check for symbol existence */
-	if ((!autoload) && Automap_symbol_is_defined(type,symbol TSRMLS_CC)) {
+	if ((!autoload) && Automap_symbolIsDefined(type,symbol,slen TSRMLS_CC)) {
 		return 1;
 	}
 
 	if ((i=PHK_G(map_count))==0) return 0;
 
-	key=Automap_key(type,symbol TSRMLS_CC);
+	INIT_ZVAL(zkey);
+	Automap_key(type,symbol,slen,&zkey TSRMLS_CC);
+
+	hash=ZSTRING_HASH(&zkey);
 
 	while ((--i) >= 0) {
 		mp=PHK_G(map_array)[i];
 		if (!mp) continue;
-		if (Automap_Mnt_resolve_key(mp, key TSRMLS_CC)==SUCCESS) {
-			DBG_MSG2("Found key %s in map %ld",ZSTR_VAL(key),mp->id);
-			zend_string_release(key);
+		if (Automap_Mnt_resolve_key(mp, &zkey, hash TSRMLS_CC)==SUCCESS) {
+			DBG_MSG2("Found key %s in map %ld",Z_STRVAL(zkey),mp->id);
+			ut_ezval_dtor(&zkey);
 			return SUCCESS;
 		}
 	}
 
-	Automap_callFailureHandlers(type, symbol TSRMLS_CC);
+	Automap_callFailureHandlers(type, symbol, slen TSRMLS_CC);
 
 	if ((exception)&&(!EG(exception))) {
-		ts=Automap_type_to_string(type TSRMLS_CC);
-		THROW_EXCEPTION_2("Automap: Unknown %s: %s",ts,ZSTR_VAL(symbol));
+		ts=Automap_typeToString(type TSRMLS_CC);
+		THROW_EXCEPTION_2("Automap: Unknown %s: %s",ts,symbol);
 	}
 
-	zend_string_release(key);
+	ut_ezval_dtor(&zkey);
 	return FAILURE;
 }
 
@@ -103,36 +106,18 @@ static int Automap_resolve_symbol(char type, zend_string *symbol, int autoload
 #define AUTOMAP_REQUIRE_FUNCTION(_name,_type) \
 	AUTOMAP_GET_REQUIRE_FUNCTION(_name,_type,require,1)
 
-#ifdef PHPNG
-#define AUTOMAP_GET_REQUIRE_FUNCTION(_name,_type,_gtype,_exception) \
-	static PHP_METHOD(Automap, _gtype ## _name) \
-	{ \
-		int status; \
-		zend_string *zs; \
- \
- 		if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "S",&zs \
-			)==FAILURE) EXCEPTION_ABORT("Cannot parse parameters"); \
- \
-		status=Automap_resolve_symbol(_type, zs, 0, _exception TSRMLS_CC); \
-		RETURN_BOOL(status==SUCCESS); \
-	}
-#else
 #define AUTOMAP_GET_REQUIRE_FUNCTION(_name,_type,_gtype,_exception) \
 	static PHP_METHOD(Automap, _gtype ## _name) \
 	{ \
 		char *symbol; \
-		int slen, status; \
-		zend_string *zs; \
+		int slen; \
  \
- 		if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "s",&symbol \
+		if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "s",&symbol \
 			, &slen)==FAILURE) EXCEPTION_ABORT("Cannot parse parameters"); \
  \
-		zs=zend_string_init(symbol,slen,0); \
-		status=Automap_resolve_symbol(_type, zs, 0, _exception TSRMLS_CC); \
-		zend_string_release(zs); \
-		RETURN_BOOL(status==SUCCESS); \
+		RETURN_BOOL(Automap_resolve_symbol(_type, symbol, slen \
+			, 0, _exception TSRMLS_CC)==SUCCESS); \
 	}
-#endif
 
 AUTOMAP_GET_FUNCTION(Function,AUTOMAP_T_FUNCTION)
 AUTOMAP_GET_FUNCTION(Constant,AUTOMAP_T_CONSTANT)

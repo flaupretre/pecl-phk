@@ -16,31 +16,17 @@
   +----------------------------------------------------------------------+
 */
 
-#ifndef __AUTOMAP_LOADER_H
-#define __AUTOMAP_LOADER_H
-
-/*---------------------------------------------------------------*/
-
-#define AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(_name) \
-	static PHP_METHOD(Automap, get ## _name); \
-	static PHP_METHOD(Automap, require ## _name); \
+#ifndef __AUTOMAP_KEY_H
+#define __AUTOMAP_KEY_H
 
 /*============================================================================*/
 
-static PHP_METHOD(Automap, autoloadHook);
-static void Automap_Loader_register_hook(TSRMLS_D);
-static int Automap_resolve_symbol(char type, zend_string *symbol, int autoload
-	, int exception TSRMLS_DC);
+static void Automap_key(char type, char *symbol, unsigned long len, zval *ret TSRMLS_DC);
 
-AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(Function)
-AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(Constant)
-AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(Class)
-AUTOMAP_DECLARE_GET_REQUIRE_FUNCTIONS(Extension)
-
-static int MINIT_Automap_Loader(TSRMLS_D);
-static int MSHUTDOWN_Automap_Loader(TSRMLS_D);
-static int RINIT_Automap_Loader(TSRMLS_D);
-static int RSHUTDOWN_Automap_Loader(TSRMLS_D);
+static int MINIT_Automap_Key(TSRMLS_D);
+static int MSHUTDOWN_Automap_Key(TSRMLS_D);
+static int RINIT_Automap_Key(TSRMLS_D);
+static int RSHUTDOWN_Automap_Key(TSRMLS_D);
 
 /*============================================================================*/
 #endif

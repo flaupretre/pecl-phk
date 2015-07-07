@@ -26,7 +26,7 @@
 typedef struct _Automap_Mnt {	/* Per request */
 	Automap_Pmap *map;			/* Persistent map */
 	zval *map_object;			/* Automap_Map instance (NULL until created) */
-	zend_string *path;			/* Map file absolute path (String zval) */
+	zval *zpath;				/* Map file absolute path (String zval) */
 	ulong flags;				/* Load flags */
 	long id;					/* Map ID (index in map_array) */
 } Automap_Mnt;
@@ -44,14 +44,14 @@ static void Automap_Mnt_remove(Automap_Mnt *mp TSRMLS_DC);
 static Automap_Mnt *Automap_Mnt_get(long id, int exception TSRMLS_DC);
 static PHP_METHOD(Automap, isActiveID);
 static void Automap_Mnt_array_add(Automap_Mnt *mp TSRMLS_DC);
-static Automap_Mnt *Automap_Mnt_load_extended(zend_string *path, zend_string *ufid
-	, zend_string *base_path, Automap_Pmap *pmp, long flags TSRMLS_DC);
-static Automap_Mnt *Automap_Mnt_load(zend_string *path, long flags TSRMLS_DC);
+static Automap_Mnt *Automap_Mnt_load_extended(zval *zpathp, zval *zufidp
+	, ulong hash, zval *zbasep, Automap_Pmap *pmp, long flags TSRMLS_DC);
+static Automap_Mnt *Automap_Mnt_load(zval *zpathp, long flags TSRMLS_DC);
 static PHP_METHOD(Automap, load);
 static void Automap_unload(long id TSRMLS_DC);
 static PHP_METHOD(Automap, unload);
 static PHP_METHOD(Automap, activeIDs);
-static int Automap_Mnt_resolve_key(Automap_Mnt *mp, zend_string *key TSRMLS_DC);
+static int Automap_Mnt_resolve_key(Automap_Mnt *mp, zval *zkey, ulong hash TSRMLS_DC);
 
 static int MINIT_Automap_Mnt(TSRMLS_D);
 static int MSHUTDOWN_Automap_Mnt(TSRMLS_D);

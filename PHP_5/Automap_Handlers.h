@@ -16,19 +16,24 @@
   +----------------------------------------------------------------------+
 */
 
-#ifndef __AUTOMAP_UTIL_H
-#define __AUTOMAP_UTIL_H
+#ifndef __AUTOMAP_HANDLERS_H
+#define __AUTOMAP_HANDLERS_H
+
+#include "Automap_Pmap.h"
+#include "Automap_Mnt.h"
 
 /*============================================================================*/
 
-static zend_string *Automap_ufid(zend_string *path TSRMLS_DC);
-static int Automap_symbol_is_defined(char type, zend_string *symbol TSRMLS_DC);
-static PHP_METHOD(Automap, usingAccelerator);
+static PHP_METHOD(Automap, registerFailureHandler);
+static void Automap_callFailureHandlers(char type, char *symbol, int slen TSRMLS_DC);
+static PHP_METHOD(Automap, registerSuccessHandler);
+static void Automap_callSuccessHandlers(Automap_Mnt *mp,Automap_Pmap_Entry *pep
+	TSRMLS_DC);
 
-static int MINIT_Automap_Util(TSRMLS_D);
-static int MSHUTDOWN_Automap_Util(TSRMLS_D);
-static int RINIT_Automap_Util(TSRMLS_D);
-static int RSHUTDOWN_Automap_Util(TSRMLS_D);
+static int MINIT_Automap_Handlers(TSRMLS_D);
+static int MSHUTDOWN_Automap_Handlers(TSRMLS_D);
+static int RINIT_Automap_Handlers(TSRMLS_D);
+static int RSHUTDOWN_Automap_Handlers(TSRMLS_D);
 
 /*============================================================================*/
 #endif

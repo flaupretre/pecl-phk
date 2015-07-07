@@ -1,6 +1,6 @@
 /*
   +----------------------------------------------------------------------+
-  | Compatibility macros for different PHP versions                      |
+  | Automap extension <http://automap.tekwire.net>                       |
   +----------------------------------------------------------------------+
   | Copyright (c) 2005-2007 The PHP Group                                |
   +----------------------------------------------------------------------+
@@ -16,14 +16,20 @@
   +----------------------------------------------------------------------+
 */
 
-#ifndef _COMPAT_H
-#define _COMPAT_H
+#ifndef __AUTOMAP_UTIL_H
+#define __AUTOMAP_UTIL_H
 
-#if PHP_MAJOR_VERSION >= 7
-#define PHPNG
+/*============================================================================*/
+
+static void Automap_ufid(zval *path, zval **zufidpp TSRMLS_DC);
+static int Automap_symbolIsDefined(char type, char *symbol
+	, unsigned int slen TSRMLS_DC);
+static PHP_METHOD(Automap, usingAccelerator);
+
+static int MINIT_Automap_Util(TSRMLS_D);
+static int MSHUTDOWN_Automap_Util(TSRMLS_D);
+static int RINIT_Automap_Util(TSRMLS_D);
+static int RSHUTDOWN_Automap_Util(TSRMLS_D);
+
+/*============================================================================*/
 #endif
-
-#include "compat_misc.h"
-#include "compat_zend_string.h"
-
-#endif /* _COMPAT_H */

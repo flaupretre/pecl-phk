@@ -18,15 +18,8 @@
 
 #ifndef _COMPAT_ZEND_STRING_H
 #define _COMPAT_ZEND_STRING_H
-/*--------- Common --------------*/
 
-static zend_always_inline ZSTR_TO_ZVAL(_zv,_zs,_dup) { \
-	INIT_ZVAL(*_zv); \
-	ZVAL_STRINGL(_zp,_zZSTR_VAL(s),_zZSTR_LEN(s),_dup); \
-	}
-
-/*-------------------------------*/
-#ifdef PHPNG
+#ifdef PHP_7
 #include "zend_string.h"
 #else
 /*---- zend_string for PHP 5 ----*/
@@ -49,8 +42,6 @@ struct _zend_string {
 
 #define _ZSTR_HEADER_SIZE ((int)(&(((zend_string*)0)->val)))
 #define _ZSTR_STRUCT_SIZE(len) (_ZSTR_HEADER_SIZE + len + 1)
-
-#define ZVAL_STR(zp, zsp) ZVAL_STRINGL(zp, ZSTR_VAL(zsp), ZSTR_LEN(zsp), 0)
 
 /*---------*/
 
@@ -127,5 +118,5 @@ static zend_always_inline zend_bool zend_string_equals(zend_string *s1, zend_str
 #define zend_string_equals_literal(str, literal) \
 	((str)->len == sizeof(literal)-1 && !memcmp((str)->val, literal, sizeof(literal) - 1))
 
-#endif /* PHPNG */
+#endif /* PHP_7 */
 #endif /* _COMPAT_ZEND_STRING_H */
