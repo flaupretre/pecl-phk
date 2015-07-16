@@ -54,8 +54,8 @@ static void Automap_Loader_register_hook(TSRMLS_D)
 /*---------------------------------------------------------------*/
 /* Returns SUCCESS/FAILURE */
 
-static int Automap_resolve_symbol(char type, char *symbol, int slen, int autoload
-	, int exception TSRMLS_DC)
+static int Automap_resolve_symbol(char type, char *symbol, int slen, zend_bool autoload
+	, zend_bool exception TSRMLS_DC)
 {
 	zval zkey;
 	unsigned long hash;
@@ -66,7 +66,7 @@ static int Automap_resolve_symbol(char type, char *symbol, int slen, int autoloa
 	DBG_MSG2("Starting Automap_resolve_symbol(%c,%s)",type,symbol);
 
 	/* If executed from the autoloader, no need to check for symbol existence */
-	if ((!autoload) && Automap_symbolIsDefined(type,symbol,slen TSRMLS_CC)) {
+	if ((!autoload) && Automap_symbol_is_defined(type,symbol,slen TSRMLS_CC)) {
 		return 1;
 	}
 
@@ -99,6 +99,23 @@ static int Automap_resolve_symbol(char type, char *symbol, int slen, int autoloa
 }
 
 /*---------------------------------------------------------------*/
+/* {{{ proto void \Automap\Mgr::resolve(string type, string symbol [, bool autoload, bool exception]) */
+
+static PHP_METHOD(Automap, resolve)
+{
+	char *symbol,*type;
+	int slen,tlen;
+	zend_bool autoload = 0, exception = 0;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "ss|bb",&symbol, &slen
+		,&type,&tlen,&autoload,&exception)==FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
+
+	RETURN_BOOL(Automap_resolve_symbol(*type, symbol, slen, autoload
+		, exception TSRMLS_CC)==SUCCESS);
+}
+
+/* }}} */
+/*---------------------------------------------------------------*/
 
 #define AUTOMAP_GET_FUNCTION(_name,_type) \
 	AUTOMAP_GET_REQUIRE_FUNCTION(_name,_type,get,0)
@@ -111,12 +128,13 @@ static int Automap_resolve_symbol(char type, char *symbol, int slen, int autoloa
 	{ \
 		char *symbol; \
 		int slen; \
+		zend_bool autoload = 0; \
  \
-		if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "s",&symbol \
-			, &slen)==FAILURE) EXCEPTION_ABORT("Cannot parse parameters"); \
+		if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "s|b",&symbol \
+			, &slen,&autoload)==FAILURE) EXCEPTION_ABORT("Cannot parse parameters"); \
  \
 		RETURN_BOOL(Automap_resolve_symbol(_type, symbol, slen \
-			, 0, _exception TSRMLS_CC)==SUCCESS); \
+			, autoload, _exception TSRMLS_CC)==SUCCESS); \
 	}
 
 AUTOMAP_GET_FUNCTION(Function,AUTOMAP_T_FUNCTION)

@@ -928,7 +928,7 @@ static PHP_METHOD(PHK, prolog)
 		if (Z_STRLEN_P(file) > UT_PATH_MAX)
 			EXCEPTION_ABORT_1("Path too long - max size=%d", UT_PATH_MAX);
 
-		PHK_G(root_package) = zend_string_init(Z_STRVAL_P(file), Z_STRLEN_P(file), 1);
+		PHK_G(root_package) = zend_string_init(Z_STRVAL_P(file), Z_STRLEN_P(file), 0);
 	}
 
 	cli = (!ut_is_web());

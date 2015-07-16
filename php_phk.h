@@ -177,6 +177,7 @@ static DECLARE_HKEY(automap);
 static DECLARE_HKEY(phk_stream_backend_class_lc);
 static DECLARE_HKEY(eaccelerator_get);
 static DECLARE_HKEY(phk_class_lc);
+static DECLARE_HKEY(automap_map_class_lc);
 
 /*============================================================================*/
 
@@ -202,6 +203,7 @@ int mcount;				/* Size of the mount_order table */
 zval caching;			/* PHK_Mgr - Can be null/true/false */
 
 zend_string *root_package;
+zend_string *automap_map_path;
 
 int php_runtime_is_loaded;
 

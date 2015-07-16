@@ -27,6 +27,8 @@ static PHP_METHOD(Automap, __construct);
 static zval *Automap_map_object_by_mp(Automap_Mnt *mp TSRMLS_DC);
 static zval *Automap_map(long id  TSRMLS_DC);
 static PHP_METHOD(Automap, map);
+static PHP_METHOD(Automap, setMapClassPath);
+static void Automap_need_Map_Class(TSRMLS_D);
 static void Automap_Class_set_constants(zend_class_entry * ce);
 
 static int MINIT_Automap_Class(TSRMLS_D);

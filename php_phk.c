@@ -157,6 +157,7 @@ static void build_constant_values()
 	INIT_HKEY_VALUE(phk_stream_backend_class_lc,"phk\\stream\\backend");
 	INIT_HKEY(eaccelerator_get);
 	INIT_HKEY_VALUE(phk_class_lc,"phk");
+	INIT_HKEY_VALUE(automap_map_class_lc,"automap\\map");
 }
 
 /*---------------------------------------------------------------*/
