@@ -36,10 +36,6 @@ static int init_done=0;
 
 PHP_INI_BEGIN()
 
-STD_PHP_INI_ENTRY("phk.enable_cli", "0",
-	PHP_INI_SYSTEM, OnUpdateBool, enable_cli, zend_phk_globals,
-	phk_globals)
-
 PHP_INI_END()
 
 /*------------------------*/
@@ -230,16 +226,9 @@ static PHP_MINIT_FUNCTION(phk)
 
 	REGISTER_INI_ENTRIES();
 
-	/* Determine if extension must be fully enabled (normally, the extension
-	   is not active in CLI mode because it can slow things down). The
-	   phk.enable_cli ini setting allows to force it in CLI mode. */
+	/* Extension is always enabled to allow using it without the PHK package */
 
-	PHK_G(ext_is_enabled) = (
-		   (sapi_module.name[0]!='c')
-		|| (sapi_module.name[1]!='l')
-		|| (sapi_module.name[2]!='i')
-		|| (sapi_module.name[3])
-		|| (PHK_G(enable_cli)));
+	PHK_G(ext_is_enabled) = 1;
 
 	REGISTER_STRING_CONSTANT("PHK_ACCEL_VERSION", PHK_ACCEL_VERSION,
 							 CONST_CS | CONST_PERSISTENT);

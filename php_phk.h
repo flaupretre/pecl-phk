@@ -17,7 +17,7 @@
 */
 
 /* Uncomment to display debug messages */
-/* #define PHK_DEBUG */
+/*#define PHK_DEBUG*/
 
 #ifndef __PHP_PHK_H
 #define __PHP_PHK_H
@@ -208,8 +208,6 @@ zend_string *automap_map_path;
 int php_runtime_is_loaded;
 
 zval *mimeTable;
-
-zend_bool enable_cli;	/* Ini setting */
 
 int ext_is_enabled;
 
