@@ -190,12 +190,13 @@ static Automap_Pmap *Automap_Pmap_get_or_create_extended(zval *zpathp
 
 	INIT_AUTOMAP_PMAP_GET_OR_CREATE();
 
-	PHK_needPhpRuntime(TSRMLS_C);
+	Automap_need_Map_Class(TSRMLS_C);
 
 	/* Instantiate \Automap\Map (load the map file) */
 
 	args[0] = zpathp;
-	ZVAL_LONG(&zlong,flags|AUTOMAP_FLAG_CRC_CHECK|AUTOMAP_FLAG_PECL_LOAD);
+/*	ZVAL_LONG(&zlong,flags|AUTOMAP_FLAG_CRC_CHECK|AUTOMAP_FLAG_PECL_LOAD);*/
+	ZVAL_LONG(&zlong,flags|AUTOMAP_FLAG_PECL_LOAD);
 	args[1] = &zlong;
 	args[2] = (zbasePathp_arg ? zbasePathp_arg : (&znull));
 	map=ut_new_instance(ZEND_STRL("Automap\\Map"), YES, 3, args TSRMLS_CC);

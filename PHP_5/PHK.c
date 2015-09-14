@@ -40,19 +40,19 @@ static void PHK_needPhpRuntime(TSRMLS_D)
 		return;
 	}
 
-	if (!PHK_G(root_package)[0])
+	if (!PHK_G(root_package))
 		EXCEPTION_ABORT
 			("Internal error - Cannot load PHP runtime code because root_package is not set");
 
-	DBG_MSG1("Loading PHP runtime code from %s", PHK_G(root_package));
+	DBG_MSG1("Loading PHP runtime code from %s", ZSTR_VAL(PHK_G(root_package)));
 
 	/* Cannot use fopen() as we must support stream-wrapped paths */
 
-	stream = php_stream_open_wrapper_ex(PHK_G(root_package), "rb",0,NULL, NULL);
+	stream = php_stream_open_wrapper_ex(ZSTR_VAL(PHK_G(root_package)), "rb", 0, NULL, NULL);
 	if (!stream) {
 		EXCEPTION_ABORT_1
 			("Cannot load PHP runtime code - Unable to open file %s",
-			 PHK_G(root_package));
+			 ZSTR_VAL(PHK_G(root_package)));
 	}
 
 	if ((len = php_stream_copy_to_mem(stream, &buf1, 241, 0)) != 241) {
@@ -924,11 +924,11 @@ static PHP_METHOD(PHK, prolog)
 
 	if (!ZVAL_IS_STRING(file)) convert_to_string(file);
 
-	if (!PHK_G(root_package)[0]) {	/* Store path to load PHP code later, if needed */
+	if (!PHK_G(root_package)) {	/* Store path to load PHP code later, if needed */
 		if (Z_STRLEN_P(file) > UT_PATH_MAX)
 			EXCEPTION_ABORT_1("Path too long - max size=%d", UT_PATH_MAX);
 
-		memmove(PHK_G(root_package), Z_STRVAL_P(file), Z_STRLEN_P(file) + 1);
+		PHK_G(root_package) = zend_string_init(Z_STRVAL_P(file), Z_STRLEN_P(file), 0);
 	}
 
 	cli = (!ut_is_web());
@@ -1134,11 +1134,6 @@ static int MSHUTDOWN_PHK(TSRMLS_D)
 
 static inline int RINIT_PHK(TSRMLS_D)
 {
-	if (PHK_G(ext_is_enabled)) {
-		PHK_G(root_package)[0] = '\0';
-		PHK_G(php_runtime_is_loaded) = 0;
-	}
-
 	return SUCCESS;
 }
 
@@ -1148,6 +1143,11 @@ static inline int RSHUTDOWN_PHK(TSRMLS_D)
 {
 	if (PHK_G(ext_is_enabled)) {
 		shutdown_mimeTable(TSRMLS_C);
+		if (PHK_G(root_package)) {
+			zend_string_release(PHK_G(root_package));
+			PHK_G(root_package) = NULL;
+		}
+		PHK_G(php_runtime_is_loaded) = 0;
 	}
 
 	return SUCCESS;

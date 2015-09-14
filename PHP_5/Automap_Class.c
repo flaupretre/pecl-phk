@@ -80,6 +80,45 @@ static PHP_METHOD(Automap, map)
 
 /* }}} */
 /*---------------------------------------------------------------*/
+/* {{{ proto Automap_Map \Automap\Mgr::set_map_class_path(string path) */
+
+static PHP_METHOD(Automap, setMapClassPath)
+{
+	char *path;
+	int len;
+
+	if (PHK_G(automap_map_path)) {
+		return;
+	}
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "s", &path, &len) ==
+		FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
+
+	PHK_G(automap_map_path) = zend_string_init(path, len, 0);
+}
+
+/* }}} */
+/*---------------------------------------------------------------*/
+
+static void Automap_need_Map_Class(TSRMLS_D)
+{
+	char *req_str;
+
+	if (HKEY_EXISTS(EG(class_table), automap_map_class_lc)) {
+		return;
+	}
+
+	if (PHK_G(automap_map_path)) {
+		spprintf(&req_str,1024,"require '%s';",ZSTR_VAL(PHK_G(automap_map_path)));
+		DBG_MSG1("eval : %s",req_str);
+		zend_eval_string(req_str,NULL,req_str TSRMLS_CC);
+		EALLOCATE(req_str,0);
+	} else {
+		PHK_needPhpRuntime(TSRMLS_C);
+	}
+}
+
+/*---------------------------------------------------------------*/
 
 ZEND_BEGIN_ARG_INFO_EX(Automap_load_arginfo, 0, 0, 1)
 ZEND_ARG_INFO(0, path)
@@ -90,6 +129,13 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(Automap_autoloadHook_arginfo, 0, 0, 1)
 ZEND_ARG_INFO(0, symbol)
 ZEND_ARG_INFO(0, type)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(Automap_resolve_arginfo, 0, 0, 2)
+ZEND_ARG_INFO(0, type)
+ZEND_ARG_INFO(0, symbol)
+ZEND_ARG_INFO(0, autoload)
+ZEND_ARG_INFO(0, exception)
 ZEND_END_ARG_INFO()
 
 static zend_function_entry Automap_functions[] = {
@@ -112,9 +158,13 @@ static zend_function_entry Automap_functions[] = {
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, unload, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
+	PHP_ME(Automap, symbolIsDefined, UT_2args_arginfo,
+		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	PHP_ME(Automap, usingAccelerator, UT_noarg_arginfo,
 		   ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	PHP_ME(Automap, autoloadHook, Automap_autoloadHook_arginfo,
+		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
+	PHP_ME(Automap, resolve, Automap_resolve_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, getFunction, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
@@ -131,6 +181,8 @@ static zend_function_entry Automap_functions[] = {
 	PHP_ME(Automap, requireClass, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	PHP_ME(Automap, requireExtension, UT_1arg_arginfo,
+		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
+	PHP_ME(Automap, setMapClassPath, UT_1arg_arginfo,
 		   ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL, 0, 0}
 };
@@ -187,6 +239,10 @@ static int RINIT_Automap_Class(TSRMLS_D)
 
 static int RSHUTDOWN_Automap_Class(TSRMLS_D)
 {
+	if (PHK_G(automap_map_path)) {
+		zend_string_release(PHK_G(automap_map_path));
+		PHK_G(automap_map_path) = NULL;
+	}
 	return SUCCESS;
 }
 

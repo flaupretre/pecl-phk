@@ -1,6 +1,6 @@
 /*
   +----------------------------------------------------------------------+
-  | Automap extension <http://automap.tekwire.net>                       |
+  | Compatibility macros for different PHP versions                      |
   +----------------------------------------------------------------------+
   | Copyright (c) 2005-2007 The PHP Group                                |
   +----------------------------------------------------------------------+
@@ -16,23 +16,14 @@
   +----------------------------------------------------------------------+
 */
 
-#ifndef __AUTOMAP_CLASS_H
-#define __AUTOMAP_CLASS_H
+#ifndef _COMPAT_H
+#define _COMPAT_H
 
-#include "Automap_Mnt.h"
-
-/*---------------------------------------------------------------*/
-
-static PHP_METHOD(Automap, __construct);
-static zval *Automap_map_object_by_mp(Automap_Mnt *mp TSRMLS_DC);
-static zval *Automap_map(long id  TSRMLS_DC);
-static PHP_METHOD(Automap, map);
-static void Automap_Class_set_constants(zend_class_entry * ce);
-
-static int MINIT_Automap_Class(TSRMLS_D);
-static int MSHUTDOWN_Automap_Class(TSRMLS_D);
-static int RINIT_Automap_Class(TSRMLS_D);
-static int RSHUTDOWN_Automap_Class(TSRMLS_D);
-
-/*---------------------------------------------------------------*/
+#if PHP_MAJOR_VERSION >= 7
+#define PHP_7
 #endif
+
+#include "common/compat_misc.h"
+#include "common/compat_zend_string.h"
+
+#endif /* _COMPAT_H */

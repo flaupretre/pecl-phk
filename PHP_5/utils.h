@@ -387,23 +387,6 @@ which is the case in this extension. */
 #endif
 
 /*============================================================================*/
-/* Compatibility */
-
-#define PHP_5_0_X_API_NO                220040412
-#define PHP_5_1_X_API_NO                220051025
-#define PHP_5_2_X_API_NO                220060519
-#define PHP_5_3_X_API_NO                220090626
-#define PHP_5_4_X_API_NO                220100525
-#define PHP_5_5_X_API_NO                220121212
-#define PHP_5_6_X_API_NO                220131226
-
-#if PHP_API_VERSION >= 20100412
-	typedef size_t PHP_ESCAPE_HTML_ENTITIES_SIZE;
-#else
-	typedef int PHP_ESCAPE_HTML_ENTITIES_SIZE;
-#endif
-
-/*============================================================================*/
 
 UT_SYMBOL DECLARE_HKEY(_SERVER);
 UT_SYMBOL DECLARE_HKEY(_REQUEST);

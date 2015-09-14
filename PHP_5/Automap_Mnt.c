@@ -249,8 +249,6 @@ static int Automap_Mnt_resolve_key(Automap_Mnt *mp, zval *zkey, ulong hash TSRML
 	
 	req_str=NULL;
 
-	if (mp->flags & AUTOMAP_FLAG_NO_AUTOLOAD) return FAILURE;
-
 	pmp=mp->map;
 	if (!(pep=Automap_Pmap_find_key(pmp,zkey,hash TSRMLS_CC))) {
 		return FAILURE;

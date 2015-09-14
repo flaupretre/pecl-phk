@@ -17,7 +17,7 @@
 */
 
 /* Uncomment to display debug messages */
-/* #define PHK_DEBUG */
+/*#define PHK_DEBUG*/
 
 #ifndef __PHP_PHK_H
 #define __PHP_PHK_H
@@ -90,21 +90,39 @@
 #include "zend_objects_API.h"
 #include "zend_operators.h"
 
-#include "utils.h"
+#include "common/compat.h"
 
-#include "Automap_Handlers.h"
-#include "Automap_Class.h"
-#include "Automap_Key.h"
-#include "Automap_Loader.h"
-#include "Automap_Pmap.h"
-#include "Automap_Mnt.h"
-#include "Automap_Type.h"
-#include "Automap_Util.h"
-#include "Automap_Parser.h"
-#include "PHK_Cache.h"
-#include "PHK_Stream.h"
-#include "PHK_Mgr.h"
-#include "PHK.h"
+#ifdef PHP_7
+#	include "PHP_7/utils.h"
+#	include "PHP_7/Automap_Handlers.h"
+#	include "PHP_7/Automap_Class.h"
+#	include "PHP_7/Automap_Key.h"
+#	include "PHP_7/Automap_Loader.h"
+#	include "PHP_7/Automap_Pmap.h"
+#	include "PHP_7/Automap_Mnt.h"
+#	include "PHP_7/Automap_Type.h"
+#	include "PHP_7/Automap_Util.h"
+#	include "PHP_7/Automap_Parser.h"
+#	include "PHP_7/PHK_Cache.h"
+#	include "PHP_7/PHK_Stream.h"
+#	include "PHP_7/PHK_Mgr.h"
+#	include "PHP_7/PHK.h"
+#else
+#	include "PHP_5/utils.h"
+#	include "PHP_5/Automap_Handlers.h"
+#	include "PHP_5/Automap_Class.h"
+#	include "PHP_5/Automap_Key.h"
+#	include "PHP_5/Automap_Loader.h"
+#	include "PHP_5/Automap_Pmap.h"
+#	include "PHP_5/Automap_Mnt.h"
+#	include "PHP_5/Automap_Type.h"
+#	include "PHP_5/Automap_Util.h"
+#	include "PHP_5/Automap_Parser.h"
+#	include "PHP_5/PHK_Cache.h"
+#	include "PHP_5/PHK_Stream.h"
+#	include "PHP_5/PHK_Mgr.h"
+#	include "PHP_5/PHK.h"
+#endif
 
 #if ZEND_EXTENSION_API_NO >= PHP_5_6_X_API_NO
 #include "zend_virtual_cwd.h"
@@ -159,6 +177,7 @@ static DECLARE_HKEY(automap);
 static DECLARE_HKEY(phk_stream_backend_class_lc);
 static DECLARE_HKEY(eaccelerator_get);
 static DECLARE_HKEY(phk_class_lc);
+static DECLARE_HKEY(automap_map_class_lc);
 
 /*============================================================================*/
 
@@ -183,20 +202,26 @@ int mcount;				/* Size of the mount_order table */
 
 zval caching;			/* PHK_Mgr - Can be null/true/false */
 
-char root_package[UT_PATH_MAX + 1];
+zend_string *root_package;
+zend_string *automap_map_path;
 
 int php_runtime_is_loaded;
 
 zval *mimeTable;
-
-zend_bool enable_cli;	/* Ini setting */
 
 int ext_is_enabled;
 
 ZEND_END_MODULE_GLOBALS(phk)
 
 #ifdef ZTS
-#	define PHK_G(v) TSRMG(phk_globals_id, zend_phk_globals *, v)
+#	ifdef PHP_7
+#		define PHK_G(v) ZEND_TSRMG(phk_globals_id, zend_phk_globals *, v)
+#		ifdef COMPILE_DL_EXTNAME
+			ZEND_TSRMLS_CACHE_EXTERN;
+#		endif
+#	else
+#		define PHK_G(v) TSRMG(phk_globals_id, zend_phk_globals *, v)
+#	endif
 #else
 #	define PHK_G(v) (phk_globals.v)
 #endif

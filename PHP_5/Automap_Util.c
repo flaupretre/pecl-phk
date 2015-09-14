@@ -26,7 +26,7 @@ static void Automap_ufid(zval *path, zval **zufidpp TSRMLS_DC)
 
 /*---------------------------------------------------------------*/
 
-static int Automap_symbolIsDefined(char type, char *symbol
+static int Automap_symbol_is_defined(char type, char *symbol
 	, unsigned int slen TSRMLS_DC)
 {
 	char *p;
@@ -66,11 +66,26 @@ static int Automap_symbolIsDefined(char type, char *symbol
 }
 
 /*---------------------------------------------------------------*/
+/* {{{ proto void \Automap\Mgr::symbolIsDefined(string type, string symbol) */
+
+static PHP_METHOD(Automap, symbolIsDefined)
+{
+	char *symbol,*type;
+	int slen,tlen;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS()TSRMLS_CC, "ss",&symbol, &slen
+		,&type,&tlen)==FAILURE) EXCEPTION_ABORT("Cannot parse parameters");
+
+	RETURN_BOOL(Automap_symbol_is_defined(*type, symbol, slen TSRMLS_CC)==SUCCESS);
+}
+
+/* }}} */
+/*---------------------------------------------------------------*/
 /* {{{ proto bool PHK::using accelerator() */
 
 static PHP_METHOD(Automap, usingAccelerator)
 {
-	RETVAL_TRUE;
+	RETVAL_BOOL(PHK_G(ext_is_enabled));
 }
 
 /* }}} */

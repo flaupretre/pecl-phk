@@ -16,20 +16,25 @@
   +----------------------------------------------------------------------+
 */
 
-#ifndef __AUTOMAP_UTIL_H
-#define __AUTOMAP_UTIL_H
+#ifndef __AUTOMAP_CLASS_H
+#define __AUTOMAP_CLASS_H
 
-/*============================================================================*/
+#include "Automap_Mnt.h"
 
-static void Automap_ufid(zval *path, zval **zufidpp TSRMLS_DC);
-static int Automap_symbolIsDefined(char type, char *symbol
-	, unsigned int slen TSRMLS_DC);
-static PHP_METHOD(Automap, usingAccelerator);
+/*---------------------------------------------------------------*/
 
-static int MINIT_Automap_Util(TSRMLS_D);
-static int MSHUTDOWN_Automap_Util(TSRMLS_D);
-static int RINIT_Automap_Util(TSRMLS_D);
-static int RSHUTDOWN_Automap_Util(TSRMLS_D);
+static PHP_METHOD(Automap, __construct);
+static zval *Automap_map_object_by_mp(Automap_Mnt *mp TSRMLS_DC);
+static zval *Automap_map(long id  TSRMLS_DC);
+static PHP_METHOD(Automap, map);
+static PHP_METHOD(Automap, setMapClassPath);
+static void Automap_need_Map_Class(TSRMLS_D);
+static void Automap_Class_set_constants(zend_class_entry * ce);
 
-/*============================================================================*/
+static int MINIT_Automap_Class(TSRMLS_D);
+static int MSHUTDOWN_Automap_Class(TSRMLS_D);
+static int RINIT_Automap_Class(TSRMLS_D);
+static int RSHUTDOWN_Automap_Class(TSRMLS_D);
+
+/*---------------------------------------------------------------*/
 #endif
