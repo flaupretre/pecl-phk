@@ -473,7 +473,7 @@ static size_t PHK_Stream_readdir(php_stream * stream, char *buf,
 	memmove(ent->d_name, Z_STRVAL_PP(z_tmp_pp), count + 1);
 
 	zend_hash_move_forward(ht);
-	stream->eof = (zend_hash_has_more_elements(ht) == SUCCESS);
+	stream->eof = (zend_hash_has_more_elements(ht) == FAILURE);
 
 	return sizeof(*ent);
 }
